@@ -48,3 +48,10 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /.worktrees/
+
+# Blender backups and local caches; canonical .blend sources remain tracked.
+*.blend1
+*.blend2
+*.blend@
+*.blend~
+/assets/blender/.cache/
