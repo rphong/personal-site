@@ -147,7 +147,7 @@ img {
   background: var(--route-background);
 }
 
-.page-hero__poster {
+.page-hero .page-hero__poster {
   position: absolute;
   inset: 0 0 0 30%;
   z-index: -3;
@@ -446,7 +446,7 @@ img {
     padding-bottom: 5.5rem;
   }
 
-  .page-hero__poster {
+  .page-hero .page-hero__poster {
     inset: 0;
     height: 62svh;
     min-height: 0;

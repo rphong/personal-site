@@ -65,13 +65,18 @@ describe("site shell", () => {
     expect(css).toMatch(/\.scene-stage\s*\{[\s\S]*height:\s*100svh/);
     expect(css).toMatch(/\.page-hero\s*\{[\s\S]*min-height:\s*calc\(100svh/);
     expect(css).toMatch(
+      /\.page-hero\s+\.page-hero__poster\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0 0 0 30%;/,
+    );
+    expect(css).toMatch(
       /\.page-hero h1\s*\{[^}]*color:\s*var\(--route-accent\)/,
     );
     expect(css).not.toMatch(
       /\.page-hero h1\s*\{[^}]*color:\s*var\(--route-pale-heading\)/,
     );
     expect(css).toMatch(/\.content-surface\s*\{[\s\S]*background:\s*#eeeeee/i);
-    expect(css).toMatch(/@media\s*\(max-width:\s*720px\)/);
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*720px\)\s*\{[\s\S]*?\.page-hero\s+\.page-hero__poster\s*\{[^}]*inset:\s*0;[^}]*height:\s*62svh;[^}]*min-height:\s*0;[^}]*opacity:\s*0\.54;/,
+    );
     expect(css).not.toMatch(/prefers-color-scheme:\s*dark/);
   });
 });
