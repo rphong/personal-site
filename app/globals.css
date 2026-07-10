@@ -194,7 +194,7 @@ img {
 .page-hero h1 {
   max-width: 10ch;
   margin: 0;
-  color: var(--route-pale-heading);
+  color: var(--route-accent);
   font-family: var(--font-body), "Trebuchet MS", sans-serif;
   font-size: clamp(4.25rem, 13vw, 10.5rem);
   font-weight: 850;
