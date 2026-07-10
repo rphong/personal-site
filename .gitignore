@@ -55,3 +55,12 @@ next-env.d.ts
 *.blend@
 *.blend~
 /assets/blender/.cache/
+
+# local 3D asset toolchain and intermediates
+/.tools/
+/.tmp/assets/
+/.tmp/posters/
+/assets/blender/**/*.blend1
+/assets/blender/**/*.blend@
+/assets/blender/**/quit.blend
+/public/models/*.raw.glb

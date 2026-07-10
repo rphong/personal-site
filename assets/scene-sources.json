@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "hardMaxBytes": 26214400,
+  "toolchain": {
+    "blender": {
+      "version": "3.6.23",
+      "downloadUrl": "https://download.blender.org/release/Blender3.6/blender-3.6.23-windows-x64.zip",
+      "sha256": "e3296eba7eab32c2e5182459ec7614af32224eee2bd32c9d0a08ffd751c54f3b"
+    },
+    "gltfTransform": "4.4.1",
+    "gltfValidator": "2.0.0-dev.3.10",
+    "meshoptimizer": "1.1.1",
+    "sharp": "0.35.3"
+  },
+  "froggieCapture": {
+    "source": "ReferenceImages/Froggie Gameplay.png",
+    "bytes": 2337398,
+    "sha256": "64e43e332977a6e0d9d5b97a515dcfe0aa8846197d2e938034e73e913549d613",
+    "crop": {
+      "left": 254,
+      "top": 294,
+      "width": 2118,
+      "height": 1060
+    },
+    "output": {
+      "path": "assets/blender/textures/froggie-gameplay-screen.png",
+      "width": 1600,
+      "height": 900,
+      "fit": "contain",
+      "background": "#1C1C1C"
+    }
+  },
+  "models": [
+    {
+      "key": "crane",
+      "source": "assets/blender/Crane.blend",
+      "output": "public/models/crane.glb",
+      "origin": {
+        "fileName": "Crane.blend",
+        "bytes": 1154308,
+        "sha256": "be2adf030ddcd2fe7f5d9f93eb5a2385d59dc840cf3a71f7e56c602c6470437b"
+      },
+      "maxBytes": 2097152,
+      "minimumAnimations": 0,
+      "textureMode": "none"
+    },
+    {
+      "key": "crane-workout",
+      "source": "assets/blender/CraneWorkout.blend",
+      "output": "public/models/crane-workout.glb",
+      "origin": {
+        "fileName": "CraneWorkout.blend",
+        "bytes": 1609068,
+        "sha256": "d66c19df5fa3e30b7efbc71553ebb8f2db6bef5be5544005e5da792959941382"
+      },
+      "maxBytes": 5242880,
+      "minimumAnimations": 1,
+      "textureMode": "none"
+    },
+    {
+      "key": "crane-making-table",
+      "source": "assets/blender/CraneMakingTable.blend",
+      "output": "public/models/crane-making-table.glb",
+      "origin": {
+        "fileName": "CraneMakingTable.blend",
+        "bytes": 1406844,
+        "sha256": "b3a9addb51fac7bc19944d707d850660a4490a2e6931bcce0846290f9612c2e8"
+      },
+      "maxBytes": 5242880,
+      "minimumAnimations": 0,
+      "textureMode": "none"
+    },
+    {
+      "key": "crane-on-league",
+      "source": "assets/blender/CraneOnLeague.blend",
+      "output": "public/models/crane-on-league.glb",
+      "origin": {
+        "fileName": "CraneOnLeague.blend",
+        "bytes": 1816028,
+        "sha256": "f3436f0231b0a599c70b2c24c5ad5bbb167ed62c8ec35c948285a0cddfc9db81"
+      },
+      "maxBytes": 5242880,
+      "minimumAnimations": 0,
+      "textureMode": "webp",
+      "ownedTextures": [
+        {
+          "name": "LeagueBanDashboard",
+          "source": "assets/blender/textures/league-ban-dashboard.png"
+        },
+        {
+          "name": "LeagueMatchHistory",
+          "source": "assets/blender/textures/league-match-history.png"
+        }
+      ]
+    },
+    {
+      "key": "crane-throwing-plane",
+      "source": "assets/blender/CraneThrowingPlane.blend",
+      "output": "public/models/crane-throwing-plane.glb",
+      "origin": {
+        "fileName": "CraneThrowingPlane.blend",
+        "bytes": 1384532,
+        "sha256": "a8a02d0e0cd02dbdafedccdf37c89d30f5d812785255a9f474070b01f5ab1840"
+      },
+      "maxBytes": 5242880,
+      "minimumAnimations": 0,
+      "textureMode": "none"
+    },
+    {
+      "key": "rocket",
+      "source": "assets/blender/Rocket.blend",
+      "output": "public/models/rocket.glb",
+      "origin": {
+        "fileName": "Rocket.blend",
+        "bytes": 1227028,
+        "sha256": "0953bf47975129f879c52b4197188e0b1b6c93de2ebf78a685cf0fcfb6a33010"
+      },
+      "maxBytes": 5242880,
+      "minimumAnimations": 0,
+      "textureMode": "none",
+      "forbiddenBrandTerms": ["nasa", "meatball", "worm"]
+    },
+    {
+      "key": "froggie-display",
+      "source": "assets/blender/FroggieDisplay.blend",
+      "output": "public/models/froggie-display.glb",
+      "generator": "scripts/assets/blender/create_froggie_display.py",
+      "maxBytes": 5242880,
+      "minimumAnimations": 0,
+      "textureMode": "webp",
+      "ownedTextures": [
+        {
+          "name": "FroggieGameplay",
+          "source": "assets/blender/textures/froggie-gameplay-screen.png"
+        }
+      ]
+    }
+  ]
+}
