@@ -6,9 +6,13 @@ import {
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 
+interface AssetFetcher {
+  fetch(request: Request): Promise<Response>;
+}
+
 interface Env {
-  ASSETS: Fetcher;
-  IMAGES: {
+  ASSETS?: AssetFetcher;
+  IMAGES?: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
         output(options: {
@@ -33,15 +37,16 @@ const worker = {
   ): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/_vinext/image") {
+    if (url.pathname === "/_vinext/image" && env.ASSETS && env.IMAGES) {
+      const { ASSETS, IMAGES } = env;
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(
         request,
         {
           fetchAsset: (assetPath) =>
-            env.ASSETS.fetch(new Request(new URL(assetPath, request.url))),
+            ASSETS.fetch(new Request(new URL(assetPath, request.url))),
           transformImage: async (body, { width, format, quality }) => {
-            const result = await env.IMAGES.input(body)
+            const result = await IMAGES.input(body)
               .transform(width > 0 ? { width } : {})
               .output({ format, quality });
             return result.response();

@@ -4,14 +4,25 @@ import test from "node:test";
 delete process.env.SITE_ENV;
 delete process.env.SITE_URL;
 
-async function render(pathname) {
+async function loadWorker(cacheKey) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set(
     "test",
-    `${process.pid}-${Date.now()}-${encodeURIComponent(pathname)}`,
+    `${process.pid}-${Date.now()}-${encodeURIComponent(cacheKey)}`,
   );
   const { default: worker } = await import(workerUrl.href);
+  return worker;
+}
 
+function executionContext() {
+  return {
+    waitUntil() {},
+    passThroughOnException() {},
+  };
+}
+
+async function render(pathname) {
+  const worker = await loadWorker(pathname);
   return worker.fetch(
     new Request(new URL(pathname, "http://localhost"), {
       headers: { accept: "text/html" },
@@ -21,10 +32,7 @@ async function render(pathname) {
         fetch: async () => new Response("Not found", { status: 404 }),
       },
     },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
+    executionContext(),
   );
 }
 
@@ -145,4 +153,21 @@ test("preview sitemap contains no production URLs", async () => {
   const sitemap = await response.text();
   assert.doesNotMatch(sitemap, /<url>/i);
   assert.doesNotMatch(sitemap, /richardphong/i);
+});
+
+test("preview image requests fall back when optimizer bindings are absent", async () => {
+  const worker = await loadWorker("image-without-bindings");
+  const response = await worker.fetch(
+    new Request(
+      "http://localhost/_vinext/image?url=%2Fposters%2Fhome-reference.png&w=1080&q=75",
+    ),
+    {},
+    executionContext(),
+  );
+
+  assert.equal(response.status, 302);
+  assert.equal(
+    response.headers.get("location"),
+    "http://localhost/posters/home-reference.png",
+  );
 });
