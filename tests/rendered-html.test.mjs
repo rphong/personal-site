@@ -37,8 +37,23 @@ function assertOrdered(haystack, values) {
   }
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function chapterHeadings(html) {
+  return [...html.matchAll(/<h2\b([^>]*)>([\s\S]*?)<\/h2>/gi)]
+    .filter(([, attributes]) =>
+      /\bclass=["'][^"']*\bchapter-heading\b[^"']*["']/i.test(attributes),
+    )
+    .map(([, , text]) => text.replace(/<[^>]*>/g, "").trim());
+}
+
 function assertPreviewDocument(html, title) {
-  assert.match(html, new RegExp(`<title>${title}</title>`, "i"));
+  assert.match(
+    html,
+    new RegExp(`<title>${escapeRegExp(title)}</title>`, "i"),
+  );
   assert.match(
     html,
     /<meta(?=[^>]*name=["']robots["'])(?=[^>]*content=["'][^"']*noindex[^"']*nofollow)[^>]*>/i,
@@ -78,8 +93,8 @@ test("server-renders Experience in approved company order", async () => {
   assert.equal(response.status, 200);
 
   const html = await response.text();
-  assertPreviewDocument(html, "Experience \\| Richard Phong");
-  assertOrdered(html, ["NASA", "EOG Resources", "Paycom"]);
+  assertPreviewDocument(html, "Experience | Richard Phong");
+  assert.deepEqual(chapterHeadings(html), ["NASA", "EOG Resources", "Paycom"]);
   assert.match(html, /Artemis III preparation/);
   assert.match(html, /40–50 seconds to 1–2 seconds/);
   assert.match(html, /href="\/Richard-Phong-Resume\.pdf"/);
@@ -90,8 +105,11 @@ test("server-renders Projects in approved project order", async () => {
   assert.equal(response.status, 200);
 
   const html = await response.text();
-  assertPreviewDocument(html, "Projects \\| Richard Phong");
-  assertOrdered(html, ["League Ban Site", "Froggie Adventures"]);
+  assertPreviewDocument(html, "Projects | Richard Phong");
+  assert.deepEqual(chapterHeadings(html), [
+    "League Ban Site",
+    "Froggie Adventures",
+  ]);
   assert.match(html, /https:\/\/github\.com\/rphong\/LeagueBanSite/);
   assert.match(html, /https:\/\/github\.com\/rphong\/Froggie/);
   assert.doesNotMatch(html, /<iframe\b/i);
@@ -102,7 +120,7 @@ test("server-renders every Contact action and privacy disclosure", async () => {
   assert.equal(response.status, 200);
 
   const html = await response.text();
-  assertPreviewDocument(html, "Contact \\| Richard Phong");
+  assertPreviewDocument(html, "Contact | Richard Phong");
   assert.match(html, /mailto:richard\.phong424@gmail\.com/);
   assert.match(html, /https:\/\/linkedin\.com\/in\/richard-phong\//);
   assert.match(html, /https:\/\/github\.com\/rphong/);
