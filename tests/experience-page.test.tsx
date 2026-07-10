@@ -13,9 +13,12 @@ describe("experience page", () => {
       screen.getByRole("heading", { level: 1, name: "Experience" }),
     ).toBeInTheDocument();
 
-    expect(container.textContent).toMatch(
-      /NASA[\s\S]*EOG Resources[\s\S]*Paycom/,
-    );
+    expect(
+      Array.from(
+        container.querySelectorAll(".chapter .chapter-heading"),
+        (heading) => heading.textContent,
+      ),
+    ).toEqual(["NASA", "EOG Resources", "Paycom"]);
 
     expect(
       screen.getAllByText("Software Developer Intern", { exact: true }),
