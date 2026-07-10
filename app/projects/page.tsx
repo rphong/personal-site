@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { PageHero } from "../../components/page-hero";
 import { ScenePoster } from "../../components/scene-poster";
 import { projects, routeByKey } from "../../content/site-content";
+import { createPageMetadata } from "../../lib/site-metadata";
 
 const route = routeByKey.projects;
+
+export function generateMetadata(): Metadata {
+  return createPageMetadata("projects");
+}
 
 export default function ProjectsPage() {
   return (

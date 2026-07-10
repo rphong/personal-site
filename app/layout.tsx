@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { Fraunces, Nunito_Sans } from "next/font/google";
 import { SiteShell } from "../components/site-shell";
+import { createPageMetadata } from "../lib/site-metadata";
 import "./globals.css";
+
+export function generateMetadata(): Metadata {
+  return createPageMetadata("home");
+}
 
 const nunitoSans = Nunito_Sans({
   subsets: ["latin"],

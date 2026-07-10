@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHero } from "../components/page-hero";
 import { getOwnerGatedFields, home, routeByKey } from "../content/site-content";
+import { createPageMetadata } from "../lib/site-metadata";
 
 const route = routeByKey.home;
 const unresolvedOwnerFields = getOwnerGatedFields(home);
+
+export function generateMetadata(): Metadata {
+  return createPageMetadata("home");
+}
 
 export default function HomePage() {
   return (

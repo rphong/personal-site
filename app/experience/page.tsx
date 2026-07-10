@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { PageHero } from "../../components/page-hero";
 import { ScenePoster } from "../../components/scene-poster";
 import { contact, experience, routeByKey } from "../../content/site-content";
+import { createPageMetadata } from "../../lib/site-metadata";
 
 const route = routeByKey.experience;
+
+export function generateMetadata(): Metadata {
+  return createPageMetadata("experience");
+}
 
 export default function ExperiencePage() {
   return (

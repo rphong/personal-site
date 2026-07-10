@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { PageHero } from "../../components/page-hero";
 import { contact, routeByKey } from "../../content/site-content";
+import { createPageMetadata } from "../../lib/site-metadata";
 
 const route = routeByKey.contact;
+
+export function generateMetadata(): Metadata {
+  return createPageMetadata("contact");
+}
 
 export default function ContactPage() {
   return (

@@ -1,19 +1,19 @@
 import assert from "node:assert/strict";
-import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
-const developmentPreviewMeta =
-  /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
-const templateRoot = new URL("../", import.meta.url);
-const previewRoot = new URL("../app/_sites-preview/", import.meta.url);
+delete process.env.SITE_ENV;
+delete process.env.SITE_URL;
 
-async function render() {
+async function render(pathname) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
+  workerUrl.searchParams.set(
+    "test",
+    `${process.pid}-${Date.now()}-${encodeURIComponent(pathname)}`,
+  );
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
+    new Request(new URL(pathname, "http://localhost"), {
       headers: { accept: "text/html" },
     }),
     {
@@ -28,60 +28,103 @@ async function render() {
   );
 }
 
-test("server-renders the starter loading skeleton", async () => {
-  const response = await render();
+function assertOrdered(haystack, values) {
+  let previousIndex = -1;
+  for (const value of values) {
+    const index = haystack.indexOf(value);
+    assert.ok(index > previousIndex, `${value} should appear in order`);
+    previousIndex = index;
+  }
+}
+
+function assertPreviewDocument(html, title) {
+  assert.match(html, new RegExp(`<title>${title}</title>`, "i"));
+  assert.match(
+    html,
+    /<meta(?=[^>]*name=["']robots["'])(?=[^>]*content=["'][^"']*noindex[^"']*nofollow)[^>]*>/i,
+  );
+  assert.doesNotMatch(html, /<link[^>]+rel=["']canonical["']/i);
+  assert.doesNotMatch(html, /<canvas\b/i);
+  const nav = html.match(
+    /<nav[^>]*aria-label=["']Primary navigation["'][\s\S]*?<\/nav>/i,
+  );
+  assert.ok(nav, "Primary navigation should be in initial HTML");
+  assertOrdered(nav[0], [
+    'href="/"',
+    'href="/experience"',
+    'href="/projects"',
+    'href="/contact"',
+  ]);
+}
+
+test("server-renders the complete Home page without JavaScript or WebGL", async () => {
+  const response = await render("/");
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, developmentPreviewMeta);
-  assert.match(html, /<title>Your site is taking shape<\/title>/i);
-  assert.match(html, /Codex is working/);
-  assert.match(html, /Your site is taking shape/);
-  assert.match(html, /Codex is building the first version/);
-  assert.match(html, /react-loading-skeleton/);
-  assert.match(html, /role="status"/);
+  assertPreviewDocument(html, "Richard Phong");
+  assert.match(html, /Welcome to my corner/);
+  assert.match(html, /Currently building software at EOG Resources/);
+  assert.match(
+    html,
+    /Owner wording|required before production|replace these two marked lines/i,
+  );
+  assert.match(html, /Operational diagnostics only/);
 });
 
-test("keeps the loading skeleton scoped and disposable", async () => {
-  const [preview, css, page, layout, packageJson, files] = await Promise.all([
-    readFile(new URL("SkeletonPreview.tsx", previewRoot), "utf8"),
-    readFile(new URL("preview.css", previewRoot), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readdir(previewRoot),
-  ]);
+test("server-renders Experience in approved company order", async () => {
+  const response = await render("/experience");
+  assert.equal(response.status, 200);
 
-  assert.deepEqual(files.sort(), ["SkeletonPreview.tsx", "preview.css"]);
-  assert.match(preview, /from "react-loading-skeleton"/);
-  assert.match(preview, /baseColor="#eceae7"/);
-  assert.match(preview, /highlightColor="#f9f8f6"/);
-  assert.match(preview, /duration=\{2\.8\}/);
-  assert.match(preview, /sites-skeleton-search-placeholder/);
-  assert.match(packageJson, /"react-loading-skeleton": "3\.5\.0"/);
+  const html = await response.text();
+  assertPreviewDocument(html, "Experience \\| Richard Phong");
+  assertOrdered(html, ["NASA", "EOG Resources", "Paycom"]);
+  assert.match(html, /Artemis III preparation/);
+  assert.match(html, /40–50 seconds to 1–2 seconds/);
+  assert.match(html, /href="\/Richard-Phong-Resume\.pdf"/);
+});
 
-  const shellIndex = preview.indexOf('className="sites-skeleton-shell"');
-  const statusIndex = preview.indexOf('className="sites-skeleton-status"');
-  assert.ok(shellIndex >= 0 && statusIndex > shellIndex);
-  assert.match(css, /position:\s*fixed/);
-  assert.match(css, /inset:\s*0/);
-  assert.match(css, /opacity:\s*0\.52/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.doesNotMatch(css, /#020617|canvas|pets|progress/i);
-  assert.doesNotMatch(
-    preview,
-    /loading-spinner|status-mark|status-progress|canvas|cookie|random/i,
-  );
+test("server-renders Projects in approved project order", async () => {
+  const response = await render("/projects");
+  assert.equal(response.status, 200);
 
-  assert.match(page, /export const metadata:\s*Metadata/);
-  assert.match(page, /"codex-preview": "development"/);
-  assert.match(page, /<SkeletonPreview \/>/);
-  assert.match(layout, /title:\s*"Starter Project"/);
-  assert.doesNotMatch(layout, /codex-preview|_sites-preview|themeColor|\bViewport\b/);
-  assert.doesNotMatch(css, /(^|\s)(html|body)\s*\{/m);
+  const html = await response.text();
+  assertPreviewDocument(html, "Projects \\| Richard Phong");
+  assertOrdered(html, ["League Ban Site", "Froggie Adventures"]);
+  assert.match(html, /https:\/\/github\.com\/rphong\/LeagueBanSite/);
+  assert.match(html, /https:\/\/github\.com\/rphong\/Froggie/);
+  assert.doesNotMatch(html, /<iframe\b/i);
+});
 
-  await assert.rejects(
-    access(new URL("public/_sites-preview", templateRoot)),
-  );
+test("server-renders every Contact action and privacy disclosure", async () => {
+  const response = await render("/contact");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assertPreviewDocument(html, "Contact \\| Richard Phong");
+  assert.match(html, /mailto:richard\.phong424@gmail\.com/);
+  assert.match(html, /https:\/\/linkedin\.com\/in\/richard-phong\//);
+  assert.match(html, /https:\/\/github\.com\/rphong/);
+  assert.match(html, /tel:\+12817776437/);
+  assert.match(html, /Cloudflare and Sentry/);
+});
+
+test("preview robots disallows crawling and advertises no sitemap", async () => {
+  const response = await render("/robots.txt");
+  assert.equal(response.status, 200);
+
+  const robots = await response.text();
+  assert.match(robots, /User-Agent:\s*\*/i);
+  assert.match(robots, /Disallow:\s*\//i);
+  assert.doesNotMatch(robots, /Sitemap:/i);
+});
+
+test("preview sitemap contains no production URLs", async () => {
+  const response = await render("/sitemap.xml");
+  assert.equal(response.status, 200);
+
+  const sitemap = await response.text();
+  assert.doesNotMatch(sitemap, /<url>/i);
+  assert.doesNotMatch(sitemap, /richardphong/i);
 });
