@@ -266,30 +266,31 @@ export const contact = {
   actions: [
     {
       label: "Email",
-      value: "richard.phong424@gmail.com",
+      display: "richard.phong424@gmail.com",
       href: "mailto:richard.phong424@gmail.com",
     },
     {
       label: "LinkedIn",
-      value: "linkedin.com/in/richard-phong",
+      display: "linkedin.com/in/richard-phong",
       href: "https://linkedin.com/in/richard-phong/",
     },
     {
       label: "GitHub",
-      value: "github.com/rphong",
+      display: "github.com/rphong",
       href: "https://github.com/rphong",
     },
     {
       label: "Phone",
-      value: "281-777-6437",
+      display: "281-777-6437",
       href: "tel:+12817776437",
     },
   ],
   resumeHref: "/Richard-Phong-Resume.pdf",
   privacy:
     "The production site is designed to use Cloudflare and Sentry only for sampled performance and error diagnostics. It does not attach contact details to diagnostics, track contact actions, collect visitor identity, or use session replay. The future 3D preference stays on this device.",
-  footer: {
-    disclosure: "Operational diagnostics only. No engagement or identity tracking.",
-    privacyHref: "/contact#privacy",
-  },
+} as const;
+
+export const footer = {
+  disclosure: "Operational diagnostics only. No engagement or identity tracking.",
+  privacyHref: "/contact#privacy",
 } as const;

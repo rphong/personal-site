@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   contact,
   experience,
+  footer,
   getOwnerGatedFields,
   home,
   OWNER_INPUT_SENTINEL,
@@ -103,26 +104,31 @@ describe("site content", () => {
     expect(contact.actions).toEqual([
       {
         label: "Email",
-        value: "richard.phong424@gmail.com",
+        display: "richard.phong424@gmail.com",
         href: "mailto:richard.phong424@gmail.com",
       },
       {
         label: "LinkedIn",
-        value: "linkedin.com/in/richard-phong",
+        display: "linkedin.com/in/richard-phong",
         href: "https://linkedin.com/in/richard-phong/",
       },
       {
         label: "GitHub",
-        value: "github.com/rphong",
+        display: "github.com/rphong",
         href: "https://github.com/rphong",
       },
       {
         label: "Phone",
-        value: "281-777-6437",
+        display: "281-777-6437",
         href: "tel:+12817776437",
       },
     ]);
     expect(contact.resumeHref).toBe("/Richard-Phong-Resume.pdf");
+    expect(contact).not.toHaveProperty("footer");
+    expect(footer).toEqual({
+      disclosure: "Operational diagnostics only. No engagement or identity tracking.",
+      privacyHref: "/contact#privacy",
+    });
   });
 
   it("reports every home field that still needs owner input", () => {
