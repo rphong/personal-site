@@ -1,19 +1,43 @@
-import { existsSync } from "node:fs";
+import { statSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 export const BLENDER_VERSION = "3.6.23";
+export const BLENDER_VERSION_TIMEOUT_MS = 30_000;
+export const BLENDER_SCRIPT_TIMEOUT_MS = 30 * 60 * 1000;
 
-export function resolveBlenderBin({ root = process.cwd(), env = process.env, exists = existsSync } = {}) {
-  const candidates = [
-    env.BLENDER_BIN,
-    path.join(root, ".tools/blender-3.6.23-windows-x64/blender.exe"),
-  ].filter(Boolean).map((candidate) => path.resolve(candidate));
-  const resolved = candidates.find((candidate) => exists(candidate));
-  if (!resolved) {
+function isRegularFile(filePath) {
+  try {
+    return statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+}
+
+export function resolveBlenderBin({
+  root = process.cwd(),
+  env = process.env,
+  exists = isRegularFile,
+} = {}) {
+  const override = env.BLENDER_BIN?.trim();
+  if (override) {
+    const resolvedOverride = path.resolve(override);
+    if (!exists(resolvedOverride)) {
+      throw new Error(
+        `BLENDER_BIN must point to an existing regular file: ${resolvedOverride}`,
+      );
+    }
+    return resolvedOverride;
+  }
+
+  const portable = path.resolve(
+    root,
+    ".tools/blender-3.6.23-windows-x64/blender.exe",
+  );
+  if (!exists(portable)) {
     throw new Error("Blender 3.6.23 was not found. Run npm run assets:bootstrap or set BLENDER_BIN to the exact portable executable.");
   }
-  return resolved;
+  return portable;
 }
 
 export function parseBlenderVersion(stdout) {
@@ -26,15 +50,41 @@ export function parseBlenderVersion(stdout) {
 
 export function parseBlendHeader(buffer) {
   const header = buffer.subarray(0, 12).toString("ascii");
-  if (!/^BLENDER[-_]?[vV]\d{3}$/.test(header)) {
+  if (!/^BLENDER[-_][vV]\d{3}$/.test(header)) {
     throw new Error(`Invalid Blender file header: ${JSON.stringify(header)}`);
   }
   const digits = header.slice(-3);
   return `${Number(digits.slice(0, 1))}.${Number(digits.slice(1))}`;
 }
 
-export function checkBlenderVersion(blenderBin, run = (command, args) => spawnSync(command, args, { encoding: "utf8" })) {
-  const result = run(blenderBin, ["--version"]);
+function spawnFailure(result, timeoutMs) {
+  if (!result || typeof result !== "object") {
+    return "did not return a process result";
+  }
+  if (result.error?.code === "ETIMEDOUT") {
+    return `timed out after ${timeoutMs} ms: ${result.error.message}`;
+  }
+  if (result.error) {
+    return `could not start: ${result.error.message}`;
+  }
+  if (result.signal) {
+    return `terminated by signal ${result.signal}`;
+  }
+  if (result.status === null || result.status === undefined) {
+    return "terminated without an exit status";
+  }
+  return null;
+}
+
+export function checkBlenderVersion(blenderBin, run = spawnSync) {
+  const result = run(blenderBin, ["--version"], {
+    encoding: "utf8",
+    timeout: BLENDER_VERSION_TIMEOUT_MS,
+  });
+  const failure = spawnFailure(result, BLENDER_VERSION_TIMEOUT_MS);
+  if (failure) {
+    throw new Error(`Could not execute ${blenderBin}: ${failure}`);
+  }
   if (result.status !== 0) {
     throw new Error(`Could not execute ${blenderBin}: ${result.stderr || result.stdout}`);
   }
@@ -48,13 +98,25 @@ export function buildBlenderArgs({ blendFile, script, scriptArgs = [] }) {
   return args;
 }
 
-export function runBlenderScript({ blenderBin, blendFile, script, scriptArgs = [], cwd = process.cwd() }) {
+export function runBlenderScript({
+  blenderBin,
+  blendFile,
+  script,
+  scriptArgs = [],
+  cwd = process.cwd(),
+  run = spawnSync,
+}) {
   const args = buildBlenderArgs({ blendFile, script, scriptArgs });
-  const result = spawnSync(blenderBin, args, {
+  const result = run(blenderBin, args, {
     cwd,
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
+    timeout: BLENDER_SCRIPT_TIMEOUT_MS,
   });
+  const failure = spawnFailure(result, BLENDER_SCRIPT_TIMEOUT_MS);
+  if (failure) {
+    throw new Error(`Blender script failed: ${failure}`);
+  }
   if (result.status !== 0) {
     const detail = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
     throw new Error(`Blender script failed (${result.status}): ${detail}`);

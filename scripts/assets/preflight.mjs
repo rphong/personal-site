@@ -19,6 +19,150 @@ function compareVersions(left, right) {
   return 0;
 }
 
+function assetPackageSpecs(manifest) {
+  return [
+    {
+      name: "meshoptimizer",
+      section: "dependencies",
+      version: manifest.toolchain.meshoptimizer,
+    },
+    {
+      name: "@gltf-transform/cli",
+      section: "devDependencies",
+      version: manifest.toolchain.gltfTransform,
+    },
+    {
+      name: "@gltf-transform/core",
+      section: "devDependencies",
+      version: manifest.toolchain.gltfTransform,
+    },
+    {
+      name: "@gltf-transform/extensions",
+      section: "devDependencies",
+      version: manifest.toolchain.gltfTransform,
+    },
+    {
+      name: "@gltf-transform/functions",
+      section: "devDependencies",
+      version: manifest.toolchain.gltfTransform,
+    },
+    {
+      name: "gltf-validator",
+      section: "devDependencies",
+      version: manifest.toolchain.gltfValidator,
+    },
+    {
+      name: "sharp",
+      section: "devDependencies",
+      version: manifest.toolchain.sharp,
+    },
+  ];
+}
+
+function npmArchiveUrl(name, version) {
+  const archiveName = name.split("/").at(-1);
+  return `https://registry.npmjs.org/${name}/-/${archiveName}-${version}.tgz`;
+}
+
+function isSha512Integrity(value) {
+  const match = /^sha512-([A-Za-z0-9+/]+={0,2})$/.exec(value ?? "");
+  return Boolean(match && Buffer.from(match[1], "base64").length === 64);
+}
+
+async function readJsonFile(filePath) {
+  return JSON.parse(await readFile(filePath, "utf8"));
+}
+
+async function readRequiredJson({ filePath, label, readJson }) {
+  try {
+    return await readJson(filePath);
+  } catch (error) {
+    throw new Error(
+      `Asset preflight: ${label} is missing or invalid: ${error.message}`,
+      { cause: error },
+    );
+  }
+}
+
+export async function verifyAssetPackages({
+  root = process.cwd(),
+  manifest,
+  readJson = readJsonFile,
+} = {}) {
+  const specs = assetPackageSpecs(manifest);
+  const packageJson = await readRequiredJson({
+    filePath: path.join(root, "package.json"),
+    label: "package.json",
+    readJson,
+  });
+  const packageLock = await readRequiredJson({
+    filePath: path.join(root, "package-lock.json"),
+    label: "package-lock.json",
+    readJson,
+  });
+  const lockRoot = packageLock.packages?.[""];
+  if (!lockRoot) {
+    throw new Error(
+      "Asset preflight: package-lock.json is missing its root package entry",
+    );
+  }
+
+  const verified = {};
+  for (const { name, section, version } of specs) {
+    const otherSection =
+      section === "dependencies" ? "devDependencies" : "dependencies";
+    const declared = packageJson[section]?.[name];
+    if (
+      declared !== version ||
+      Object.hasOwn(packageJson[otherSection] ?? {}, name)
+    ) {
+      throw new Error(
+        `Asset preflight: package.json declaration for ${name} must be exactly ${version} in ${section}`,
+      );
+    }
+
+    const lockDeclared = lockRoot[section]?.[name];
+    if (
+      lockDeclared !== version ||
+      Object.hasOwn(lockRoot[otherSection] ?? {}, name)
+    ) {
+      throw new Error(
+        `Asset preflight: package-lock.json root declaration for ${name} must be exactly ${version} in ${section}`,
+      );
+    }
+
+    const lockEntry = packageLock.packages?.[`node_modules/${name}`];
+    if (lockEntry?.version !== version) {
+      throw new Error(
+        `Asset preflight: package-lock.json direct resolution for ${name} must be exactly ${version}`,
+      );
+    }
+    if (
+      lockEntry.link === true ||
+      lockEntry.resolved !== npmArchiveUrl(name, version) ||
+      !isSha512Integrity(lockEntry.integrity)
+    ) {
+      throw new Error(
+        `Asset preflight: package-lock.json direct resolution for ${name} must use the exact integrity-checked npm registry archive`,
+      );
+    }
+
+    const installed = await readRequiredJson({
+      filePath: path.join(root, "node_modules", name, "package.json"),
+      label: `installed package ${name} package.json`,
+      readJson,
+    });
+    if (installed.version !== version) {
+      throw new Error(
+        `Asset preflight: installed package ${name} must be exactly ${version}; received ${installed.version ?? "missing"}`,
+      );
+    }
+    verified[name] = version;
+  }
+
+  return verified;
+}
+
 export async function runPreflight({ root = process.cwd(), allowGeneratedMissing = false, env = process.env } = {}) {
   if (compareVersions(process.versions.node, "22.13.0") < 0) {
     throw new Error(`Node 22.13.0 or newer is required; received ${process.versions.node}.`);
@@ -40,21 +184,7 @@ export async function runPreflight({ root = process.cwd(), allowGeneratedMissing
   }
   const blenderBin = resolveBlenderBin({ root, env });
   checkBlenderVersion(blenderBin);
-
-  const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-  const expectedPackages = {
-    "@gltf-transform/cli": manifest.toolchain.gltfTransform,
-    "@gltf-transform/core": manifest.toolchain.gltfTransform,
-    "@gltf-transform/extensions": manifest.toolchain.gltfTransform,
-    "@gltf-transform/functions": manifest.toolchain.gltfTransform,
-    "gltf-validator": manifest.toolchain.gltfValidator,
-    "meshoptimizer": manifest.toolchain.meshoptimizer,
-    "sharp": manifest.toolchain.sharp,
-  };
-  for (const [name, version] of Object.entries(expectedPackages)) {
-    const actual = packageJson.dependencies?.[name] ?? packageJson.devDependencies?.[name];
-    if (actual !== version) throw new Error(`${name} must be pinned to ${version}; received ${actual ?? "missing"}.`);
-  }
+  await verifyAssetPackages({ root, manifest });
 
   const pending = [];
   for (const model of manifest.models) {
