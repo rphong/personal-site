@@ -1052,6 +1052,13 @@ git commit -m "feat: expose local scene runtime events"
 
 ## Task 4: Resolve WebGL 2, saved preference, and reduced-data defaults
 
+> **Implementation amendment (2026-07-11):** WebGL capability detection asks
+> for the approved high-performance WebGL 2 context and then best-effort loses
+> that temporary probe context so it does not consume a GPU context slot.
+> Browser globals fail closed during SSR. Post-mount preference initialization
+> runs in a cancellation-safe microtask, preserving the poster-first hydration
+> state while satisfying the React 19 no-synchronous-effect-update rule.
+
 **Files:**
 - Create: `app/three/three-preference.test.tsx`
 - Create: `app/three/three-preference.ts`
