@@ -165,3 +165,42 @@
     min-height: min(78vw, 28rem);
   }
 }
+
+.scene-capture-root {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  pointer-events: none;
+}
+
+.scene-capture-viewport {
+  min-height: 100svh;
+}
+
+.scene-capture-title,
+.scene-capture-next {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.scene-capture-next {
+  pointer-events: auto;
+}
+
+.scene-capture-scroll-space {
+  height: 160svh;
+}
+
+body:has(.scene-capture-root) header,
+body:has(.scene-capture-root) footer {
+  visibility: hidden;
+}
+
+body:has(.scene-capture-root:not([data-capture-controls="true"]))
+  .three-preference-toggle {
+  visibility: hidden;
+}

@@ -4603,14 +4603,36 @@ git commit -m "feat: register every production scene section"
 
 ## Task 13: Add the environment-gated deterministic capture route
 
+> **Task 13 implementation amendment (2026-07-11):** In addition to the
+> source/policy contract, `page.test.tsx` executes the server component with a
+> mocked `notFound()` boundary, and `scene-capture-viewport.test.tsx` composes
+> the viewport with the real provider. Together they cover repeated and invalid
+> query values, fail-closed flags, Home capture authorization, live and
+> poster-only activation, and the Contact-to-Home navigation wrap.
+>
+> Vinext 0.0.50 requires two scoped compatibility seams. The default page keeps
+> the environment gate shallow and delegates query validation to an async
+> nested server component because Vinext's classifier supplies an invalid
+> `searchParams` probe. A route-local loading boundary also bypasses that probe
+> in normal navigation. The Cloudflare Vite environment receives only the
+> explicit `SCENE_CAPTURE` and `SITE_ENV` local vars; both still default closed.
+> Actual servers verify preview valid/invalid responses as 200/404, a built
+> preview response as 200 with `noindex`, and a capture-off production response
+> as 404. The final focused slice is 3 files / 15 tests; the full unit suite is
+> 37 files / 209 tests.
+
 **Files:**
 - Create: `app/scene-capture/capture-policy.test.ts`
 - Create: `app/scene-capture/capture-policy.ts`
+- Create: `app/scene-capture/loading.tsx`
+- Create: `app/scene-capture/page.test.tsx`
 - Create: `app/scene-capture/scene-capture-viewport.tsx`
+- Create: `app/scene-capture/scene-capture-viewport.test.tsx`
 - Create: `app/scene-capture/page.tsx`
 - Modify: `app/three/scene-runtime.css`
+- Modify: `vite.config.ts`
 
-- [ ] **Step 1: Write the failing capture policy and source contract**
+- [x] **Step 1: Write the failing capture policy and source contract**
 
 Create `app/scene-capture/capture-policy.test.ts`:
 
@@ -4663,13 +4685,13 @@ describe("scene capture route", () => {
 });
 ```
 
-- [ ] **Step 2: Run the capture test to verify RED**
+- [x] **Step 2: Run the capture test to verify RED**
 
 Run: `npm run test:unit -- app/scene-capture/capture-policy.test.ts`
 
 Expected: FAIL with `Failed to resolve import "./capture-policy"`.
 
-- [ ] **Step 3: Implement the explicit capture gate**
+- [x] **Step 3: Implement the explicit capture gate**
 
 Create `app/scene-capture/capture-policy.ts`:
 
@@ -4681,7 +4703,7 @@ export function isSceneCaptureEnabled(
 }
 ```
 
-- [ ] **Step 4: Implement the capture viewport and client-side next-scene navigation**
+- [x] **Step 4: Implement the capture viewport and client-side next-scene navigation**
 
 Create `app/scene-capture/scene-capture-viewport.tsx`:
 
@@ -4734,7 +4756,7 @@ export function SceneCaptureViewport({
 }
 ```
 
-- [ ] **Step 5: Implement the noindex server route**
+- [x] **Step 5: Implement the noindex server route**
 
 Create `app/scene-capture/page.tsx`:
 
@@ -4779,7 +4801,7 @@ export default async function SceneCapturePage({
 }
 ```
 
-- [ ] **Step 6: Append capture-only styling**
+- [x] **Step 6: Append capture-only styling**
 
 Append to `app/three/scene-runtime.css`:
 
@@ -4824,13 +4846,13 @@ body:has(.scene-capture-root:not([data-capture-controls="true"]))
 }
 ```
 
-- [ ] **Step 7: Run the capture test to verify GREEN**
+- [x] **Step 7: Run the capture test to verify GREEN**
 
 Run: `npm run test:unit -- app/scene-capture/capture-policy.test.ts`
 
 Expected: PASS, `3 passed`.
 
-- [ ] **Step 8: Refactor by verifying the capture route cannot enter production output accidentally**
+- [x] **Step 8: Refactor by verifying the capture route cannot enter production output accidentally**
 
 Run:
 
@@ -4843,10 +4865,10 @@ Remove-Item Env:SCENE_CAPTURE
 
 Expected: TypeScript and build exit 0; a request to `/scene-capture?scene=home-hero` returns 404 unless `SCENE_CAPTURE=1` and `SITE_ENV=preview` are both present. `SITE_ENV=production` always returns 404 even when the flag is set; `NODE_ENV=production` is allowed only for the explicitly flagged built preview used by capture and release-browser wrappers.
 
-- [ ] **Step 9: Commit the capture route**
+- [x] **Step 9: Commit the capture route**
 
 ```bash
-git add app/scene-capture app/three/scene-runtime.css
+git add app/scene-capture app/three/scene-runtime.css vite.config.ts docs/superpowers/plans/2026-07-09-personal-site-runtime.md
 git commit -m "feat: add gated scene capture route"
 ```
 
