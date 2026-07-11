@@ -6,6 +6,7 @@ export interface SceneResourceLoader<T> {
 interface SceneResourceEntry<T> {
   readonly controller: AbortController;
   promise: Promise<T>;
+  status: "pending" | "resolved" | "rejected";
   value?: T;
 }
 
@@ -45,6 +46,9 @@ export class SceneResourceCache<T> {
       for (const cachedUrl of [...this.#entries.keys()]) {
         if (cachedUrl !== url) this.clear(cachedUrl);
       }
+      if (this.#entries.get(url)?.status === "rejected") {
+        this.clear(url);
+      }
       this.#activeOwner = owner;
       this.#activeUrl = url;
     }
@@ -59,6 +63,7 @@ export class SceneResourceCache<T> {
     const entry: SceneResourceEntry<T> = {
       controller,
       promise: undefined as unknown as Promise<T>,
+      status: "pending",
     };
     this.#entries.set(url, entry);
 
@@ -79,6 +84,7 @@ export class SceneResourceCache<T> {
           throw abortError();
         }
         entry.value = value;
+        entry.status = "resolved";
         return value;
       },
       (error: unknown) => {
@@ -87,6 +93,8 @@ export class SceneResourceCache<T> {
         const active = this.#activeUrl === url;
         if (this.#entries.get(url) === entry && !active) {
           this.#entries.delete(url);
+        } else if (this.#entries.get(url) === entry) {
+          entry.status = "rejected";
         }
         throw stale ? abortError() : error;
       },

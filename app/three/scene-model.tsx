@@ -9,13 +9,15 @@ import { cloneRuntimeScene, disposeRuntimeScene } from "./scene-resources";
 import type { LiveSceneDefinition, SceneRotation } from "./types";
 
 export function SceneModel({
+  attemptKey,
   scene,
   rotation,
 }: {
+  readonly attemptKey: string;
   readonly scene: LiveSceneDefinition;
   readonly rotation: SceneRotation;
 }) {
-  const gltf = useSceneGltf(scene.modelUrl, scene.id);
+  const gltf = useSceneGltf(scene.modelUrl, attemptKey);
   const attachment = useRef<Group>(null);
   const invalidate = useThree((state) => state.invalidate);
 

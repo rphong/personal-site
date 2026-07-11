@@ -75,7 +75,7 @@ describe("SceneResourceCache", () => {
     expect(cache.peek("/models/a.glb")).toBe(freshValue);
   });
 
-  it("retries failed speculation but pins an active failure until clear", async () => {
+  it("pins an active failure only for the same attempt owner", async () => {
     const activeFailure = new Error("active failed");
     const loader: SceneResourceLoader<{ id: string }> = {
       load: vi
@@ -92,17 +92,19 @@ describe("SceneResourceCache", () => {
     );
     expect(cache.size).toBe(0);
 
-    const failedActivation = cache.activate("/models/a.glb", "scene-a");
+    const failedActivation = cache.activate(
+      "/models/a.glb",
+      "scene-a:activation-1",
+    );
     await expect(failedActivation).rejects.toBe(activeFailure);
     expect(cache.size).toBe(1);
-    expect(cache.activate("/models/a.glb", "scene-a")).toBe(
-      failedActivation,
-    );
+    expect(
+      cache.activate("/models/a.glb", "scene-a:activation-1"),
+    ).toBe(failedActivation);
     expect(loader.load).toHaveBeenCalledTimes(2);
 
-    cache.clear("/models/a.glb");
     await expect(
-      cache.activate("/models/a.glb", "scene-a"),
+      cache.activate("/models/a.glb", "scene-a:activation-2"),
     ).resolves.toEqual({ id: "retry" });
     expect(loader.load).toHaveBeenCalledTimes(3);
   });

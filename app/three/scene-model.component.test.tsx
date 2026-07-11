@@ -23,10 +23,15 @@ describe("SceneModel", () => {
     const renderer = await ReactThreeTestRenderer.create(
       <StrictMode>
         <SceneModel
+          attemptKey="home-hero:1:0"
           scene={getSceneDefinition("home-hero")}
           rotation={{ yaw: 0, pitch: 0 }}
         />
       </StrictMode>,
+    );
+    expect(useSceneGltf).toHaveBeenCalledWith(
+      "/models/crane.glb",
+      "home-hero:1:0",
     );
     await Promise.resolve();
     const root = renderer.scene.findByProps({

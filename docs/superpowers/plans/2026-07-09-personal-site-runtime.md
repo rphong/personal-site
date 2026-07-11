@@ -2933,6 +2933,41 @@ git commit -m "feat: load meshopt scenes with bounded cache"
 
 ## Task 10: Build the sole demand-loop canvas and context lifecycle
 
+> **Implementation amendment (2026-07-11):** The final source supersedes the
+> Canvas sketches below. `AdjacentScenePreloader` mounts inside the R3F root,
+> outside the model Suspense/error subtree, so `loadEnabled={false}` commits
+> model detachment before the same-root passive cache eviction. Camera, lights,
+> context monitoring, and the preloader remain mounted when the model boundary
+> fails. The Canvas port adds `preloadReady`, while the complete reset key stays
+> `scene.id:activationVersion:renderVersion` below the sole Canvas and is also
+> the cache owner. Pending/resolved shared URLs promote across owners, while a
+> rejected URL stays pinned only for repeat renders of its failed owner and is
+> fetched once for a new activation owner.
+>
+> Three r185 is WebGL2-only. The renderer acquires the exact attributed
+> `webgl2` context once and passes it into Three, preventing Three's diagnostic
+> second acquisition. If later construction fails, captured partial listeners
+> are removed and the context is released. A stable, single-attempt async
+> factory then records durable unavailability and resolves one minimal inert
+> renderer behind a synchronous availability gate. R3F's un-awaited configure
+> task therefore settles without rejection or retained waiters, while no model,
+> context monitor, or cache owner can mount. The failure re-reports
+> `webgl2-unavailable` immediately for each new activation. Readiness requires
+> a live context both before and after render
+> plus an observed increment of `renderer.info.render.frame`; a context lost
+> during render can never produce a false first-frame report. Context listeners
+> use current callback ports but remain registered once per renderer.
+>
+> Drei 10.7.7 `ContactShadows` is intentionally omitted in v1. That component
+> retains non-declarative render targets/materials without cleanup and mutates
+> scene render state without `try/finally`; it also costs five offscreen passes
+> per demanded frame with smooth blur. The approved fallback is no shadow layer:
+> alpha remains transparent, no background or ground plane is mounted, native
+> shadows stay disabled, and the exact CSS route color remains the seamless
+> visual ground. Task 10 now owns 21 tests across boundary, static contract,
+> Canvas-port, real R3F component, failed-root, and suspended-load integration
+> suites.
+
 > **Demand-loop acceptance amendment (2026-07-11):** In addition to the
 > injected invalidation spy from Task 8, Task 10/14 must exercise the real
 > `frameloop="demand"`: a changed effective pose schedules a rendered frame,
@@ -2952,7 +2987,15 @@ git commit -m "feat: load meshopt scenes with bounded cache"
 - Create: `app/three/scene-error-boundary.test.tsx`
 - Create: `app/three/scene-error-boundary.tsx`
 - Create: `app/three/scene-canvas.contract.test.ts`
+- Create: `app/three/scene-canvas.shell.test.tsx`
+- Create: `app/three/scene-canvas.component.test.tsx`
+- Create: `app/three/scene-canvas.init.integration.test.ts`
+- Create: `app/three/scene-canvas.load.integration.test.tsx`
 - Create: `app/three/scene-canvas.tsx`
+- Modify: `app/three/scene-model.tsx`
+- Modify: `app/three/scene-model.component.test.tsx`
+- Modify: `app/three/scene-resource-cache.ts`
+- Modify: `app/three/scene-resource-cache.test.ts`
 
 - [ ] **Step 1: Write the failing error-boundary test**
 
@@ -3014,7 +3057,8 @@ describe("persistent Canvas source contract", () => {
     expect(source).toContain('addEventListener("webglcontextlost"');
     expect(source).toContain('addEventListener("webglcontextrestored"');
     expect(source).toContain("gl.render(scene, camera)");
-    expect(source).toContain("ContactShadows");
+    expect(source).not.toContain("ContactShadows");
+    expect(source).toContain("shadows={false}");
     expect(source).toContain("alpha: true");
     expect(source).not.toMatch(/scene\.background|attach=["']background["']/);
     expect(source).toContain('aria-hidden="true"');
@@ -3090,7 +3134,6 @@ Create `app/three/scene-canvas.tsx`:
 ```tsx
 "use client";
 
-import { ContactShadows } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { PerspectiveCamera, type WebGLRenderer } from "three";
@@ -3109,6 +3152,7 @@ export interface SceneCanvasPortProps {
   readonly activationVersion: number;
   readonly renderVersion: number;
   readonly loadEnabled: boolean;
+  readonly preloadReady: boolean;
   readonly onFirstFrame: () => void;
   readonly onFailure: (reason: SceneFailureReason) => void;
   readonly onContextLost: () => void;
@@ -3231,16 +3275,6 @@ function SceneContents(props: SceneCanvasPortProps) {
       {props.loadEnabled && props.scene.modelUrl ? (
         <Suspense fallback={null}>
           <SceneModel scene={props.scene} rotation={props.rotation} />
-          <ContactShadows
-            blur={2.5}
-            color="#282828"
-            far={4}
-            frames={Infinity}
-            opacity={0.18}
-            position={[0, 0, 0]}
-            resolution={256}
-            scale={10}
-          />
           <DemandRenderer
             sceneId={props.scene.id}
             onFirstFrame={props.onFirstFrame}
@@ -3259,7 +3293,7 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
       aria-hidden="true"
       frameloop="demand"
       dpr={[1, 1.5]}
-      shadows={props.scene.lighting.key.castShadow}
+      shadows={false}
       camera={{
         position: [...props.scene.desktop.cameraPosition],
         fov: props.scene.desktop.fov,
@@ -3283,10 +3317,10 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
 Run:
 
 ```bash
-npm run test:unit -- app/three/scene-error-boundary.test.tsx app/three/scene-canvas.contract.test.ts
+npm run test:unit -- app/three/scene-error-boundary.test.tsx app/three/scene-canvas.contract.test.ts app/three/scene-canvas.shell.test.tsx app/three/scene-canvas.component.test.tsx app/three/scene-canvas.init.integration.test.ts app/three/scene-canvas.load.integration.test.tsx
 ```
 
-Expected: PASS, `2 test files passed`, `3 tests passed`.
+Expected: PASS, `6 test files passed`, `21 tests passed`.
 
 - [ ] **Step 7: Refactor by checking canvas constraints and types**
 
@@ -3295,19 +3329,37 @@ Run:
 ```bash
 npx tsc --noEmit
 rg -n "frameloop=\"demand\"|dpr=|webglcontext|rotation-health|OrbitControls" app/three/scene-canvas.tsx
-npm run test:unit -- app/three/scene-canvas.contract.test.ts app/three/normalized-scene-root.test.tsx app/three/runtime-events.test.ts
+npm run test:unit -- app/three/scene-error-boundary.test.tsx app/three/scene-canvas.contract.test.ts app/three/scene-canvas.shell.test.tsx app/three/scene-canvas.component.test.tsx app/three/scene-canvas.init.integration.test.ts app/three/scene-canvas.load.integration.test.tsx app/three/normalized-scene-root.test.tsx app/three/runtime-events.test.ts
 ```
 
-Expected: TypeScript exits 0; `rg` prints demand/DPR/context/health lines and no `OrbitControls` line; Vitest reports `3 test files passed`, `6 tests passed`.
+Expected: TypeScript exits 0; `rg` prints demand/DPR/context/health lines and no controls or shadow-pass line; Vitest reports `8 test files passed`, `30 tests passed`.
 
 - [ ] **Step 8: Commit the persistent rendering core**
 
 ```bash
-git add app/three/scene-error-boundary.tsx app/three/scene-error-boundary.test.tsx app/three/scene-canvas.tsx app/three/scene-canvas.contract.test.ts
+git add app/three/scene-error-boundary.tsx app/three/scene-error-boundary.test.tsx app/three/scene-canvas.tsx app/three/scene-canvas.contract.test.ts app/three/scene-canvas.shell.test.tsx app/three/scene-canvas.component.test.tsx app/three/scene-canvas.init.integration.test.ts app/three/scene-canvas.load.integration.test.tsx app/three/scene-model.tsx app/three/scene-model.component.test.tsx app/three/scene-resource-cache.ts app/three/scene-resource-cache.test.ts docs/superpowers/plans/2026-07-09-personal-site-runtime.md
 git commit -m "feat: add demand-loop scene canvas"
 ```
 
 ## Task 11: Mount the poster-first host through one dynamic root boundary
+
+> **Task 10 integration amendment (2026-07-11):** The host must not import or
+> render `AdjacentScenePreloader`; the preloader now lives in the R3F root and
+> receives `preloadReady={status === "ready"}` through
+> `SceneCanvasPortProps`. `loadEnabled={status !== "error"}` therefore removes
+> a suspended/failed model and clears its cache in one ordered inner-root
+> commit. A renderer-construction callback with reason
+> `webgl2-unavailable` follows the normal coded failure path while the poster
+> stays visible.
+>
+> Every Canvas callback is activation-token guarded. Each callback closure
+> captures the committed `scene.id:activationVersion`; before changing status,
+> consuming the ready/failure once-refs, emitting an event, or incrementing
+> `renderVersion`, it must prove that token is still current. Component tests
+> retain the previous FakeCanvas props across an activation, invoke all stale
+> first-frame/failure/context callbacks, and prove that none can mutate or
+> report against the new activation. The new first frame must still report
+> ready exactly once.
 
 **Files:**
 - Create: `app/three/scene-runtime-host.test.tsx`
@@ -3740,7 +3792,6 @@ Create `app/three/scene-runtime-host.tsx`:
 
 import type { ComponentType, CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AdjacentScenePreloader } from "./adjacent-scene-preloader";
 import { emitSceneRuntimeEvent } from "./runtime-events";
 import {
   SceneCanvas,
@@ -3877,6 +3928,7 @@ export function SceneRuntimeHostView({
             activationVersion={activationVersion}
             renderVersion={renderVersion}
             loadEnabled={status !== "error"}
+            preloadReady={status === "ready"}
             onFirstFrame={firstFrame}
             onFailure={reportFailure}
             onContextLost={contextLost}
@@ -3891,11 +3943,6 @@ export function SceneRuntimeHostView({
           onDelta={onRotate}
         />
       ) : null}
-      <AdjacentScenePreloader
-        activeSceneId={scene.id}
-        enabled={keepsCanvasMounted && status !== "error"}
-        ready={status === "ready"}
-      />
     </div>
   );
 }
@@ -4799,6 +4846,31 @@ git commit -m "feat: add gated scene capture route"
 > promoted. Rapid A-to-B-to-C activation must keep at most current plus one
 > speculative owner, dispose late decoded results, and preserve a shared URL
 > promotion without refetch.
+>
+> **Renderer acceptance amendment (2026-07-11):** Instrument the connected app
+> canvas before initialization. Production acquires `webgl2` (never `webgl` or
+> `experimental-webgl`), receives an alpha-enabled `WebGL2RenderingContext`,
+> and keeps the same Canvas/renderer/context identity through route changes,
+> poster-only bridges, model failure, and recovery. A forced renderer creation
+> failure after the capability probe must leave semantic HTML and the poster
+> intact with a coded error and no unhandled rejection or model request. DPR
+> is 1 at device scale 1 and clamps to 1.5 at device scale 3, with drawing
+> buffers bounded by CSS size times 1.5.
+>
+> Use `renderer.info.render.frame` plus the rendered scene root to prove the
+> real demand scheduler: settled idle adds zero frames; a changed effective
+> pose produces one bounded main frame whose Euler is already current; an
+> identical or differently overflowing-but-equivalent clamped pose produces
+> zero; and there is no hidden automatic second main render. Drive twelve
+> deliberate frames to get one finite local health event, never by a perpetual
+> invalidation loop.
+>
+> Replace synthetic context recovery with `WEBGL_lose_context`. Lose the real
+> context before the delayed first model frame, settle the model while lost,
+> and prove status never becomes ready. The loss event is canceled, the poster
+> and exact Canvas remain, restoration resumes pixels on that same context, and
+> the activation emits at most one ready performance mark. No offscreen contact
+> shadow passes or native shadow maps are permitted in the v1 renderer.
 
 **Files:**
 - Create: `tests/browser/runtime-fixtures.ts`
@@ -6283,6 +6355,19 @@ git commit -m "feat: close final model and poster release gate"
 ```
 
 ## Task 17: Run the complete runtime regression and performance contract
+
+> **Measured performance amendment (2026-07-11):** Source grep is only a
+> structural audit, not the Web Vitals gate. Add production-build Playwright
+> lab coverage at desktop and mobile sizes for 3D-enabled and Save-Data/disabled
+> paths. Require LCP <= 2.5 s with poster/text (not delayed WebGL) as the LCP
+> element, CLS <= 0.1 through poster-to-canvas and route swaps, and a trusted
+> drag interaction-to-next-paint proxy <= 200 ms. Define and enforce a bounded
+> long-task/TBT budget around WebGL initialization plus Meshopt decode, then
+> prove `renderer.info.render.frame` is stable in a settled idle window.
+> SwiftShader remains the deterministic correctness renderer; do not use its
+> FPS as a representative physical-GPU performance budget. Record actual DPR,
+> buffer dimensions, antialias policy, and context power preference so any
+> later quality/performance adjustment is evidence-driven.
 
 **Files:**
 - Verify only; change an owning file only when a named check exposes a defect.
