@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { zstdCompressSync } from "node:zlib";
 
 import {
   buildBlenderArgs,
@@ -11,6 +12,7 @@ import {
   resolveBlenderBin,
   runBlenderScript,
 } from "../../scripts/assets/lib/blender.mjs";
+import { assertAssetNodeRuntime } from "../../scripts/assets/preflight.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const tempRoot = path.join(
@@ -102,10 +104,35 @@ test("version and blend-header parsers accept only the pinned generation", () =>
   assert.equal(parseBlenderVersion("Blender 3.6.23\n"), "3.6.23");
   assert.equal(parseBlendHeader(Buffer.from("BLENDER-v305extra")), "3.5");
   assert.equal(parseBlendHeader(Buffer.from("BLENDER_V306extra")), "3.6");
+  assert.equal(
+    parseBlendHeader(zstdCompressSync(Buffer.from("BLENDER-v306extra"))),
+    "3.6",
+  );
+  assert.throws(
+    () => parseBlendHeader(Buffer.concat([
+      Buffer.from([0x28, 0xb5, 0x2f, 0xfd]),
+      Buffer.from("malformed"),
+    ])),
+    /Invalid Zstandard-compressed Blender file/,
+  );
   assert.throws(() => parseBlenderVersion("Blender 4.5.0\n"), /Expected Blender 3.6.23/);
   assert.throws(() => parseBlendHeader(Buffer.from("BLENDERv306")), /Invalid Blender file header/);
   assert.throws(() => parseBlendHeader(Buffer.from("BLENDERxv306extra")), /Invalid Blender file header/);
   assert.throws(() => parseBlendHeader(Buffer.from("not-a-blend")), /Invalid Blender file header/);
+});
+
+test("asset runtime requires Node with native Zstandard support", () => {
+  assert.doesNotThrow(() =>
+    assertAssetNodeRuntime({ version: "22.15.0", zstdAvailable: true }),
+  );
+  assert.throws(
+    () => assertAssetNodeRuntime({ version: "22.14.0", zstdAvailable: true }),
+    /Node 22\.15\.0 or newer/,
+  );
+  assert.throws(
+    () => assertAssetNodeRuntime({ version: "24.0.0", zstdAvailable: false }),
+    /Zstandard support/,
+  );
 });
 
 test("background Blender arguments disable auto-execution and preserve script arguments", () => {

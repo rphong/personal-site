@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.15.0"
   },
   "scripts": {
     "dev": "vinext dev",
@@ -17,6 +17,8 @@
     "validate:production": "tsx scripts/validate-production.ts",
     "assets:bootstrap": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/assets/bootstrap-blender.ps1",
     "assets:preflight": "node scripts/assets/preflight.mjs",
+    "assets:textures": "node scripts/assets/render-source-textures.mjs",
+    "assets:prepare": "node scripts/assets/prepare-all.mjs",
     "test:assets": "node --test --test-concurrency=1 \"tests/assets/**/*.test.mjs\""
   },
   "dependencies": {

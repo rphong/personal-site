@@ -362,7 +362,12 @@ test("the source tree contains no Blender backup or excluded source files", asyn
 
 test("package.json pins the asset toolchain exactly", async () => {
   const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  const lock = JSON.parse(
+    await readFile(path.join(root, "package-lock.json"), "utf8"),
+  );
 
+  assert.equal(pkg.engines.node, ">=22.15.0");
+  assert.equal(lock.packages[""].engines.node, ">=22.15.0");
   assert.equal(pkg.dependencies.meshoptimizer, "1.1.1");
   assert.equal(pkg.devDependencies["@gltf-transform/cli"], "4.4.1");
   assert.equal(pkg.devDependencies["@gltf-transform/core"], "4.4.1");

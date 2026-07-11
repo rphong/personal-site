@@ -1,10 +1,13 @@
 import { statSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import * as zlib from "node:zlib";
 
 export const BLENDER_VERSION = "3.6.23";
 export const BLENDER_VERSION_TIMEOUT_MS = 30_000;
 export const BLENDER_SCRIPT_TIMEOUT_MS = 30 * 60 * 1000;
+export const MAX_BLEND_DECOMPRESSED_BYTES = 64 * 1024 * 1024;
+const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd]);
 
 function isRegularFile(filePath) {
   try {
@@ -49,7 +52,24 @@ export function parseBlenderVersion(stdout) {
 }
 
 export function parseBlendHeader(buffer) {
-  const header = buffer.subarray(0, 12).toString("ascii");
+  let contents = buffer;
+  if (buffer.subarray(0, ZSTD_MAGIC.length).equals(ZSTD_MAGIC)) {
+    if (typeof zlib.zstdDecompressSync !== "function") {
+      throw new Error(
+        "Zstandard-compressed Blender sources require Node 22.15.0 or newer",
+      );
+    }
+    try {
+      contents = zlib.zstdDecompressSync(buffer, {
+        maxOutputLength: MAX_BLEND_DECOMPRESSED_BYTES,
+      });
+    } catch (error) {
+      throw new Error(`Invalid Zstandard-compressed Blender file: ${error.message}`, {
+        cause: error,
+      });
+    }
+  }
+  const header = contents.subarray(0, 12).toString("ascii");
   if (!/^BLENDER[-_][vV]\d{3}$/.test(header)) {
     throw new Error(`Invalid Blender file header: ${JSON.stringify(header)}`);
   }

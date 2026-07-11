@@ -4,7 +4,7 @@
 
 **Goal:** Build one resilient, poster-first, full-viewport Three.js runtime that persists across routes, activates registered sections, and keeps every page complete when 3D cannot run.
 
-**Architecture:** Server-rendered pages place `SceneSection` markers and deterministic posters in normal document flow, while the root layout mounts one client provider and one dynamically imported fixed R3F canvas behind the HTML. A typed registry owns scene composition, a shared observer owns activation, and small pure modules own preference, rotation, preloading, and zero-network runtime events so each contract can be tested without WebGL.
+**Architecture:** Server-rendered pages place `SceneSection` markers and deterministic posters in normal document flow, while the root layout mounts one client provider and one dynamically imported fixed R3F canvas behind the HTML. The canvas stays alpha-transparent so the exact route color is the visible ground; curated GLBs contain no authored receiver plane, and one low-resolution transparent contact shadow supplies optional grounding without a finite colored floor. A typed registry owns scene composition, a shared observer owns activation, and small pure modules own preference, rotation, preloading, and zero-network runtime events so each contract can be tested without WebGL.
 
 **Tech Stack:** Next.js 16 App Router, React 19, TypeScript 5.9, Three.js 0.185.1, React Three Fiber 9.6.1, Drei 10.7.7, MeshoptDecoder, Vitest, Testing Library, React Three Test Renderer 9.1.0, Playwright Chromium.
 
@@ -21,6 +21,7 @@
 - Route-hero and active-host posters use eager/high fetch priority; offscreen feature posters keep SSR markup but use native lazy loading.
 - The first successful frame calls `performance.mark("scene-ready:<sceneId>")` through `emitSceneRuntimeEvent`. The event module dispatches only local `ready`, `failure`, `context-lost`, and `rotation-health` details on `site:scene-runtime` and performs no network work.
 - Runtime asset paths in the registry are the handoff contract for the asset-pipeline plan. Browser tests intercept them with a valid deterministic glTF document, so this runtime plan remains testable before production GLBs arrive.
+- Never set `scene.background` or mount opaque ground geometry. Keep `gl.alpha=true`, preserve the CSS-bound route background, and use only the demand-rendered low-resolution `ContactShadows` layer. If it cannot meet placement/performance gates, omit it.
 - Do not add route transitions, animation playback, orbit controls, zoom, pan, selection, physics, post-processing, or engagement tracking.
 
 ## Focused file map
@@ -52,7 +53,7 @@
 - Create `app/three/adjacent-scene-preloader.tsx` — let the current model load normally, then idle-preload at most its immediate next neighbor.
 - Create `app/three/scene-model.tsx` — clone one normalized root and dispose instance-owned resources.
 - Create `app/three/scene-error-boundary.tsx` — turn load/decode failures into poster fallback.
-- Create `app/three/scene-canvas.tsx` — the sole demand-loop R3F canvas, registry camera/lights, first-frame reporting, and context lifecycle.
+- Create `app/three/scene-canvas.tsx` — the sole alpha-transparent demand-loop R3F canvas, registry camera/lights, low-resolution contact shadow, first-frame reporting, and context lifecycle.
 - Create `app/three/scene-runtime-host.tsx` — poster-first state machine and stable non-content DOM hooks.
 
 ### Capture and tests
@@ -2865,6 +2866,9 @@ describe("persistent Canvas source contract", () => {
     expect(source).toContain('addEventListener("webglcontextlost"');
     expect(source).toContain('addEventListener("webglcontextrestored"');
     expect(source).toContain("gl.render(scene, camera)");
+    expect(source).toContain("ContactShadows");
+    expect(source).toContain("alpha: true");
+    expect(source).not.toMatch(/scene\.background|attach=["']background["']/);
     expect(source).toContain('aria-hidden="true"');
     expect(source).not.toMatch(/OrbitControls|MapControls|PresentationControls/);
   });
@@ -2938,6 +2942,7 @@ Create `app/three/scene-canvas.tsx`:
 ```tsx
 "use client";
 
+import { ContactShadows } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { PerspectiveCamera, type WebGLRenderer } from "three";
@@ -3076,6 +3081,16 @@ function SceneContents(props: SceneCanvasPortProps) {
       {props.scene.modelUrl ? (
         <Suspense fallback={null}>
           <SceneModel scene={props.scene} rotation={props.rotation} />
+          <ContactShadows
+            blur={2.5}
+            color="#282828"
+            far={4}
+            frames={Infinity}
+            opacity={0.18}
+            position={[0, 0, 0]}
+            resolution={256}
+            scale={10}
+          />
           <DemandRenderer
             sceneId={props.scene.id}
             onFirstFrame={props.onFirstFrame}

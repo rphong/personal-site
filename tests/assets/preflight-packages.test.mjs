@@ -62,10 +62,12 @@ async function writePackageFixture() {
   const packageJson = {
     dependencies: {},
     devDependencies: {},
+    engines: { node: ">=22.15.0" },
   };
   const lockRoot = {
     dependencies: {},
     devDependencies: {},
+    engines: { node: ">=22.15.0" },
   };
   const packageLock = {
     lockfileVersion: 3,
@@ -101,6 +103,24 @@ test("asset package verification accepts exact declarations, lock entries, and i
   assert.deepEqual(
     await verifyAssetPackages({ root: tempRoot, manifest }),
     Object.fromEntries(packageSpecs.map(({ name, version }) => [name, version])),
+  );
+});
+
+test("asset package verification requires the Zstandard-capable Node engine", async () => {
+  const { packageJson } = await writePackageFixture();
+  packageJson.engines.node = ">=22.13.0";
+  await writeJson(path.join(tempRoot, "package.json"), packageJson);
+  await assert.rejects(
+    verifyAssetPackages({ root: tempRoot, manifest }),
+    /package\.json.*engines\.node.*22\.15\.0/i,
+  );
+
+  const { packageLock } = await writePackageFixture();
+  packageLock.packages[""].engines.node = ">=22.14.0";
+  await writeJson(path.join(tempRoot, "package-lock.json"), packageLock);
+  await assert.rejects(
+    verifyAssetPackages({ root: tempRoot, manifest }),
+    /package-lock\.json.*engines\.node.*22\.15\.0/i,
   );
 });
 

@@ -14,6 +14,7 @@
 - Keep canonical sources under `assets/blender/`; commit no `.blend1`, Blender executable, download archive, cache, temporary render, or raw intermediate GLB.
 - Automated export opens canonical `.blend` files with auto-execution disabled and never saves them. Only the explicit one-time curation and Froggie authoring commands may save canonical Blender files.
 - Export meshes, materials, rigs, and clips beneath exactly one `WEB_EXPORT_ROOT`. Do not export Blender cameras or lights; the website scene registry remains authoritative for framing and lighting.
+- Treat Blender receiver planes as authoring helpers, not website ground: explicit curation removes only exact `Shadow Catcher` / `Plane.001` nodes and Rocket `Ground` / `Plane`, while retaining `Paper plane`, decorative furniture, and `RocketSmokeGroundBaked`. Bind that cleanup to versioned source provenance; the runtime owns any transparent contact/blob shadow.
 - Publish binary GLB only. Every GLB must be smaller than 25 MiB; the Home crane must be smaller than 2 MiB; every other v1 GLB must be smaller than 5 MiB.
 - Apply Meshopt compression at `medium` level. Convert embedded raster textures to WebP at a maximum of 1024 by 1024 pixels. Do not introduce KTX2 until a measured runtime result justifies its additional encoder and decoder.
 - `CraneOnLeague.blend` may contain exactly the two repository-owned abstract UI screen textures declared by name and path in `assets/scene-sources.json`. Source inspection must hash those two packed PNG payloads; optimized-GLB inspection must require the same two image names and record their WebP payload hashes in the committed model manifest. Do not ship Riot champion art, item art, official logos, or the missing historical Figma raster files. `Rocket.blend` must remain an original rocket diorama: no NASA meatball, worm, seal, logotype, or other official NASA raster/vector asset may survive source curation or GLB export.
@@ -58,7 +59,7 @@
 - Create `scripts/assets/render-source-textures.mjs`: rasterize the two League SVGs and crop the Froggie screenshot deterministically.
 - Create `scripts/assets/prepare-all.mjs`: run explicit one-time source curation and write provenance.
 - Create `scripts/assets/record-brand-approval.mjs`: record a dated human approval bound to the reviewed canonical source and owned-texture hashes.
-- Create `scripts/assets/blender/prepare_source.py`: add the export root, preserve world transforms, relink/pack owned images, and save a canonical source.
+- Create `scripts/assets/blender/prepare_source.py`: add the export root, preserve world transforms, remove exact authored shadow receivers, relink/pack owned images, and save a canonical source.
 - Create `scripts/assets/blender/inspect_scene.py`: emit stable source inspection JSON for integration tests.
 - Create `scripts/assets/create-froggie-display.mjs`: invoke deterministic Froggie authoring and refresh provenance.
 - Create `scripts/assets/blender/create_froggie_display.py`: construct and save the low-poly display source.
@@ -84,6 +85,7 @@
 - Create `tests/assets/source-manifest.test.mjs`: manifest, provenance, import hash, exclusion, and package pin tests.
 - Create `tests/assets/blender-toolchain.test.mjs`: bootstrap constants, binary resolution, version parsing, and preflight tests.
 - Create `tests/assets/source-preparation.test.mjs`: deterministic texture and canonical-root integration tests.
+- Create `tests/assets/web-ground-cleanup.test.mjs`: exact receiver removal, drift rejection, idempotency, provenance, and similarly named asset-preservation tests.
 - Create `tests/assets/froggie-display.test.mjs`: generated source geometry, packing, and complexity tests.
 - Create `tests/assets/export-contract.test.mjs`: Blender argument, source immutability, GLB root, animation, and unsupported-feature tests.
 - Create `tests/assets/optimization.test.mjs`: WebP and Meshopt output tests.

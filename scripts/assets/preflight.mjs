@@ -1,6 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import * as zlib from "node:zlib";
 
 import { loadSourceManifest, sha256File } from "./lib/manifest.mjs";
 import {
@@ -17,6 +18,24 @@ function compareVersions(left, right) {
     if (difference !== 0) return difference;
   }
   return 0;
+}
+
+export const ASSET_NODE_MIN_VERSION = "22.15.0";
+
+export function assertAssetNodeRuntime({
+  version = process.versions.node,
+  zstdAvailable = typeof zlib.zstdDecompressSync === "function",
+} = {}) {
+  if (compareVersions(version, ASSET_NODE_MIN_VERSION) < 0) {
+    throw new Error(
+      `Node ${ASSET_NODE_MIN_VERSION} or newer is required for compressed Blender sources; received ${version}.`,
+    );
+  }
+  if (!zstdAvailable) {
+    throw new Error(
+      `Node ${ASSET_NODE_MIN_VERSION} or newer with Zstandard support is required for compressed Blender sources.`,
+    );
+  }
 }
 
 function assetPackageSpecs(manifest) {
@@ -107,6 +126,18 @@ export async function verifyAssetPackages({
     );
   }
 
+  const expectedNodeEngine = `>=${ASSET_NODE_MIN_VERSION}`;
+  if (packageJson.engines?.node !== expectedNodeEngine) {
+    throw new Error(
+      `Asset preflight: package.json engines.node must be exactly ${expectedNodeEngine}`,
+    );
+  }
+  if (lockRoot.engines?.node !== expectedNodeEngine) {
+    throw new Error(
+      `Asset preflight: package-lock.json root engines.node must be exactly ${expectedNodeEngine}`,
+    );
+  }
+
   const verified = {};
   for (const { name, section, version } of specs) {
     const otherSection =
@@ -164,9 +195,7 @@ export async function verifyAssetPackages({
 }
 
 export async function runPreflight({ root = process.cwd(), allowGeneratedMissing = false, env = process.env } = {}) {
-  if (compareVersions(process.versions.node, "22.13.0") < 0) {
-    throw new Error(`Node 22.13.0 or newer is required; received ${process.versions.node}.`);
-  }
+  assertAssetNodeRuntime();
 
   const manifest = await loadSourceManifest({ root });
   const froggieReference = path.join(root, manifest.froggieCapture.source);

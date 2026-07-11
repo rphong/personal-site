@@ -1,0 +1,126 @@
+{
+  "models": {
+    "crane": {
+      "canonicalSha256": "ba4e6fca53a8555eec8ccaad4424e44d52f0c26abb8f988f1367fa4a8729b983",
+      "generatorInputs": {
+        "webGroundCleanup": {
+          "mesh": "Plane.001",
+          "object": "Shadow Catcher",
+          "policy": "remove-authored-shadow-catcher-v1",
+          "shadowStrategy": "transparent-canvas-contact-shadow-v1",
+          "version": 1
+        }
+      },
+      "originalSha256": "be2adf030ddcd2fe7f5d9f93eb5a2385d59dc840cf3a71f7e56c602c6470437b",
+      "source": "assets/blender/Crane.blend"
+    },
+    "crane-making-table": {
+      "canonicalSha256": "62b7ea16c5d59c994cb51580fa3fa118589b0947a5a7db9e1eb83da47b9967cd",
+      "generatorInputs": {
+        "webGroundCleanup": {
+          "mesh": "Plane.001",
+          "object": "Shadow Catcher",
+          "policy": "remove-authored-shadow-catcher-v1",
+          "shadowStrategy": "transparent-canvas-contact-shadow-v1",
+          "version": 1
+        }
+      },
+      "originalSha256": "b3a9addb51fac7bc19944d707d850660a4490a2e6931bcce0846290f9612c2e8",
+      "source": "assets/blender/CraneMakingTable.blend"
+    },
+    "crane-on-league": {
+      "canonicalSha256": "3b8fd5dd30a05219878132ef89acd015c71718e5dcc307c928488de141cf319a",
+      "generatorInputs": {
+        "ownedTextures": {
+          "LeagueBanDashboard": {
+            "bytes": 20162,
+            "path": "assets/blender/textures/league-ban-dashboard.png",
+            "sha256": "72db13faa6dd9c4457979297b623734fa147b868d386716c3089465ab97c909d"
+          },
+          "LeagueMatchHistory": {
+            "bytes": 17113,
+            "path": "assets/blender/textures/league-match-history.png",
+            "sha256": "7b55cc55c2fda59131f1e372e923738c801ee048ec674797753fc4f81723acdf"
+          }
+        },
+        "webGroundCleanup": {
+          "mesh": "Plane.001",
+          "object": "Shadow Catcher",
+          "policy": "remove-authored-shadow-catcher-v1",
+          "shadowStrategy": "transparent-canvas-contact-shadow-v1",
+          "version": 1
+        }
+      },
+      "originalSha256": "f3436f0231b0a599c70b2c24c5ad5bbb167ed62c8ec35c948285a0cddfc9db81",
+      "source": "assets/blender/CraneOnLeague.blend"
+    },
+    "crane-throwing-plane": {
+      "canonicalSha256": "04e00fb1d293847251e515c5217a37f13991524b78c5b8a8f9424961218c0307",
+      "generatorInputs": {
+        "webGroundCleanup": {
+          "mesh": "Plane.001",
+          "object": "Shadow Catcher",
+          "policy": "remove-authored-shadow-catcher-v1",
+          "shadowStrategy": "transparent-canvas-contact-shadow-v1",
+          "version": 1
+        }
+      },
+      "originalSha256": "a8a02d0e0cd02dbdafedccdf37c89d30f5d812785255a9f474070b01f5ab1840",
+      "source": "assets/blender/CraneThrowingPlane.blend"
+    },
+    "crane-workout": {
+      "canonicalSha256": "584ed6b3703a28e01bdd59b413f025bf91a2a8af86c4c586bed4fe13cb7117dc",
+      "generatorInputs": {
+        "craneWorkoutCleanup": {
+          "policy": "remove-hidden-hand-mirror-v1",
+          "removedData": [
+            "Cylinder.001",
+            "Mirror Frame",
+            "Mirror Lens"
+          ],
+          "removedObject": "Hand Mirror",
+          "version": 1
+        },
+        "webGroundCleanup": {
+          "mesh": "Plane.001",
+          "object": "Shadow Catcher",
+          "policy": "remove-authored-shadow-catcher-v1",
+          "shadowStrategy": "transparent-canvas-contact-shadow-v1",
+          "version": 1
+        }
+      },
+      "originalSha256": "d66c19df5fa3e30b7efbc71553ebb8f2db6bef5be5544005e5da792959941382",
+      "source": "assets/blender/CraneWorkout.blend"
+    },
+    "rocket": {
+      "canonicalSha256": "15858eb87ba0ab8dfdd2c69041474bdf7de455fbea003f03cbdbec272994a1ac",
+      "generatorInputs": {
+        "rocketSmokeBake": {
+          "frame": 60,
+          "integrityVersion": 2,
+          "materialPolicy": "principled-static-v1",
+          "simulationPolicy": "procedural-seeded-static-v1",
+          "simulationSeeds": {
+            "engine": 51060,
+            "ground": 40060
+          },
+          "simulationStyles": {
+            "engine": "engine-cone",
+            "ground": "ground-ring"
+          },
+          "version": 2
+        },
+        "webGroundCleanup": {
+          "mesh": "Plane",
+          "object": "Ground",
+          "policy": "remove-authored-shadow-catcher-v1",
+          "shadowStrategy": "transparent-canvas-contact-shadow-v1",
+          "version": 1
+        }
+      },
+      "originalSha256": "0953bf47975129f879c52b4197188e0b1b6c93de2ebf78a685cf0fcfb6a33010",
+      "source": "assets/blender/Rocket.blend"
+    }
+  },
+  "schemaVersion": 1
+}

@@ -230,6 +230,9 @@ Contact expands the site's telemetry disclosure. There is no contact form.
 - A small client boundary dynamically imports the Three.js runtime with SSR disabled.
 - Use one persistent fixed canvas in the shared root layout.
 - The canvas is exactly one browser viewport (`100svh`) and remains behind scrolling HTML. The document, not the canvas, owns full scroll height.
+- Keep the canvas alpha-transparent and let the exact route background remain the visible ground/background color; never attach an opaque Three.js scene background.
+- Canonical web sources omit authored `Shadow Catcher` and exact Rocket `Ground` receiver planes. `RocketSmokeGroundBaked`, `Paper plane`, and decorative furniture remain model geometry.
+- Ground models with one web-owned, low-resolution transparent contact/blob shadow composited over the route color. If that shadow misses performance or placement budgets, omit it rather than reintroducing a colored ground plane.
 - Opaque section surfaces cover the canvas wherever models must not appear behind body copy.
 
 Approved dependency line:
@@ -283,6 +286,7 @@ V1 targets WebGL 2 on current evergreen desktop and mobile browsers. Unsupported
 - Automated export opens source files read-only and must not resave or migrate canonical `.blend` files.
 - Blender exports meshes, materials, rigs, and clips. Embedded Blender cameras and lights are not authoritative for the website.
 - The web scene registry owns runtime camera and lighting. Blender compositions serve as desktop visual references.
+- Blender shadow-catcher planes are authoring helpers, not GLB payload. Their exact removal is versioned in source provenance so the original files remain recoverable without risking a finite opaque web floor.
 - Export one normalized scene root per GLB.
 - Post-process with glTF Transform. Start with Meshopt geometry compression; use KTX2 only for scenes with material textures where it measurably reduces transfer/GPU memory.
 - Self-host required decoders.
@@ -327,7 +331,7 @@ Runtime defaults:
 - `frameloop="demand"`.
 - Render only during rotation, scene activation, loading completion, resize, or context recovery.
 - Device pixel ratio capped at `[1, 1.5]` by default.
-- One shadow-casting light at most; prefer baked lighting or a cheap blob/contact shadow.
+- Do not enable a shadow-map light for v1. Use at most one low-resolution demand-rendered transparent contact/blob shadow, and omit it entirely if it threatens the frame budget.
 - Reuse geometry/materials where safe and explicitly dispose route-only GPU resources.
 - No large post-processing stack in v1.
 

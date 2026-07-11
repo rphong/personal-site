@@ -1,0 +1,23 @@
+{
+  "approvals": {
+    "league-owned-art": {
+      "modelKey": "crane-on-league",
+      "reviewedBy": "Richard Phong",
+      "reviewedOn": "2026-07-10",
+      "sourceSha256": "3b8fd5dd30a05219878132ef89acd015c71718e5dcc307c928488de141cf319a",
+      "status": "approved",
+      "textureSha256": {
+        "LeagueBanDashboard": "72db13faa6dd9c4457979297b623734fa147b868d386716c3089465ab97c909d",
+        "LeagueMatchHistory": "7b55cc55c2fda59131f1e372e923738c801ee048ec674797753fc4f81723acdf"
+      }
+    },
+    "rocket-brand-safety": {
+      "modelKey": "rocket",
+      "reviewedBy": "Richard Phong",
+      "reviewedOn": "2026-07-10",
+      "sourceSha256": "15858eb87ba0ab8dfdd2c69041474bdf7de455fbea003f03cbdbec272994a1ac",
+      "status": "approved"
+    }
+  },
+  "schemaVersion": 1
+}
