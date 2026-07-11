@@ -2499,12 +2499,43 @@ git commit -m "feat: rotate normalized scene root on demand"
 
 ## Task 9: Load Meshopt GLBs and defer the bounded next-scene cache
 
+> **Implementation amendment (2026-07-11):** The final source supersedes the
+> `useLoader` sketches below. `useLoader.clear()` cannot abort or dispose an
+> in-flight GLB, so Task 9 now owns an abortable URL cache: `fetch` with an
+> `AbortSignal`, configured `GLTFLoader.parseAsync`, stale-generation rejection,
+> late-result disposal, retryable speculative failures, pinned active failures
+> until explicit clear, synchronous current promotion, and at most one
+> speculative record. Pure desired-set policy is split from the client/Meshopt
+> adapter. Idle work is generation-guarded, and a cache-wide latest-host lease
+> defers final cleanup by one microtask so StrictMode replay or same-tick host
+> replacement cannot evict a live request. A committed Meshopt-compressed crane
+> GLB is decoded in tests.
+>
+> Runtime clones preserve source geometry/material/texture/skeleton aliases,
+> recursively clone ordinary texture references without mutating cached array
+> or plain-record containers, consistently flatten `UniformsGroup` array
+> entries, clone skeleton inverse matrices, reject render-target textures
+> outside the shipped glTF contract, and dispose exact owned resources once.
+> Clone lifetime uses a commit-time layout attachment: every StrictMode setup
+> owns one clone, cleanup detaches before disposal, and render creates no
+> resource graph. Shared ImageBitmap-like payloads close only after cached and
+> runtime Texture owners are both gone. Cached-source eviction is proven
+> independent from a live runtime clone. The expanded Task 9 slice contains 27
+> tests.
+
 **Files:**
 - Create: `app/three/adjacent-scene-preloader.test.ts`
 - Create: `app/three/adjacent-scene-preloader.tsx`
 - Create: `app/three/scene-loader.ts`
 - Create: `app/three/scene-model.test.ts`
 - Create: `app/three/scene-model.tsx`
+- Create: `app/three/adjacent-scene-preloader.component.test.tsx`
+- Create: `app/three/scene-loader.test.ts`
+- Create: `app/three/scene-model.component.test.tsx`
+- Create: `app/three/scene-preload-policy.ts`
+- Create: `app/three/scene-resource-cache.test.ts`
+- Create: `app/three/scene-resource-cache.ts`
+- Create: `app/three/scene-resources.ts`
 
 - [ ] **Step 1: Write the failing adjacent-cache test**
 
@@ -2879,7 +2910,7 @@ Run:
 npm run test:unit -- app/three/adjacent-scene-preloader.test.ts app/three/scene-model.test.ts
 ```
 
-Expected: PASS, `2 test files passed`, `3 tests passed`.
+Expected: PASS, `2 test files passed`, `15 tests passed`.
 
 - [ ] **Step 8: Refactor by checking Meshopt import and all R3F types**
 
@@ -2888,15 +2919,15 @@ Run:
 ```bash
 npx tsc --noEmit
 rg -n "MeshoptDecoder|setMeshoptDecoder" app/three/scene-loader.ts
-npm run test:unit -- app/three/adjacent-scene-preloader.test.ts app/three/scene-model.test.ts app/three/normalized-scene-root.test.tsx
+npm run test:unit -- app/three/adjacent-scene-preloader.test.ts app/three/adjacent-scene-preloader.component.test.tsx app/three/scene-resource-cache.test.ts app/three/scene-model.test.ts app/three/scene-loader.test.ts app/three/scene-model.component.test.tsx app/three/normalized-scene-root.test.tsx
 ```
 
-Expected: TypeScript exits 0; `rg` prints the import and configuration lines; Vitest reports `3 test files passed`, `4 tests passed`.
+Expected: TypeScript exits 0; `rg` prints the import and configuration lines; Vitest reports `7 test files passed`, `31 tests passed`.
 
 - [ ] **Step 9: Commit loading and bounded cache behavior**
 
 ```bash
-git add app/three/scene-loader.ts app/three/adjacent-scene-preloader.tsx app/three/adjacent-scene-preloader.test.ts app/three/scene-model.tsx app/three/scene-model.test.ts
+git add app/three/scene-loader.ts app/three/scene-loader.test.ts app/three/adjacent-scene-preloader.tsx app/three/adjacent-scene-preloader.test.ts app/three/adjacent-scene-preloader.component.test.tsx app/three/scene-preload-policy.ts app/three/scene-resource-cache.ts app/three/scene-resource-cache.test.ts app/three/scene-resources.ts app/three/scene-model.tsx app/three/scene-model.test.ts app/three/scene-model.component.test.tsx docs/superpowers/plans/2026-07-09-personal-site-runtime.md
 git commit -m "feat: load meshopt scenes with bounded cache"
 ```
 
@@ -2907,6 +2938,15 @@ git commit -m "feat: load meshopt scenes with bounded cache"
 > `frameloop="demand"`: a changed effective pose schedules a rendered frame,
 > the frame observes the new Euler (never one pose behind), and an identical or
 > idle pose does not keep rendering continuously.
+>
+> **Cancelable-load amendment (2026-07-11):** `SceneCanvasPortProps` also owns
+> `activationVersion` and `loadEnabled`. Its reset key includes the activation
+> version, and `SceneContents` mounts the model only while `loadEnabled` is
+> true. A loader failure already trips the error boundary; a ten-second host
+> timeout must likewise render `loadEnabled={false}` before the adjacent owner
+> clears/aborts the cache record. This prevents a still-suspended SceneModel
+> from retrying behind the error poster. A later explicit activation gets a new
+> reset key and exactly one fresh current request.
 
 **Files:**
 - Create: `app/three/scene-error-boundary.test.tsx`
@@ -3066,7 +3106,9 @@ import type {
 export interface SceneCanvasPortProps {
   readonly scene: SceneDefinition;
   readonly rotation: SceneRotation;
+  readonly activationVersion: number;
   readonly renderVersion: number;
+  readonly loadEnabled: boolean;
   readonly onFirstFrame: () => void;
   readonly onFailure: (reason: SceneFailureReason) => void;
   readonly onContextLost: () => void;
@@ -3186,7 +3228,7 @@ function SceneContents(props: SceneCanvasPortProps) {
         onContextLost={props.onContextLost}
         onContextRestored={props.onContextRestored}
       />
-      {props.scene.modelUrl ? (
+      {props.loadEnabled && props.scene.modelUrl ? (
         <Suspense fallback={null}>
           <SceneModel scene={props.scene} rotation={props.rotation} />
           <ContactShadows
@@ -3211,7 +3253,7 @@ function SceneContents(props: SceneCanvasPortProps) {
 }
 
 export function SceneCanvas(props: SceneCanvasPortProps) {
-  const resetKey = `${props.scene.id}:${props.renderVersion}`;
+  const resetKey = `${props.scene.id}:${props.activationVersion}:${props.renderVersion}`;
   return (
     <Canvas
       aria-hidden="true"
@@ -3832,7 +3874,9 @@ export function SceneRuntimeHostView({
           <CanvasComponent
             scene={scene}
             rotation={rotation}
+            activationVersion={activationVersion}
             renderVersion={renderVersion}
+            loadEnabled={status !== "error"}
             onFirstFrame={firstFrame}
             onFailure={reportFailure}
             onContextLost={contextLost}
@@ -4745,6 +4789,16 @@ git commit -m "feat: add gated scene capture route"
 > computed `touch-action` remains `pan-y pinch-zoom`. The component suite owns
 > the complementary roleless, unfocusable, `aria-hidden`, malformed-input, and
 > invalid-inset contracts.
+>
+> **Loader acceptance amendment (2026-07-11):** Chromium must decode at least
+> one committed `EXT_meshopt_compression` GLB rather than only the uncompressed
+> triangle fixture. A delayed current response that crosses the ten-second
+> timeout must be aborted/ignored, must not mark ready or issue a second hidden
+> request, and must retry exactly once only after a new activation. A failed
+> speculative next request must not fail the current scene and must retry when
+> promoted. Rapid A-to-B-to-C activation must keep at most current plus one
+> speculative owner, dispose late decoded results, and preserve a shared URL
+> promotion without refetch.
 
 **Files:**
 - Create: `tests/browser/runtime-fixtures.ts`
