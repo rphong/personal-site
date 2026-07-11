@@ -17,12 +17,14 @@
 - The eight required live IDs are immutable: `home-hero`, `experience-hero`, `experience-intro`, `nasa-rocket`, `projects-hero`, `league-ban`, `froggie-adventures`, and `contact-hero`.
 - `SceneSection` always renders `data-scene-id="<id>"`. Release checks use that hook.
 - The runtime host always owns `data-three-status` with one of `poster|loading|ready|error|unsupported|disabled|context-lost`, plus `data-active-scene-id`.
-- The drag surface always owns `data-testid="scene-rotation-area"` and `touch-action: pan-y`.
+- The drag surface always owns `data-testid="scene-rotation-area"` and `touch-action: pan-y pinch-zoom`.
 - Route-hero and active-host posters use eager/high fetch priority; offscreen feature posters keep SSR markup but use native lazy loading.
 - The first successful frame calls `performance.mark("scene-ready:<sceneId>")` through `emitSceneRuntimeEvent`. The event module dispatches only local `ready`, `failure`, `context-lost`, and `rotation-health` details on `site:scene-runtime` and performs no network work.
 - Runtime asset paths in the registry are the handoff contract for the asset-pipeline plan. Browser tests intercept them with a valid deterministic glTF document, so this runtime plan remains testable before production GLBs arrive.
 - Never set `scene.background` or mount opaque ground geometry. Keep `gl.alpha=true`, preserve the CSS-bound route background, and use only the demand-rendered low-resolution `ContactShadows` layer. If it cannot meet placement/performance gates, omit it.
-- Do not add route transitions, animation playback, orbit controls, zoom, pan, selection, physics, post-processing, or engagement tracking.
+- Do not add route transitions, animation playback, orbit controls, camera zoom
+  or pan, selection, physics, post-processing, or engagement tracking. Browser
+  page zoom remains available.
 
 ## Focused file map
 
@@ -1445,7 +1447,8 @@ git commit -m "feat: clamp decorative scene rotation"
 > `SceneSection` accepts `contentClassName` so later grid layouts apply to the
 > content wrapper rather than collapsing into one outer-grid child. Focused
 > tests verify that active/loading and inactive/poster section attributes flip
-> together at the shared viewport line.
+> together at the shared viewport line. The committed Task 6 source supersedes
+> the earlier minimal code sketches in this section.
 
 **Files:**
 - Create: `app/three/scene-runtime-context.tsx`
@@ -2094,6 +2097,18 @@ git commit -m "feat: activate registered three sections"
 
 ## Task 7: Forward bounded pointer and touch input without trapping scroll
 
+> **Implementation amendment (2026-07-11):** The final input boundary
+> supersedes the minimal snippets below. Touch intent uses cumulative movement,
+> a 6px slop, and a permanent vertical/horizontal lock; vertical gestures never
+> become rotation later in the same pointer sequence. `pan-y pinch-zoom`
+> preserves page scrolling and browser zoom. Capture, cancel, and lost-capture
+> paths are best-effort and exception-safe; competing/non-primary pointers and
+> malformed pointer IDs/coordinates are ignored without poisoning later input.
+> Unknown pointer types follow fine-pointer behavior. Insets are runtime-checked
+> and fail closed with no intercepting surface, while registry tests remain the
+> build-time failure gate; any active pointer is cleared across invalid/valid
+> prop recovery. Eleven component cases cover these contracts.
+
 **Files:**
 - Create: `app/three/scene-rotation-area.test.tsx`
 - Create: `app/three/scene-rotation-area.tsx`
@@ -2125,6 +2140,7 @@ describe("SceneRotationArea", () => {
     fireEvent.pointerDown(area, {
       pointerId: 1,
       pointerType: "mouse",
+      isPrimary: true,
       button: 0,
       clientX: 100,
       clientY: 100,
@@ -2132,6 +2148,7 @@ describe("SceneRotationArea", () => {
     fireEvent.pointerMove(area, {
       pointerId: 1,
       pointerType: "mouse",
+      isPrimary: true,
       clientX: 120,
       clientY: 92,
     });
@@ -2139,7 +2156,7 @@ describe("SceneRotationArea", () => {
     expect(onDelta).toHaveBeenCalledWith(20, -8, true);
   });
 
-  it("preserves vertical touch gestures and forwards horizontal touch yaw only", () => {
+  it("locks vertical touch gestures and forwards horizontal touch yaw only", () => {
     const onDelta = vi.fn();
     render(
       <SceneRotationArea
@@ -2153,12 +2170,14 @@ describe("SceneRotationArea", () => {
     fireEvent.pointerDown(area, {
       pointerId: 2,
       pointerType: "touch",
+      isPrimary: true,
       clientX: 100,
       clientY: 100,
     });
     fireEvent.pointerMove(area, {
       pointerId: 2,
       pointerType: "touch",
+      isPrimary: true,
       clientX: 102,
       clientY: 140,
     });
@@ -2167,11 +2186,33 @@ describe("SceneRotationArea", () => {
     fireEvent.pointerMove(area, {
       pointerId: 2,
       pointerType: "touch",
+      isPrimary: true,
       clientX: 132,
       clientY: 142,
     });
-    expect(onDelta).toHaveBeenCalledWith(30, 0, false);
-    expect(area).toHaveStyle({ touchAction: "pan-y" });
+    expect(onDelta).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(area, {
+      pointerId: 2,
+      pointerType: "touch",
+      isPrimary: true,
+    });
+    fireEvent.pointerDown(area, {
+      pointerId: 3,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(area, {
+      pointerId: 3,
+      pointerType: "touch",
+      isPrimary: true,
+      clientX: 132,
+      clientY: 102,
+    });
+    expect(onDelta).toHaveBeenCalledWith(32, 0, false);
+    expect(area).toHaveStyle({ touchAction: "pan-y pinch-zoom" });
     expect(area).not.toHaveAttribute("tabindex");
     expect(area).not.toHaveAttribute("role");
   });
@@ -2234,7 +2275,7 @@ export function SceneRotationArea({
 }) {
   const active = useRef<ActivePointer | null>(null);
   const style: RotationAreaStyle = {
-    touchAction: "pan-y",
+    touchAction: "pan-y pinch-zoom",
     "--rotation-top": percent(desktop.top),
     "--rotation-right": percent(desktop.right),
     "--rotation-bottom": percent(desktop.bottom),
@@ -2299,13 +2340,13 @@ export function SceneRotationArea({
 
 Run: `npm run test:unit -- app/three/scene-rotation-area.test.tsx`
 
-Expected: PASS, `2 passed`.
+Expected: PASS, `11 passed`.
 
 - [ ] **Step 5: Refactor by running component and pure clamp tests together**
 
 Run: `npm run test:unit -- app/three/scene-rotation-area.test.tsx app/three/rotation.test.ts`
 
-Expected: PASS, `2 test files passed`, `5 tests passed`.
+Expected: PASS, `2 test files passed`, `21 tests passed`.
 
 - [ ] **Step 6: Commit scroll-safe input**
 
@@ -2431,7 +2472,7 @@ npm run test:unit -- app/three/rotation.test.ts app/three/scene-rotation-area.te
 npx tsc --noEmit
 ```
 
-Expected: Vitest reports `3 test files passed`, `6 tests passed`; TypeScript exits 0.
+Expected: Vitest reports `3 test files passed`, `22 tests passed`; TypeScript exits 0.
 
 - [ ] **Step 6: Commit normalized scene rotation**
 
@@ -3529,6 +3570,7 @@ function value(overrides: Partial<SceneRuntimeContextValue> = {}) {
     activeSceneId: "home-hero",
     activeScene: getSceneDefinition("home-hero"),
     activationVersion: 0,
+    sceneActivationAllowed: true,
     status: "ready",
     rotation: { yaw: 0, pitch: 0 },
     threeInitialized: true,
@@ -3605,7 +3647,7 @@ describe("persistent runtime shell", () => {
     const css = await source("./scene-runtime.css");
     expect(css).toMatch(/position:\s*fixed/);
     expect(css).toMatch(/height:\s*100svh/);
-    expect(css).toMatch(/touch-action:\s*pan-y/);
+    expect(css).toMatch(/touch-action:\s*pan-y pinch-zoom/);
     expect(css).toMatch(/\.scene-runtime\s*\{[\s\S]*?z-index:\s*1/);
     expect(css).toMatch(/\.site-shell__content\s*\{[\s\S]*?z-index:\s*auto/);
     expect(css).toMatch(/\.scene-section\s*\{[\s\S]*?pointer-events:\s*none/);
@@ -3943,7 +3985,7 @@ Create `app/three/scene-runtime.css`:
   z-index: 2;
   pointer-events: auto;
   cursor: grab;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 .scene-runtime__rotation-area:active {
@@ -4100,7 +4142,7 @@ npx tsc --noEmit
 npm run test:unit -- app/three/scene-provider.test.tsx app/three/scene-runtime-host.test.tsx app/three/scene-rotation-area.test.tsx app/three/three-preference-toggle.test.tsx
 ```
 
-Expected: TypeScript exits 0; Vitest reports `4 test files passed`, `17 tests passed`.
+Expected: TypeScript exits 0; Vitest reports `4 test files passed`, `34 tests passed`.
 
 - [ ] **Step 13: Commit the persistent poster-first shell**
 
@@ -4673,6 +4715,15 @@ git commit -m "feat: add gated scene capture route"
 
 ## Task 14: Verify persistence, first-frame swap, failure modes, and touch behavior in Chromium
 
+> **Trusted-input amendment (2026-07-11):** Browser acceptance must prove UA
+> behavior that jsdom cannot: a vertical touch swipe scrolls and cancels without
+> rotation; a horizontal touch drag leaves scroll stable and changes rendered
+> canvas pixels; a captured primary-mouse drag continues outside the rotation
+> bounds and stops after pointer-up; cancel/lost-capture stop later deltas; and
+> computed `touch-action` remains `pan-y pinch-zoom`. The component suite owns
+> the complementary roleless, unfocusable, `aria-hidden`, malformed-input, and
+> invalid-inset contracts.
+
 **Files:**
 - Create: `tests/browser/runtime-fixtures.ts`
 - Create: `tests/browser/three-runtime.spec.ts`
@@ -5020,7 +5071,7 @@ test("allows vertical touch scrolling while horizontal drag stays bounded", asyn
   const host = await openScene(page, "home-hero", "controls=1&scroll=1");
   await expect(host).toHaveAttribute("data-three-status", "ready");
   const area = page.getByTestId("scene-rotation-area");
-  await expect(area).toHaveCSS("touch-action", "pan-y");
+  await expect(area).toHaveCSS("touch-action", "pan-y pinch-zoom");
   const box = await area.boundingBox();
   if (!box) throw new Error("Rotation area has no browser bounds");
   const session = await context.newCDPSession(page);
@@ -5050,6 +5101,8 @@ test("allows vertical touch scrolling while horizontal drag stays bounded", asyn
   );
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(40);
 
+  const canvas = page.locator("canvas");
+  const beforeRotation = await canvas.screenshot();
   const beforeHorizontal = await page.evaluate(() => window.scrollY);
   await swipe(
     { x: center.x - 70, y: center.y },
@@ -5057,6 +5110,9 @@ test("allows vertical touch scrolling while horizontal drag stays bounded", asyn
   );
   const afterHorizontal = await page.evaluate(() => window.scrollY);
   expect(Math.abs(afterHorizontal - beforeHorizontal)).toBeLessThan(10);
+  await expect
+    .poll(async () => !(await canvas.screenshot()).equals(beforeRotation))
+    .toBe(true);
 
   await context.close();
 });
@@ -6247,7 +6303,7 @@ Expected: commit succeeds. If no correction was needed, do not create an empty c
 - Shared viewport activation line, stale registration cleanup, destination-hero reset, and default-pose reset: Tasks 5–6.
 - Poster before initialization, hero/feature fetch priority, first-frame-only swap, ten-second timeout, load/decode failure, unsupported WebGL 2, context loss/recovery, and HTML independence: Tasks 4, 6, 10–14.
 - Local `3D on/off`, explicit storage, `saveData` default, no runtime telemetry sender, and local operational event seam: Tasks 3–4 and 11.
-- Bounded yaw/pitch, touch `pan-y`, no focus/keyboard rotation, complete-root rotation, and demand invalidation: Tasks 5, 7–8.
+- Bounded yaw/pitch, touch `pan-y pinch-zoom`, no focus/keyboard rotation, complete-root rotation, and demand invalidation: Tasks 5, 7–8.
 - Meshopt decoder, current model ownership, post-first-frame idle preloading of at most one next model, cancellation/cache eviction, cloned instance resources, and no eager route waterfall: Task 9 plus Task 14 browser coverage.
 - Deterministic desktop/mobile capture, SwiftShader, final poster manifest, tight pixel comparison, and removal of public Figma-frame exports: Tasks 13 and 15–16.
 - Stable release hooks and observability seam: Tasks 1, 3, 6, 7, 11, and 14.
