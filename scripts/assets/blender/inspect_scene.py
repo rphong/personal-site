@@ -29,6 +29,62 @@ def rounded_matrix(matrix):
     return [rounded_vector(row) for row in matrix]
 
 
+def vector_matches(values, expected, epsilon=1e-6):
+    return len(values) == len(expected) and all(
+        abs(float(actual) - target) <= epsilon
+        for actual, target in zip(values, expected)
+    )
+
+
+def matrix_is_identity(matrix, epsilon=1e-6):
+    for row in range(4):
+        for column in range(4):
+            expected = 1.0 if row == column else 0.0
+            if abs(float(matrix[row][column]) - expected) > epsilon:
+                return False
+    return True
+
+
+def root_is_inert(root):
+    field = getattr(root, "field", None)
+    return (
+        root.type == "EMPTY"
+        and root.data is None
+        and root.parent is None
+        and not root.constraints
+        and root.animation_data is None
+        and not root.modifiers
+        and not root.particle_systems
+        and not root.vertex_groups
+        and root.instance_type == "NONE"
+        and root.instance_collection is None
+        and not root.is_instancer
+        and (field is None or field.type == "NONE")
+        and root.rigid_body is None
+        and root.rigid_body_constraint is None
+        and not root.hide_render
+        and not root.hide_viewport
+        and not root.hide_get()
+        and not root.is_holdout
+        and not root.is_shadow_catcher
+        and root.rotation_mode == "XYZ"
+        and vector_matches(root.location, (0.0, 0.0, 0.0))
+        and vector_matches(root.rotation_euler, (0.0, 0.0, 0.0))
+        and vector_matches(root.rotation_quaternion, (1.0, 0.0, 0.0, 0.0))
+        and vector_matches(root.rotation_axis_angle, (0.0, 0.0, 1.0, 0.0))
+        and vector_matches(root.scale, (1.0, 1.0, 1.0))
+        and vector_matches(root.delta_location, (0.0, 0.0, 0.0))
+        and vector_matches(root.delta_rotation_euler, (0.0, 0.0, 0.0))
+        and vector_matches(
+            root.delta_rotation_quaternion,
+            (1.0, 0.0, 0.0, 0.0),
+        )
+        and vector_matches(root.delta_scale, (1.0, 1.0, 1.0))
+        and matrix_is_identity(root.matrix_parent_inverse)
+        and matrix_is_identity(root.matrix_world)
+    )
+
+
 def descendants(root):
     result = []
     stack = list(root.children)
@@ -146,8 +202,7 @@ def animation_details(action):
     }
 
 
-def main():
-    args = parse_args()
+def inspect_scene():
     roots = [obj for obj in bpy.data.objects if obj.name == "WEB_EXPORT_ROOT"]
     root = roots[0] if len(roots) == 1 else None
     export_objects = [root, *descendants(root)] if root else []
@@ -183,6 +238,8 @@ def main():
         for node in material.node_tree.nodes
     })
 
+    scene_objects = set(bpy.context.scene.objects)
+    view_layer_names = set(bpy.context.view_layer.objects.keys())
     report = {
         "allObjects": sorted(obj.name for obj in bpy.data.objects),
         "allObjectParents": {
@@ -195,6 +252,9 @@ def main():
             for action in sorted(bpy.data.actions, key=lambda item: item.name)
         },
         "blenderVersion": ".".join(str(part) for part in bpy.app.version),
+        "cameraObjects": sorted(
+            obj.name for obj in export_objects if obj and obj.type == "CAMERA"
+        ),
         "externalResources": sorted(external_resources, key=lambda item: (item["kind"], item["name"])),
         "fileImages": [
             {
@@ -207,6 +267,14 @@ def main():
             if image.source == "FILE"
         ],
         "imageNames": sorted(image.name for image in bpy.data.images),
+        "inactiveObjects": sorted(
+            obj.name
+            for obj in export_objects
+            if obj and (obj not in scene_objects or obj.name not in view_layer_names)
+        ),
+        "lightObjects": sorted(
+            obj.name for obj in export_objects if obj and obj.type == "LIGHT"
+        ),
         "materialNames": sorted(material.name for material in bpy.data.materials),
         "materialImages": {
             material.name: sorted({
@@ -347,6 +415,12 @@ def main():
         ),
         "volumeObjects": volume_objects,
     }
+    return report
+
+
+def main():
+    args = parse_args()
+    report = inspect_scene()
     report_path = Path(args.report).resolve()
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

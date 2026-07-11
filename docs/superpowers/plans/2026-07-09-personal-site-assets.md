@@ -2810,6 +2810,8 @@ Expected: commit succeeds and the generated source passes the sub-2,000-triangle
 
 ### Task 5: Export immutable raw GLBs from canonical sources
 
+> **2026-07-11 implementation amendment:** Raw export uses the current shared `inspect_scene.py` contract rather than the stale embedded inspector below. Strict preflight and `assertReviewedSourcesUnchanged` bind all seven canonicals plus their reviewed texture/capture inputs before any export. The ephemeral Blender process temporarily reveals hidden export descendants so required rigs such as Workout's armature are selected without saving source changes; it exports only `WEB_EXPORT_ROOT` and descendants with `export_apply=False`. Source hashes are checked after every Blender attempt, including failures, and again before publication. All GLBs and reports are staged under unique names and promoted as one rollback-safe batch, so a later-model failure cannot partially replace an earlier raw set. Node parses each produced GLB and enforces one `WEB_EXPORT_ROOT` scene root, embedded buffers/images, the exact owned-image allowlist, no cameras/lights, and exact preservation of every canonical action name (including Workout, Plane, and Rocket clips). Each final report is a stable attestation envelope `{ schemaVersion, key, sourceSha256, rawSha256, rawGlb, inspection }`, allowing later optimization to reject swapped or tampered ignored inputs. Only the three material node types present in the reviewed sources are allowed; unreferenced Blender system-viewer images remain harmless. This amendment supersedes conflicting direct-write, success-only hash-check, source-action-count, broad shader allowlist, and report-shape details below.
+
 **Files:**
 
 - Create: `scripts/assets/export-all.mjs`
