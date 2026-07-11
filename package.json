@@ -22,6 +22,7 @@
     "assets:froggie": "node scripts/assets/create-froggie-display.mjs",
     "assets:froggie:replace": "node scripts/assets/create-froggie-display.mjs --replace",
     "assets:export": "node scripts/assets/export-all.mjs",
+    "assets:optimize": "node scripts/assets/optimize.mjs",
     "test:assets": "node --test --test-concurrency=1 \"tests/assets/**/*.test.mjs\""
   },
   "dependencies": {

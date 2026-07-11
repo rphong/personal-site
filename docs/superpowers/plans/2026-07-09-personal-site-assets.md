@@ -3266,11 +3266,14 @@ Expected: commit succeeds; `.tmp/assets/raw` and `.tmp/assets/reports` remain un
 
 ### Task 6: Optimize and publish runtime GLBs with WebP and Meshopt
 
+> **2026-07-11 implementation amendment:** Optimization first verifies Node 22.15+, every pinned package, all reviewed source inputs, and the Task 5 `{ key, sourceSha256, rawSha256 }` attestation for each ignored raw GLB. It applies only `dedup({ keepUniqueNames: true })`, preservation-oriented `prune`, bitwise `weld`, zero-tolerance `resample`, WebP quality 88/effort 100/Lanczos3 at a 1024-pixel cap, and Meshopt medium. Meshopt medium includes quantization, so this is intentionally GPU-oriented but not described as lossless; no simplification runs. A strict dependency-free GLB parser validates chunks, physical and Meshopt fallback buffers, buffer views, accessors, embedded image payloads, and URI/range safety. Every candidate must retain one `WEB_EXPORT_ROOT`, exact rendered triangle/primitive totals, animation clip/channel targets, image names, and model byte budgets; Meshopt plus `KHR_mesh_quantization` are used and required for all models, and League/Froggie additionally use and require 1024x576 WebP. Draco, KTX2, and AVIF are forbidden, and a registered decoder must reopen each result. All seven validated candidates are promoted through one rollback-safe transaction, preventing partial `public/models` publication. This amendment supersedes the older per-file replacement, one-textured-model test, Node 22.13, and extension-expectation details below.
+
 **Files:**
 
 - Create: `scripts/assets/lib/glb.mjs`
 - Create: `scripts/assets/optimize.mjs`
 - Create: `tests/assets/optimization.test.mjs`
+- Create: `tests/assets/glb-parser.test.mjs`
 - Create: `public/models/crane.glb`
 - Create: `public/models/crane-workout.glb`
 - Create: `public/models/crane-making-table.glb`
