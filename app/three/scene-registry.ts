@@ -219,7 +219,7 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/froggie-adventures-mobile.webp",
       alt: "",
     },
-    desktop: frame([5.8, 3.5, 7.8], [0, 1, 0], 35, DESKTOP_AREA),
+    desktop: frame([5.1, 4.3, 10.2], [0, 1.4, 0], 40, DESKTOP_AREA),
     mobile: frame([5.1, 4.3, 10.2], [0, 1.4, 0], 40, MOBILE_AREA),
     lighting: lighting("#AFD4E1", [5, 7, 5]),
     rotation: DEFAULT_ROTATION,

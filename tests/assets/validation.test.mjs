@@ -8,6 +8,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import sharp from "sharp";
 
 import { loadSourceManifest } from "../../scripts/assets/lib/manifest.mjs";
 import {
@@ -15,14 +16,22 @@ import {
   validateBrandApprovals,
   validateGlbMetadata,
   validatePosterContract,
+  validatePosterManifest,
   writeManifestAtomically,
 } from "../../scripts/assets/validate.mjs";
+import {
+  buildPosterManifest,
+  canonicalJsonSha256,
+  pinnedPlaywrightChromiumVersion,
+  sha256Buffer,
+} from "../../scripts/posters/lib.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
 const tempRoot = path.join(
   root,
   `.tmp/assets/validation-test-${process.pid}`,
 );
+const fixtureRenderInputsSha256 = "f".repeat(64);
 const model = {
   animationNames: [],
   key: "fixture",
@@ -84,6 +93,94 @@ function metadataErrors({
     json,
     model: fixtureModel,
   });
+}
+
+async function createPosterManifestFixture() {
+  const contract = JSON.parse(
+    await readFile(path.join(root, "assets/poster-contract.json"), "utf8"),
+  );
+  const posterRoot = path.join(tempRoot, "public/posters");
+  await mkdir(posterRoot, { recursive: true });
+  await writeFile(
+    path.join(tempRoot, "package.json"),
+    JSON.stringify({
+      devDependencies: {
+        "@playwright/test": "1.61.1",
+        sharp: "0.35.3",
+      },
+    }),
+  );
+
+  const variantBuffers = {};
+  for (const [variantName, variant] of Object.entries(contract.variants)) {
+    const width = Math.round(
+      variant.viewportWidth * variant.deviceScaleFactor,
+    );
+    const height = Math.round(
+      variant.viewportHeight * variant.deviceScaleFactor,
+    );
+    variantBuffers[variantName] = await sharp({
+      create: {
+        width,
+        height,
+        channels: 3,
+        background: "#9eccc0",
+      },
+    })
+      .webp({ quality: 90 })
+      .toBuffer();
+  }
+
+  const records = [];
+  for (const scene of contract.scenes) {
+    for (const variantName of ["desktop", "mobile"]) {
+      const variant = contract.variants[variantName];
+      const buffer = variantBuffers[variantName];
+      const relativePath = scene.outputs[variantName];
+      await writeFile(path.join(tempRoot, relativePath), buffer);
+      records.push({
+        sceneId: scene.id,
+        variant: variantName,
+        path: relativePath,
+        width: Math.round(
+          variant.viewportWidth * variant.deviceScaleFactor,
+        ),
+        height: Math.round(
+          variant.viewportHeight * variant.deviceScaleFactor,
+        ),
+        bytes: buffer.byteLength,
+        sha256: sha256Buffer(buffer),
+      });
+    }
+  }
+
+  const manifest = buildPosterManifest({
+    browserVersion: await pinnedPlaywrightChromiumVersion(),
+    contractSha256: canonicalJsonSha256(contract),
+    renderInputsSha256: fixtureRenderInputsSha256,
+    posters: records,
+    toolVersions: { playwright: "1.61.1", sharp: "0.35.3" },
+  });
+  await writeFile(
+    path.join(posterRoot, "poster-manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
+  await writeFile(path.join(posterRoot, "home-reference.png"), "allowed");
+  return { contract, manifest, posterRoot, variantBuffers };
+}
+
+async function writePosterFixtureManifest(fixture, manifest) {
+  await writeFile(
+    path.join(fixture.posterRoot, "poster-manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
+}
+
+function validatePosterFixture(fixture) {
+  return validatePosterManifest(
+    { contract: fixture.contract, root: tempRoot },
+    { renderInputsHasher: async () => fixtureRenderInputsSha256 },
+  );
 }
 
 test("metadata validation rejects each release-blocking GLB defect", () => {
@@ -283,7 +380,7 @@ test("brand approvals reject stale source and League texture hashes", () => {
   );
 });
 
-test("poster contract covers the ten approved scenes and keeps capture optional", async () => {
+test("poster contract covers the ten approved scenes in optional and required modes", async () => {
   const manifest = await loadSourceManifest({ root });
   const contract = JSON.parse(
     await readFile(path.join(root, "assets/poster-contract.json"), "utf8"),
@@ -309,15 +406,12 @@ test("poster contract covers the ten approved scenes and keeps capture optional"
       "contact-hero",
     ],
   );
-  await assert.rejects(
-    validatePosterContract({
-      contract,
-      manifest,
-      requirePosters: true,
-      root,
-    }),
-    /Required poster is missing: public\/posters\/home-hero-desktop\.webp/,
-  );
+  await validatePosterContract({
+    contract,
+    manifest,
+    requirePosters: true,
+    root,
+  });
   const drifted = structuredClone(contract);
   drifted.scenes[0].source.modelKey = "rocket";
   await assert.rejects(
@@ -342,6 +436,137 @@ test("poster-only sources are abstract vectors with no company payload", async (
       /<image\b|<text\b|<script\b|<foreignObject\b|\bhref\s*=|\b(?:eog|paycom|logo)\b/i,
     );
   }
+});
+
+test("required poster validation binds the exact manifest to all canonical files", async () => {
+  const fixture = await createPosterManifestFixture();
+  const validated = await validatePosterFixture(fixture);
+
+  assert.equal(validated.schemaVersion, 1);
+  assert.equal(validated.posters.length, 20);
+  assert.equal(validated.contractSha256, canonicalJsonSha256(fixture.contract));
+  assert.equal(validated.renderInputsSha256, fixtureRenderInputsSha256);
+});
+
+test("required poster validation rejects manifest contract and provenance drift", async () => {
+  const fixture = await createPosterManifestFixture();
+  const cases = [
+    {
+      mutate: (manifest) => {
+        manifest.schemaVersion = 2;
+      },
+      pattern: /schemaVersion must be 1/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.renderer.browser = "firefox";
+      },
+      pattern: /renderer is invalid/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.renderer.browserVersion = "999.0.0.0";
+      },
+      pattern: /renderer is invalid/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.toolVersions.sharp = "0.35.2";
+      },
+      pattern: /toolVersions do not match package\.json/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.contractSha256 = "0".repeat(64);
+      },
+      pattern: /contractSha256 is invalid or stale/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.renderInputsSha256 = "0".repeat(64);
+      },
+      pattern: /renderInputsSha256 is stale/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.posters.pop();
+      },
+      pattern: /exactly 20 records/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.posters[0].path = "public/posters/stale.webp";
+      },
+      pattern: /path does not match the exact poster contract/,
+    },
+    {
+      mutate: (manifest) => {
+        manifest.generatedAt = "2026-07-11";
+      },
+      pattern: /Poster manifest fields are invalid/,
+    },
+  ];
+
+  for (const { mutate, pattern } of cases) {
+    const candidate = structuredClone(fixture.manifest);
+    mutate(candidate);
+    await writePosterFixtureManifest(fixture, candidate);
+    await assert.rejects(validatePosterFixture(fixture), pattern);
+  }
+});
+
+test("required poster validation rejects missing, stale, and byte-drifted WebPs", async () => {
+  const fixture = await createPosterManifestFixture();
+  const record = fixture.manifest.posters[0];
+  const outputPath = path.join(tempRoot, record.path);
+
+  await rm(outputPath);
+  await assert.rejects(
+    validatePosterFixture(fixture),
+    new RegExp(`Required poster is missing: ${record.path}`),
+  );
+  await writeFile(outputPath, fixture.variantBuffers[record.variant]);
+
+  const hashDrift = structuredClone(fixture.manifest);
+  hashDrift.posters[0].sha256 = "0".repeat(64);
+  await writePosterFixtureManifest(fixture, hashDrift);
+  await assert.rejects(validatePosterFixture(fixture), /sha256 drifted/);
+
+  const tiny = await sharp({
+    create: {
+      width: 1,
+      height: 1,
+      channels: 3,
+      background: "#9eccc0",
+    },
+  })
+    .webp()
+    .toBuffer();
+  await writeFile(outputPath, tiny);
+  const dimensionDrift = structuredClone(fixture.manifest);
+  dimensionDrift.posters[0].bytes = tiny.byteLength;
+  dimensionDrift.posters[0].sha256 = sha256Buffer(tiny);
+  await writePosterFixtureManifest(fixture, dimensionDrift);
+  await assert.rejects(validatePosterFixture(fixture), /dimensions drifted/);
+});
+
+test("required poster validation rejects stale WebPs and a missing manifest", async () => {
+  const fixture = await createPosterManifestFixture();
+  await writeFile(
+    path.join(fixture.posterRoot, "retired-scene.webp"),
+    fixture.variantBuffers.desktop,
+  );
+  await assert.rejects(
+    validatePosterFixture(fixture),
+    /Unexpected poster WebP is published: public\/posters\/retired-scene\.webp/,
+  );
+
+  await rm(path.join(fixture.posterRoot, "retired-scene.webp"));
+  await rm(path.join(fixture.posterRoot, "poster-manifest.json"));
+  await assert.rejects(
+    validatePosterFixture(fixture),
+    /Poster manifest is missing: public\/posters\/poster-manifest\.json/,
+  );
 });
 
 test("full validation generates stable relative-only runtime metadata", async () => {

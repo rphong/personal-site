@@ -197,7 +197,27 @@
 
 body:has(.scene-capture-root) header,
 body:has(.scene-capture-root) footer {
-  visibility: hidden;
+  display: none;
+}
+
+body:has(.scene-capture-root) .site-shell__content {
+  padding-top: 0;
+}
+
+body:has(.scene-capture-root[data-scroll-test="false"]) {
+  height: 100svh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body:has(.scene-capture-root[data-scroll-test="false"]) .site-shell,
+body:has(.scene-capture-root[data-scroll-test="false"])
+  .site-shell__content,
+.scene-capture-root[data-scroll-test="false"],
+.scene-capture-root[data-scroll-test="false"] .scene-capture-viewport {
+  height: 100svh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 body:has(.scene-capture-root:not([data-capture-controls="true"]))

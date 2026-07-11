@@ -1,5 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
+const serverPort = process.env.POSTER_CAPTURE_PORT ?? "3000";
+const serverUrl = `http://127.0.0.1:${serverPort}`;
+
 export default defineConfig({
   testDir: "./tests/browser",
   snapshotPathTemplate:
@@ -8,9 +11,9 @@ export default defineConfig({
     ? []
     : ["**/poster-capture.spec.ts"],
   fullyParallel: false,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.POSTER_CAPTURE_MODE ? 0 : process.env.CI ? 2 : 0,
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: serverUrl,
     trace: "retain-on-failure",
     video: "off",
   },
@@ -31,8 +34,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
-    url: "http://127.0.0.1:3000",
+    command: `node scripts/run-vinext.mjs dev --hostname 127.0.0.1 --port ${serverPort}`,
+    url: serverUrl,
     reuseExistingServer:
       process.env.PLAYWRIGHT_EXTERNAL_SERVER === "1",
     timeout: 120_000,

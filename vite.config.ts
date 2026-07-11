@@ -48,6 +48,11 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    css: {
+      // This project does not use PostCSS. An explicit inline config prevents
+      // Vite from inheriting an unrelated config above a linked worktree.
+      postcss: { plugins: [] },
+    },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

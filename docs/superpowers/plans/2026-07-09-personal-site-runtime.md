@@ -5431,24 +5431,65 @@ git commit -m "test: cover persistent three runtime in browser"
 > viewport at 1.5 DPR produces 585x1266 files. Both browser and SVG sources use
 > those physical dimensions so capture output agrees with the asset validator.
 
+> **Task 15 implementation amendment (2026-07-11):** Capture now stages all
+> twenty WebPs plus the manifest under one operation ID, holds a directory lock,
+> and promotes the complete set as one rollback-capable transaction with the
+> manifest last. Check mode can never publish. Runner tests cover pinned CLI
+> arguments, child-process failures, cleanup, nonmutation, lock overlap, path
+> safety, and mid-publication rollback.
+>
+> Render provenance canonicalizes JSON and line endings, hashes every effective
+> runtime/capture input plus the actual manifest-bound GLBs, and rejects model
+> drift. The browser capture proves the real R3F canvas uses WebGL 2 through
+> SwiftShader at exact CSS/physical dimensions, has no document overflow, and
+> produces opaque WebPs with bounded encode drift, exact background corners,
+> visible foreground, and live-scene edge clearance. Review output retains all
+> source PNGs, encoded candidates, amplified diffs, metrics, and labeled contact
+> sheets under ignored `tmp/posters-review`.
+>
+> The capture owns isolated port 3317, launches the pinned Playwright CLI without
+> a command shell, and uses an inline empty PostCSS config so linked worktrees do
+> not inherit unrelated ancestor configuration. Required asset validation now
+> binds the exact twenty-record manifest to contract/provenance/tool metadata,
+> Playwright's exact pinned Chromium version, SwiftShader, and actual WebP bytes,
+> hashes, dimensions, and stale-file rejection.
+> Visual review re-centered both poster-only SVG motifs and widened the Froggie
+> desktop frame after an edge gate caught its clipped display. Canonical capture
+> and non-writing recapture both pass from the real Windows worktree path. Final
+> verification: 209 unit tests, 83 asset tests, 12 poster tests, TypeScript,
+> ESLint, required poster validation, deterministic browser recapture, and the
+> production build all pass.
+
 **Files:**
 - Create: `scripts/posters/lib.mjs`
+- Create: `.gitattributes`
 - Create: `scripts/posters/lib.d.mts`
 - Create: `scripts/posters/capture.mjs`
+- Create: `scripts/posters/browser.mjs`
+- Create: `scripts/posters/pipeline.mjs`
 - Create: `tests/posters/poster-runtime.test.mjs`
+- Create: `tests/posters/poster-pipeline.test.mjs`
+- Create: `tests/posters/poster-capture-runner.test.mjs`
 - Create: `tests/browser/poster-capture.spec.ts`
 - Create: `public/posters/poster-manifest.json` (generated)
 - Create: twenty `public/posters/<sceneId>-<variant>.webp` files (generated)
+- Modify: `app/three/scene-registry.ts`
+- Modify: `app/three/scene-runtime.css`
+- Modify: `assets/poster-sources/eog.svg`
+- Modify: `assets/poster-sources/paycom.svg`
 - Modify: `package.json`
-- Modify: `package-lock.json`
+- Modify: `playwright.config.ts`
+- Modify: `scripts/assets/validate.mjs`
+- Modify: `tests/assets/validation.test.mjs`
+- Modify: `vite.config.ts`
 
-- [ ] **Step 1: Confirm the asset-plan poster gate is RED**
+- [x] **Step 1: Confirm the asset-plan poster gate is RED**
 
 Run: `node scripts/assets/validate.mjs --require-posters`
 
 Expected: FAIL with `Required poster is missing: public/posters/home-hero-desktop.webp`.
 
-- [ ] **Step 2: Write the failing deterministic-manifest and pixel-difference tests**
+- [x] **Step 2: Write the failing deterministic-manifest and pixel-difference tests**
 
 Create `tests/posters/poster-runtime.test.mjs`:
 
@@ -5518,13 +5559,13 @@ test("buffer hashing is deterministic", () => {
 
 ```
 
-- [ ] **Step 3: Run the poster unit test to verify RED**
+- [x] **Step 3: Run the poster unit test to verify RED**
 
 Run: `node --test tests/posters/poster-runtime.test.mjs`
 
 Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `scripts/posters/lib.mjs`.
 
-- [ ] **Step 4: Implement stable poster metadata and pixel comparison helpers**
+- [x] **Step 4: Implement stable poster metadata and pixel comparison helpers**
 
 Create `scripts/posters/lib.mjs`:
 
@@ -5621,13 +5662,13 @@ export function buildPosterManifest(input: {
 }): Record<string, unknown> & { readonly posters: readonly Record<string, unknown>[] };
 ```
 
-- [ ] **Step 5: Run the poster unit test to verify GREEN**
+- [x] **Step 5: Run the poster unit test to verify GREEN**
 
 Run: `node --test tests/posters/poster-runtime.test.mjs`
 
 Expected: PASS, `3 passed`.
 
-- [ ] **Step 6: Implement the pinned browser/SVG capture test**
+- [x] **Step 6: Implement the pinned browser/SVG capture test**
 
 Create `tests/browser/poster-capture.spec.ts`:
 
@@ -5880,7 +5921,7 @@ test("captures every poster contract output deterministically", async ({ browser
 });
 ```
 
-- [ ] **Step 7: Implement the cross-platform capture command**
+- [x] **Step 7: Implement the cross-platform capture command**
 
 Create `scripts/posters/capture.mjs`:
 
@@ -5916,7 +5957,7 @@ const result = spawnSync(
 process.exit(result.status ?? 1);
 ```
 
-- [ ] **Step 8: Add reproducible poster commands**
+- [x] **Step 8: Add reproducible poster commands**
 
 Add these `package.json` scripts:
 
@@ -5928,13 +5969,13 @@ Add these `package.json` scripts:
 }
 ```
 
-- [ ] **Step 9: Generate all twenty canonical WebPs and the stable manifest**
+- [x] **Step 9: Generate all twenty canonical WebPs and the stable manifest**
 
 Run: `npm run posters:capture`
 
 Expected: PASS, `1 passed`; all twenty contract WebPs plus `public/posters/poster-manifest.json` are replaced individually from the temporary capture directory. Unrelated files already under `public/posters/`, including the four foundation reference PNGs, remain untouched until Task 16. Every manifest path begins `public/posters/`; contract and render-input SHA-256 values are present; the manifest contains no timestamp or absolute path.
 
-- [ ] **Step 10: Verify deterministic regeneration and turn the asset gate GREEN**
+- [x] **Step 10: Verify deterministic regeneration and turn the asset gate GREEN**
 
 Run:
 
@@ -5946,7 +5987,7 @@ npm run test:posters
 
 Expected: poster comparison PASS with at most 0.1% changed channels at tolerance 4; asset validation PASS; Node reports `3 passed`.
 
-- [ ] **Step 11: Visually approve the two cropped mobile poster-only compositions**
+- [x] **Step 11: Visually approve the two cropped mobile poster-only compositions**
 
 Open each canonical file at its native 585×1266 size:
 
@@ -5957,7 +5998,7 @@ Start-Process -FilePath "public\posters\paycom-poster-mobile.webp"
 
 Expected: both images use a centered cover crop; circles, crane geometry, and type remain proportionate with no horizontal or vertical stretching; each focal motif stays legible inside the mobile safe area. Stop and adjust the authored SVG focal composition if either check fails.
 
-- [ ] **Step 12: Commit final posters and capture tooling**
+- [x] **Step 12: Commit final posters and capture tooling**
 
 ```bash
 git add package.json package-lock.json scripts/posters tests/posters tests/browser/poster-capture.spec.ts public/posters

@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
-  access,
   lstat,
   mkdir,
   readFile,
+  readdir,
   rename,
   rm,
   writeFile,
@@ -31,8 +31,31 @@ import {
   assertAssetNodeRuntime,
   verifyAssetPackages,
 } from "./preflight.mjs";
+import {
+  canonicalJsonSha256,
+  pinnedPlaywrightChromiumVersion,
+  posterRenderInputsSha256,
+} from "../posters/lib.mjs";
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
+const POSTER_MANIFEST_PATH = "public/posters/poster-manifest.json";
+const POSTER_MANIFEST_KEYS = [
+  "contractSha256",
+  "posters",
+  "renderer",
+  "renderInputsSha256",
+  "schemaVersion",
+  "toolVersions",
+];
+const POSTER_RECORD_KEYS = [
+  "bytes",
+  "height",
+  "path",
+  "sceneId",
+  "sha256",
+  "variant",
+  "width",
+];
 const FORBIDDEN_EXTENSIONS = [
   "EXT_texture_avif",
   "KHR_draco_mesh_compression",
@@ -162,17 +185,23 @@ const EXPECTED_POSTER_SCENES = [
   },
 ];
 
-async function exists(filePath) {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function sha256Buffer(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
+}
+
+function compareCodePoints(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function assertExactObjectKeys(value, expectedKeys, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  const actualKeys = Object.keys(value).sort(compareCodePoints);
+  const sortedExpectedKeys = [...expectedKeys].sort(compareCodePoints);
+  if (stringifyStable(actualKeys) !== stringifyStable(sortedExpectedKeys)) {
+    throw new Error(`${label} fields are invalid`);
+  }
 }
 
 function extensionPresent(json, name) {
@@ -490,6 +519,201 @@ async function validatePosterSource(root, source) {
   }
 }
 
+function expectedPosterManifestRecords(contract) {
+  return contract.scenes
+    .flatMap((scene) =>
+      ["desktop", "mobile"].map((variantName) => {
+        const variant = contract.variants[variantName];
+        return {
+          sceneId: scene.id,
+          variant: variantName,
+          path: scene.outputs[variantName],
+          width: Math.round(
+            variant.viewportWidth * variant.deviceScaleFactor,
+          ),
+          height: Math.round(
+            variant.viewportHeight * variant.deviceScaleFactor,
+          ),
+        };
+      }),
+    )
+    .sort(
+      (left, right) =>
+        compareCodePoints(left.sceneId, right.sceneId) ||
+        compareCodePoints(left.variant, right.variant),
+    );
+}
+
+async function readPosterDirectoryEntries(root) {
+  try {
+    return await readdir(path.join(root, "public/posters"), {
+      withFileTypes: true,
+    });
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function readPosterManifest(root) {
+  const manifestPath = path.join(root, POSTER_MANIFEST_PATH);
+  let source;
+  try {
+    source = await readFile(manifestPath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`Poster manifest is missing: ${POSTER_MANIFEST_PATH}`);
+    }
+    throw error;
+  }
+  try {
+    return JSON.parse(source);
+  } catch (error) {
+    throw new Error(`Poster manifest is not valid JSON: ${POSTER_MANIFEST_PATH}`, {
+      cause: error,
+    });
+  }
+}
+
+export async function validatePosterManifest(
+  { contract, root },
+  { renderInputsHasher = posterRenderInputsSha256 } = {},
+) {
+  const expectedRecords = expectedPosterManifestRecords(contract);
+  const expectedNames = contract.scenes.flatMap((scene) =>
+    ["desktop", "mobile"].map((variantName) =>
+      path.basename(scene.outputs[variantName]),
+    ),
+  );
+  const directoryEntries = await readPosterDirectoryEntries(root);
+  const publishedWebps = directoryEntries
+    .map((entry) => entry.name)
+    .filter((name) => name.toLowerCase().endsWith(".webp"))
+    .sort(compareCodePoints);
+  const publishedSet = new Set(publishedWebps);
+  const expectedSet = new Set(expectedNames);
+  const missing = expectedNames.filter((name) => !publishedSet.has(name));
+  if (missing.length > 0) {
+    throw new Error(`Required poster is missing: public/posters/${missing[0]}`);
+  }
+  const unexpected = publishedWebps.filter((name) => !expectedSet.has(name));
+  if (unexpected.length > 0) {
+    throw new Error(`Unexpected poster WebP is published: public/posters/${unexpected[0]}`);
+  }
+
+  const manifest = await readPosterManifest(root);
+  assertExactObjectKeys(manifest, POSTER_MANIFEST_KEYS, "Poster manifest");
+  if (manifest.schemaVersion !== 1) {
+    throw new Error("Poster manifest schemaVersion must be 1");
+  }
+  if (
+    !HASH_PATTERN.test(manifest.contractSha256 ?? "") ||
+    manifest.contractSha256 !== canonicalJsonSha256(contract)
+  ) {
+    throw new Error("Poster manifest contractSha256 is invalid or stale");
+  }
+  if (!HASH_PATTERN.test(manifest.renderInputsSha256 ?? "")) {
+    throw new Error("Poster manifest renderInputsSha256 is invalid");
+  }
+
+  assertExactObjectKeys(
+    manifest.renderer,
+    ["browser", "browserVersion", "swiftShader"],
+    "Poster manifest renderer",
+  );
+  const expectedBrowserVersion = await pinnedPlaywrightChromiumVersion();
+  if (
+    manifest.renderer.browser !== "chromium" ||
+    manifest.renderer.swiftShader !== true ||
+    manifest.renderer.browserVersion !== expectedBrowserVersion
+  ) {
+    throw new Error("Poster manifest renderer is invalid");
+  }
+
+  assertExactObjectKeys(
+    manifest.toolVersions,
+    ["playwright", "sharp"],
+    "Poster manifest toolVersions",
+  );
+  const packageJson = JSON.parse(
+    await readFile(path.join(root, "package.json"), "utf8"),
+  );
+  const expectedToolVersions = {
+    playwright: packageJson.devDependencies?.["@playwright/test"],
+    sharp: packageJson.devDependencies?.sharp,
+  };
+  if (
+    typeof expectedToolVersions.playwright !== "string" ||
+    typeof expectedToolVersions.sharp !== "string" ||
+    stringifyStable(manifest.toolVersions) !==
+      stringifyStable(expectedToolVersions)
+  ) {
+    throw new Error("Poster manifest toolVersions do not match package.json");
+  }
+
+  if (!Array.isArray(manifest.posters) || manifest.posters.length !== 20) {
+    throw new Error("Poster manifest must contain exactly 20 records");
+  }
+  for (const [index, expected] of expectedRecords.entries()) {
+    const record = manifest.posters[index];
+    assertExactObjectKeys(
+      record,
+      POSTER_RECORD_KEYS,
+      `Poster manifest record ${index}`,
+    );
+    for (const field of ["sceneId", "variant", "path", "width", "height"]) {
+      if (record[field] !== expected[field]) {
+        throw new Error(
+          `Poster manifest record ${index} ${field} does not match the exact poster contract`,
+        );
+      }
+    }
+    if (!Number.isSafeInteger(record.bytes) || record.bytes <= 0) {
+      throw new Error(`Poster manifest record ${index} bytes are invalid`);
+    }
+    if (!HASH_PATTERN.test(record.sha256 ?? "")) {
+      throw new Error(`Poster manifest record ${index} sha256 is invalid`);
+    }
+  }
+
+  const expectedRenderInputsSha256 = await renderInputsHasher(root);
+  if (manifest.renderInputsSha256 !== expectedRenderInputsSha256) {
+    throw new Error("Poster manifest renderInputsSha256 is stale");
+  }
+
+  for (const record of manifest.posters) {
+    const outputPath = path.join(root, record.path);
+    const stats = await lstat(outputPath);
+    if (!stats.isFile()) {
+      throw new Error(`Required poster is not a regular file: ${record.path}`);
+    }
+    const buffer = await readFile(outputPath);
+    if (stats.size !== buffer.byteLength || record.bytes !== buffer.byteLength) {
+      throw new Error(`Poster manifest byte length drifted: ${record.path}`);
+    }
+    if (sha256Buffer(buffer) !== record.sha256) {
+      throw new Error(`Poster manifest sha256 drifted: ${record.path}`);
+    }
+    let metadata;
+    try {
+      metadata = await sharp(buffer).metadata();
+    } catch (error) {
+      throw new Error(`Required poster is not a valid WebP: ${record.path}`, {
+        cause: error,
+      });
+    }
+    if (
+      metadata.format !== "webp" ||
+      metadata.width !== record.width ||
+      metadata.height !== record.height
+    ) {
+      throw new Error(`Required poster dimensions drifted: ${record.path}`);
+    }
+  }
+
+  return manifest;
+}
+
 export async function validatePosterContract({
   contract,
   manifest,
@@ -530,34 +754,13 @@ export async function validatePosterContract({
         throw new Error(`Duplicate poster output: ${output}`);
       }
       outputs.add(output);
-      if (!requirePosters) continue;
-      const outputPath = path.join(root, output);
-      if (!(await exists(outputPath))) {
-        throw new Error(`Required poster is missing: ${output}`);
-      }
-      const stats = await lstat(outputPath);
-      if (!stats.isFile() || stats.size <= 0) {
-        throw new Error(`Required poster is not a non-empty file: ${output}`);
-      }
-      const metadata = await sharp(outputPath).metadata();
-      const variant = contract.variants[variantName];
-      const expectedWidth = Math.round(
-        variant.viewportWidth * variant.deviceScaleFactor,
-      );
-      const expectedHeight = Math.round(
-        variant.viewportHeight * variant.deviceScaleFactor,
-      );
-      if (
-        metadata.format !== "webp" ||
-        metadata.width !== expectedWidth ||
-        metadata.height !== expectedHeight
-      ) {
-        throw new Error(`Required poster dimensions drifted: ${output}`);
-      }
     }
   }
   if (outputs.size !== 20) {
     throw new Error("Poster contract must contain exactly 20 unique outputs");
+  }
+  if (requirePosters) {
+    await validatePosterManifest({ contract, root });
   }
 }
 
