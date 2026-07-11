@@ -86,7 +86,7 @@ The foundation temporarily publishes four reference-frame copies and one raw gam
 | `assets/brand-approvals.json` | Richard's hash-bound League owned-art and Rocket no-official-logo visual approvals |
 | `public/models/assets-manifest.json` | Published GLB URLs, sizes, hashes, Meshopt requirements, animations, and embedded image records |
 | `assets/poster-contract.json` | Ten scene IDs, two variants, palettes, capture sizes, source/model relationships, and poster output paths |
-| `app/three/scene-registry.ts` | Live-scene camera, lighting, scale, framing, and adjacent preload policy |
+| `app/three/scene-registry.ts` | Live-scene camera, lighting, framing, and adjacent preload policy; normalized asset roots are not runtime-scaled |
 | `public/posters/poster-manifest.json` | Generated poster dimensions, hashes, registry/render-input bindings, and capture provenance |
 | `config/public-artifacts.json` | Immutable resume plus pending/generated deterministic social-card state |
 | `.openai/hosting.json` | Persisted Sites `project_id` plus only empty/null logical D1/R2 bindings; credentials and extra keys are forbidden |

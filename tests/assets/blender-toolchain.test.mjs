@@ -125,9 +125,16 @@ test("asset runtime requires Node with native Zstandard support", () => {
   assert.doesNotThrow(() =>
     assertAssetNodeRuntime({ version: "22.15.0", zstdAvailable: true }),
   );
+  assert.doesNotThrow(() =>
+    assertAssetNodeRuntime({ version: "24.0.0", zstdAvailable: true }),
+  );
   assert.throws(
     () => assertAssetNodeRuntime({ version: "22.14.0", zstdAvailable: true }),
-    /Node 22\.15\.0 or newer/,
+    /\^22\.15\.0 \|\| >=24\.0\.0/,
+  );
+  assert.throws(
+    () => assertAssetNodeRuntime({ version: "23.0.0", zstdAvailable: true }),
+    /\^22\.15\.0 \|\| >=24\.0\.0/,
   );
   assert.throws(
     () => assertAssetNodeRuntime({ version: "24.0.0", zstdAvailable: false }),

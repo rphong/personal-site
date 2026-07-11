@@ -21,14 +21,19 @@ function compareVersions(left, right) {
 }
 
 export const ASSET_NODE_MIN_VERSION = "22.15.0";
+export const ASSET_NODE_ENGINE = "^22.15.0 || >=24.0.0";
 
 export function assertAssetNodeRuntime({
   version = process.versions.node,
   zstdAvailable = typeof zlib.zstdDecompressSync === "function",
 } = {}) {
-  if (compareVersions(version, ASSET_NODE_MIN_VERSION) < 0) {
+  const major = Number(version.split(".")[0]);
+  if (
+    compareVersions(version, ASSET_NODE_MIN_VERSION) < 0 ||
+    major === 23
+  ) {
     throw new Error(
-      `Node ${ASSET_NODE_MIN_VERSION} or newer is required for compressed Blender sources; received ${version}.`,
+      `Node ${ASSET_NODE_ENGINE} is required for the asset and test toolchains; received ${version}.`,
     );
   }
   if (!zstdAvailable) {
@@ -126,7 +131,7 @@ export async function verifyAssetPackages({
     );
   }
 
-  const expectedNodeEngine = `>=${ASSET_NODE_MIN_VERSION}`;
+  const expectedNodeEngine = ASSET_NODE_ENGINE;
   if (packageJson.engines?.node !== expectedNodeEngine) {
     throw new Error(
       `Asset preflight: package.json engines.node must be exactly ${expectedNodeEngine}`,

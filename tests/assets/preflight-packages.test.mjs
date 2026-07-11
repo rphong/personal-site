@@ -62,12 +62,12 @@ async function writePackageFixture() {
   const packageJson = {
     dependencies: {},
     devDependencies: {},
-    engines: { node: ">=22.15.0" },
+    engines: { node: "^22.15.0 || >=24.0.0" },
   };
   const lockRoot = {
     dependencies: {},
     devDependencies: {},
-    engines: { node: ">=22.15.0" },
+    engines: { node: "^22.15.0 || >=24.0.0" },
   };
   const packageLock = {
     lockfileVersion: 3,

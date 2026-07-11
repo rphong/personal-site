@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
 import type * as ReactTypes from "react";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
 
 vi.mock("next/image", async () => {
   const { createElement } = await import("react");
@@ -33,3 +34,24 @@ vi.mock("next/link", async () => {
       createElement("a", props, children),
   };
 });
+
+Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
+  configurable: true,
+  value: true,
+  writable: true,
+});
+
+if (!("ResizeObserver" in globalThis)) {
+  class TestResizeObserver implements ResizeObserver {
+    disconnect() {}
+    observe() {}
+    unobserve() {}
+  }
+
+  Object.defineProperty(globalThis, "ResizeObserver", {
+    configurable: true,
+    value: TestResizeObserver,
+  });
+}
+
+afterEach(() => cleanup());

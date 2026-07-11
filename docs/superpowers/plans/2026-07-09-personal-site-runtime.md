@@ -68,6 +68,17 @@
 
 ## Task 1: Pin dependencies and establish the runtime type contract
 
+> **Implementation amendment (2026-07-11):** The React act-environment test
+> property must be writable. Testing Library 16.3 assigns that flag around
+> render and cleanup; the original non-writable descriptor makes every existing
+> component test fail before rendering. The stable scene type is also a
+> discriminated union: live IDs require a `/models/*.glb` URL, EOG and Paycom
+> require `null`, and `castShadow` is the literal `false` required by the v1
+> no-shadow-map contract. Runtime scale is intentionally omitted because the
+> asset contract exports one normalized root and registry camera framing owns
+> composition. The shared Node engine is narrowed to `^22.15.0 || >=24.0.0`
+> because Vitest 4 excludes Node 23 even though the asset minimum alone did not.
+
 **Files:**
 - Modify: `package.json`
 - Modify: `package-lock.json`
