@@ -1434,6 +1434,19 @@ git commit -m "feat: clamp decorative scene rotation"
 
 ## Task 6: Register sections, activate a shared viewport line, and reset routes
 
+> **Implementation amendment (2026-07-11):** The provider performs one guarded
+> render-time pathname reset instead of synchronous state updates in effects.
+> Context exposes `sceneActivationAllowed`; unknown routes remain poster-only
+> until an explicit capture activation, and normal activation rejects
+> cross-route IDs. Status/rotation callbacks are scoped to pathname, scene ID,
+> and activation version, while preference toggles invalidate the version.
+> Poster-only scenes resolve to `poster` before WebGL capability state. Posters
+> declare their actual 1920x1080 and 585x1266 intrinsic sizes, and
+> `SceneSection` accepts `contentClassName` so later grid layouts apply to the
+> content wrapper rather than collapsing into one outer-grid child. Focused
+> tests verify that active/loading and inactive/poster section attributes flip
+> together at the shared viewport line.
+
 **Files:**
 - Create: `app/three/scene-runtime-context.tsx`
 - Create: `app/three/scene-poster.tsx`
@@ -1549,7 +1562,7 @@ describe("SceneProvider", () => {
     });
   });
 
-  it("keeps direct route rendering complete as a poster outside the provider", () => {
+  it("renders complete poster markup outside the provider", () => {
     render(
       <SceneSection sceneId="projects-hero">fallback copy</SceneSection>,
     );
@@ -1687,6 +1700,7 @@ export interface SceneRuntimeContextValue {
   readonly activeSceneId: SceneId;
   readonly activeScene: SceneDefinition;
   readonly activationVersion: number;
+  readonly sceneActivationAllowed: boolean;
   readonly status: ThreeStatus;
   readonly rotation: SceneRotation;
   readonly threeInitialized: boolean;
@@ -3785,6 +3799,7 @@ export function SceneRuntimeHost() {
       scene={runtime.activeScene}
       status={runtime.status}
       canvasEnabled={
+        runtime.sceneActivationAllowed &&
         runtime.threeInitialized &&
         runtime.threeEnabled &&
         runtime.threeSupported
@@ -3965,6 +3980,10 @@ Create `app/three/scene-runtime.css`:
   pointer-events: none;
 }
 
+.page-hero__content {
+  display: contents;
+}
+
 .scene-section__content :is(a, button, input, select, textarea),
 .scene-copy-surface,
 .chapter-copy,
@@ -4092,6 +4111,14 @@ git commit -m "feat: mount persistent poster-first three runtime"
 
 ## Task 12: Replace foundation scene seams with registered runtime sections
 
+> **Execution-order amendment (2026-07-11):** Keep `SceneSection` internal while
+> Tasks 13 and 15 create the capture route and all canonical WebPs. Execute the
+> remaining route swap in this task only after
+> `node scripts/assets/validate.mjs --require-posters` passes. The practical
+> order after Task 11 is Tasks 13, 15, 12, 14, then 16. This prevents public
+> routes from briefly
+> publishing canonical poster URLs that return 404.
+
 **Files:**
 - Create: `app/three/foundation-runtime-integration.test.ts`
 - Modify: `content/site-content.ts`
@@ -4137,12 +4164,14 @@ describe("foundation to runtime integration", () => {
     ]);
 
     expect(hero).toContain("<SceneSection");
+    expect(hero).toContain('contentClassName="page-hero__content"');
     expect(hero).toContain('posterClassName="page-hero__poster"');
     expect(hero).toContain("posterPriority");
     expect(experiencePage.match(/<SceneSection\b/g)).toHaveLength(2);
     expect(projectsPage.match(/<SceneSection\b/g)).toHaveLength(1);
     expect(experiencePage.match(/className="chapter-model-space"/g)).toHaveLength(1);
     expect(projectsPage.match(/className="chapter-model-space"/g)).toHaveLength(1);
+    expect(experiencePage).toContain('contentClassName="content-grid"');
     expect(projectsPage).toContain('className="content-grid model-free-surface"');
     expect(experiencePage).not.toContain("<ScenePoster");
     expect(projectsPage).not.toContain("<ScenePoster");
@@ -4219,6 +4248,7 @@ export function PageHero({
   return (
     <SceneSection
       className={`page-hero page-hero--${titleStyle}`}
+      contentClassName="page-hero__content"
       posterClassName="page-hero__poster"
       posterPriority
       sceneId={sceneId}
@@ -4262,7 +4292,7 @@ Replace the existing introduction `<header ... data-scene-id="experience-intro">
 
 ```tsx
 <SceneSection
-  className="content-grid"
+  contentClassName="content-grid"
   data-required-live="true"
   sceneId="experience-intro"
 >
@@ -5146,6 +5176,11 @@ git commit -m "test: cover persistent three runtime in browser"
 
 ## Task 15: Generate deterministic desktop/mobile posters and their manifest
 
+> **Physical-pixel amendment (2026-07-11):** Canonical output dimensions equal
+> `viewport * deviceScaleFactor`. Desktop remains 1920x1080; the 390x844 mobile
+> viewport at 1.5 DPR produces 585x1266 files. Both browser and SVG sources use
+> those physical dimensions so capture output agrees with the asset validator.
+
 **Files:**
 - Create: `scripts/posters/lib.mjs`
 - Create: `scripts/posters/lib.d.mts`
@@ -5452,11 +5487,17 @@ test("captures every poster contract output deterministically", async ({ browser
   for (const scene of contract.scenes) {
     for (const variantName of ["desktop", "mobile"] as const) {
       const variant = contract.variants[variantName];
+      const outputWidth = Math.round(
+        variant.viewportWidth * variant.deviceScaleFactor,
+      );
+      const outputHeight = Math.round(
+        variant.viewportHeight * variant.deviceScaleFactor,
+      );
       let sourceBuffer: Buffer;
 
       if (scene.source.kind === "svg") {
         sourceBuffer = await sharp(path.join(root, scene.source.path))
-          .resize(variant.viewportWidth, variant.viewportHeight, {
+          .resize(outputWidth, outputHeight, {
             fit: "cover",
             position: "centre",
           })
@@ -5490,7 +5531,7 @@ test("captures every poster contract output deterministically", async ({ browser
           caret: "hide",
           fullPage: false,
           omitBackground: false,
-          scale: "css",
+          scale: "device",
           type: "png",
         });
         await context.close();
@@ -5504,15 +5545,15 @@ test("captures every poster contract output deterministically", async ({ browser
       await writeFile(candidatePath, webp);
       const metadata = await sharp(webp).metadata();
       const fileStats = await stat(candidatePath);
-      expect(metadata.width).toBe(variant.viewportWidth);
-      expect(metadata.height).toBe(variant.viewportHeight);
+      expect(metadata.width).toBe(outputWidth);
+      expect(metadata.height).toBe(outputHeight);
 
       const candidateRecord: PosterRecord = {
         sceneId: scene.id,
         variant: variantName,
         path: canonicalRelativePath,
-        width: variant.viewportWidth,
-        height: variant.viewportHeight,
+        width: outputWidth,
+        height: outputHeight,
         bytes: fileStats.size,
         sha256: sha256Buffer(webp),
       };
@@ -5657,7 +5698,7 @@ Expected: poster comparison PASS with at most 0.1% changed channels at tolerance
 
 - [ ] **Step 11: Visually approve the two cropped mobile poster-only compositions**
 
-Open each canonical file at its native 390×844 size:
+Open each canonical file at its native 585×1266 size:
 
 ```powershell
 Start-Process -FilePath "public\posters\eog-poster-mobile.webp"
