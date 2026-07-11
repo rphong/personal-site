@@ -1307,6 +1307,12 @@ git commit -m "feat: add local three preference policy"
 
 ## Task 5: Clamp temporary scene rotation as a pure policy
 
+> **Implementation amendment (2026-07-11):** Rotation limits are validated as
+> finite ordered ranges with a positive sensitivity and an in-range default.
+> Non-finite runtime pointer values are ignored, invalid current angles recover
+> to the registered default, and both axes remain clamped even when touch pitch
+> is disabled, preventing NaN from reaching the R3F Euler transform.
+
 **Files:**
 - Create: `app/three/rotation.test.ts`
 - Create: `app/three/rotation.ts`
