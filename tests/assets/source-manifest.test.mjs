@@ -35,6 +35,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 2097152,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "none",
   },
   {
@@ -48,6 +49,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 1,
+    animationNames: ["Dumbell L", "Dumbell R", "Lifting Weights"],
     textureMode: "none",
   },
   {
@@ -61,6 +63,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "none",
   },
   {
@@ -74,6 +77,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "webp",
     ownedTextures: [
       {
@@ -97,6 +101,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: ["EmptyAction", "Hat propellerAction.002"],
     textureMode: "none",
   },
   {
@@ -110,6 +115,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: ["RocketAction"],
     textureMode: "none",
     forbiddenBrandTerms: ["nasa", "meatball", "worm"],
   },
@@ -120,6 +126,7 @@ const EXPECTED_MODELS = [
     generator: "scripts/assets/blender/create_froggie_display.py",
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "webp",
     ownedTextures: [
       {
@@ -164,6 +171,12 @@ function createModelContractMutations() {
         label: `${key} minimumAnimations`,
         mutate: (manifest) => changeModel(manifest, key, (model) => {
           model.minimumAnimations += 1;
+        }),
+      },
+      {
+        label: `${key} animationNames`,
+        mutate: (manifest) => changeModel(manifest, key, (model) => {
+          model.animationNames = [...model.animationNames, "UnexpectedAction"];
         }),
       },
       {

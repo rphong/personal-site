@@ -23,6 +23,8 @@
     "assets:froggie:replace": "node scripts/assets/create-froggie-display.mjs --replace",
     "assets:export": "node scripts/assets/export-all.mjs",
     "assets:optimize": "node scripts/assets/optimize.mjs",
+    "assets:validate": "node scripts/assets/validate.mjs",
+    "assets:manifest": "node scripts/assets/validate.mjs --write-manifest",
     "test:assets": "node --test --test-concurrency=1 \"tests/assets/**/*.test.mjs\""
   },
   "dependencies": {

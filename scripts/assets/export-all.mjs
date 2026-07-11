@@ -194,6 +194,14 @@ export function assertExportableInspection(
       `${model.key}: expected at least ${model.minimumAnimations} animation clip(s)`,
     );
   }
+  if (
+    stringifyStable([...inspection.animations].sort()) !==
+    stringifyStable([...(model.animationNames ?? [])].sort())
+  ) {
+    throw new Error(
+      `${model.key}: canonical animation names differ from the authored manifest`,
+    );
+  }
 }
 
 function inspectRawGlb(bytes, model, expectedAnimations) {

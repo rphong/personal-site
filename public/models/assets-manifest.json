@@ -1,0 +1,215 @@
+{
+  "models": {
+    "crane": {
+      "animations": [],
+      "bytes": 14904,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "materials": 1,
+      "nodes": 30,
+      "primitives": 1,
+      "sha256": "84642cc6885f356594a22d992abcc8e1af106d1b713a74b00973cabf11c7c4c2",
+      "sourceSha256": "ba4e6fca53a8555eec8ccaad4424e44d52f0c26abb8f988f1367fa4a8729b983",
+      "textures": [],
+      "triangles": 288,
+      "url": "/models/crane.glb",
+      "validatorWarningCodes": [
+        "NODE_SKINNED_MESH_NON_ROOT"
+      ],
+      "vertices": 274
+    },
+    "crane-making-table": {
+      "animations": [],
+      "bytes": 41116,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "materials": 6,
+      "nodes": 40,
+      "primitives": 13,
+      "sha256": "eb113ee2542d254051ac9aae27326357301844f2581119c75be67380976bcccf",
+      "sourceSha256": "62b7ea16c5d59c994cb51580fa3fa118589b0947a5a7db9e1eb83da47b9967cd",
+      "textures": [],
+      "triangles": 1491,
+      "url": "/models/crane-making-table.glb",
+      "validatorWarningCodes": [
+        "NODE_SKINNED_MESH_NON_ROOT"
+      ],
+      "vertices": 2579
+    },
+    "crane-on-league": {
+      "animations": [],
+      "bytes": 83744,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "EXT_texture_webp",
+        "KHR_mesh_quantization"
+      ],
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "EXT_texture_webp",
+        "KHR_mesh_quantization"
+      ],
+      "materials": 8,
+      "nodes": 103,
+      "primitives": 76,
+      "sha256": "f064b758ecff96087730e3cce421b0d6f69a27d5fb733192ef7cd0ef361cb980",
+      "sourceSha256": "3b8fd5dd30a05219878132ef89acd015c71718e5dcc307c928488de141cf319a",
+      "textures": [
+        {
+          "bytes": 8082,
+          "height": 576,
+          "mimeType": "image/webp",
+          "name": "LeagueBanDashboard",
+          "sha256": "a15f06514ca977d81e0d7a86a460ee853d66b858d3cba8312399abfece586144",
+          "width": 1024
+        },
+        {
+          "bytes": 6772,
+          "height": 576,
+          "mimeType": "image/webp",
+          "name": "LeagueMatchHistory",
+          "sha256": "08d3fc66d0bf85c4ac78b920df3e5badcd0bd3e58a7229d5d9841b884119cc32",
+          "width": 1024
+        }
+      ],
+      "triangles": 1885,
+      "url": "/models/crane-on-league.glb",
+      "validatorWarningCodes": [
+        "NODE_SKINNED_MESH_NON_ROOT"
+      ],
+      "vertices": 3344
+    },
+    "crane-throwing-plane": {
+      "animations": [
+        "EmptyAction",
+        "Hat propellerAction.002"
+      ],
+      "bytes": 42468,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "materials": 6,
+      "nodes": 35,
+      "primitives": 7,
+      "sha256": "5c227aebaf14f62a30a4a548ca1e59be4d3ed2466fc8766f7ed6139291877074",
+      "sourceSha256": "04e00fb1d293847251e515c5217a37f13991524b78c5b8a8f9424961218c0307",
+      "textures": [],
+      "triangles": 1380,
+      "url": "/models/crane-throwing-plane.glb",
+      "validatorWarningCodes": [
+        "NODE_SKINNED_MESH_NON_ROOT"
+      ],
+      "vertices": 2338
+    },
+    "crane-workout": {
+      "animations": [
+        "Dumbell L",
+        "Dumbell R",
+        "Lifting Weights"
+      ],
+      "bytes": 54132,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "materials": 6,
+      "nodes": 35,
+      "primitives": 8,
+      "sha256": "7cc91fd45c5435171e454001eae140fdf5be8a5f620a7b5a2455e3f690b5a373",
+      "sourceSha256": "584ed6b3703a28e01bdd59b413f025bf91a2a8af86c4c586bed4fe13cb7117dc",
+      "textures": [],
+      "triangles": 836,
+      "url": "/models/crane-workout.glb",
+      "validatorWarningCodes": [
+        "NODE_SKINNED_MESH_NON_ROOT"
+      ],
+      "vertices": 1226
+    },
+    "froggie-display": {
+      "animations": [],
+      "bytes": 68976,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "EXT_texture_webp",
+        "KHR_mesh_quantization"
+      ],
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "EXT_texture_webp",
+        "KHR_mesh_quantization"
+      ],
+      "materials": 7,
+      "nodes": 14,
+      "primitives": 13,
+      "sha256": "8b29eaeb3e5d5102acff4be98a1202da1effee7425cb83987cf2dc135d9c9339",
+      "sourceSha256": "dff7f50f9e2aa8dd426a28b99a435dc691214d9ef994dd781dd1fd09f81feb2c",
+      "textures": [
+        {
+          "bytes": 47152,
+          "height": 576,
+          "mimeType": "image/webp",
+          "name": "FroggieGameplay",
+          "sha256": "49694aed1251ab3b8b7b092e690cfc5c31f1cd955701b2fb54e0b96afc465ec8",
+          "width": 1024
+        }
+      ],
+      "triangles": 798,
+      "url": "/models/froggie-display.glb",
+      "validatorWarningCodes": [],
+      "vertices": 1844
+    },
+    "rocket": {
+      "animations": [
+        "RocketAction"
+      ],
+      "bytes": 258356,
+      "extensionsRequired": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization"
+      ],
+      "materials": 7,
+      "nodes": 5,
+      "primitives": 7,
+      "sha256": "c6de5326f68a3d966a5ef909961c49d3cb69c58f325d840934350bc12cd0becc",
+      "sourceSha256": "15858eb87ba0ab8dfdd2c69041474bdf7de455fbea003f03cbdbec272994a1ac",
+      "textures": [],
+      "triangles": 9348,
+      "url": "/models/rocket.glb",
+      "validatorWarningCodes": [],
+      "vertices": 27708
+    }
+  },
+  "schemaVersion": 1,
+  "toolchain": {
+    "blender": "3.6.23",
+    "gltfTransform": "4.4.1",
+    "gltfValidator": "2.0.0-dev.3.10",
+    "meshoptimizer": "1.1.1",
+    "sharp": "0.35.3"
+  }
+}

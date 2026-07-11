@@ -22,6 +22,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 2097152,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "none",
   },
   {
@@ -35,6 +36,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 1,
+    animationNames: ["Dumbell L", "Dumbell R", "Lifting Weights"],
     textureMode: "none",
   },
   {
@@ -48,6 +50,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "none",
   },
   {
@@ -61,6 +64,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "webp",
     ownedTextures: [
       {
@@ -84,6 +88,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: ["EmptyAction", "Hat propellerAction.002"],
     textureMode: "none",
   },
   {
@@ -97,6 +102,7 @@ const EXPECTED_MODELS = [
     },
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: ["RocketAction"],
     textureMode: "none",
     forbiddenBrandTerms: ["nasa", "meatball", "worm"],
   },
@@ -107,6 +113,7 @@ const EXPECTED_MODELS = [
     generator: "scripts/assets/blender/create_froggie_display.py",
     maxBytes: 5242880,
     minimumAnimations: 0,
+    animationNames: [],
     textureMode: "webp",
     ownedTextures: [
       {
@@ -140,6 +147,13 @@ function validateModel(model, index) {
   invariant(model.output.endsWith(".glb"), `${label}.output must end in .glb`);
   invariant(Number.isInteger(model.maxBytes) && model.maxBytes > 0, `${label}.maxBytes must be a positive integer`);
   invariant(Number.isInteger(model.minimumAnimations) && model.minimumAnimations >= 0, `${label}.minimumAnimations must be a non-negative integer`);
+  invariant(Array.isArray(model.animationNames), `${label}.animationNames must be an array`);
+  invariant(
+    model.animationNames.length >= model.minimumAnimations &&
+      model.animationNames.every((name) => typeof name === "string" && name.trim().length > 0) &&
+      new Set(model.animationNames).size === model.animationNames.length,
+    `${label}.animationNames must contain unique non-empty names and satisfy minimumAnimations`,
+  );
   invariant(["none", "webp"].includes(model.textureMode), `${label}.textureMode must be none or webp`);
   invariant(model.ownedTextures === undefined || Array.isArray(model.ownedTextures), `${label}.ownedTextures must be an array`);
   for (const [textureIndex, texture] of (model.ownedTextures ?? []).entries()) {

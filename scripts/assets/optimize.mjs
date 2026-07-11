@@ -470,7 +470,7 @@ export async function optimizeAll({
 
       const outputBytes = await optimizer({ inputBytes, model });
       const bytes = outputBytes.length;
-      if (bytes <= 0 || bytes > model.maxBytes || bytes > manifest.hardMaxBytes) {
+      if (bytes <= 0 || bytes >= model.maxBytes || bytes >= manifest.hardMaxBytes) {
         throw new Error(
           `${model.key}: optimized size ${bytes} exceeds its byte budget`,
         );

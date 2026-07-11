@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "variants": {
+    "desktop": {
+      "viewportWidth": 1920,
+      "viewportHeight": 1080,
+      "deviceScaleFactor": 1
+    },
+    "mobile": {
+      "viewportWidth": 390,
+      "viewportHeight": 844,
+      "deviceScaleFactor": 1.5
+    }
+  },
+  "scenes": [
+    {
+      "id": "home-hero",
+      "route": "/",
+      "background": "#9ECCC0",
+      "source": { "kind": "web-scene", "modelKey": "crane" },
+      "outputs": { "desktop": "public/posters/home-hero-desktop.webp", "mobile": "public/posters/home-hero-mobile.webp" }
+    },
+    {
+      "id": "experience-hero",
+      "route": "/experience",
+      "background": "#DFA9B5",
+      "source": { "kind": "web-scene", "modelKey": "crane-workout" },
+      "outputs": { "desktop": "public/posters/experience-hero-desktop.webp", "mobile": "public/posters/experience-hero-mobile.webp" }
+    },
+    {
+      "id": "experience-intro",
+      "route": "/experience",
+      "background": "#DFA9B5",
+      "source": { "kind": "web-scene", "modelKey": "crane-throwing-plane" },
+      "outputs": { "desktop": "public/posters/experience-intro-desktop.webp", "mobile": "public/posters/experience-intro-mobile.webp" }
+    },
+    {
+      "id": "nasa-rocket",
+      "route": "/experience",
+      "background": "#DFA9B5",
+      "source": { "kind": "web-scene", "modelKey": "rocket" },
+      "outputs": { "desktop": "public/posters/nasa-rocket-desktop.webp", "mobile": "public/posters/nasa-rocket-mobile.webp" }
+    },
+    {
+      "id": "eog-poster",
+      "route": "/experience",
+      "background": "#DFA9B5",
+      "source": { "kind": "svg", "path": "assets/poster-sources/eog.svg" },
+      "outputs": { "desktop": "public/posters/eog-poster-desktop.webp", "mobile": "public/posters/eog-poster-mobile.webp" }
+    },
+    {
+      "id": "paycom-poster",
+      "route": "/experience",
+      "background": "#DFA9B5",
+      "source": { "kind": "svg", "path": "assets/poster-sources/paycom.svg" },
+      "outputs": { "desktop": "public/posters/paycom-poster-desktop.webp", "mobile": "public/posters/paycom-poster-mobile.webp" }
+    },
+    {
+      "id": "projects-hero",
+      "route": "/projects",
+      "background": "#AFD4E1",
+      "source": { "kind": "web-scene", "modelKey": "crane-making-table" },
+      "outputs": { "desktop": "public/posters/projects-hero-desktop.webp", "mobile": "public/posters/projects-hero-mobile.webp" }
+    },
+    {
+      "id": "league-ban",
+      "route": "/projects",
+      "background": "#AFD4E1",
+      "source": { "kind": "web-scene", "modelKey": "crane-on-league" },
+      "outputs": { "desktop": "public/posters/league-ban-desktop.webp", "mobile": "public/posters/league-ban-mobile.webp" }
+    },
+    {
+      "id": "froggie-adventures",
+      "route": "/projects",
+      "background": "#AFD4E1",
+      "source": { "kind": "web-scene", "modelKey": "froggie-display" },
+      "outputs": { "desktop": "public/posters/froggie-adventures-desktop.webp", "mobile": "public/posters/froggie-adventures-mobile.webp" }
+    },
+    {
+      "id": "contact-hero",
+      "route": "/contact",
+      "background": "#C9BAE4",
+      "source": { "kind": "web-scene", "modelKey": "crane-workout" },
+      "outputs": { "desktop": "public/posters/contact-hero-desktop.webp", "mobile": "public/posters/contact-hero-mobile.webp" }
+    }
+  ]
+}

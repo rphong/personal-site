@@ -3642,6 +3642,8 @@ Expected: commit succeeds and no raw GLB is staged.
 
 ### Task 7: Validate GLBs and establish deterministic model/poster manifests
 
+> **2026-07-11 implementation amendment:** Production validation remains Blender-free but begins with the shared Node 22.15+ and exact package-lock/install checks, then verifies every reviewed canonical/provenance/brand approval. The authored model manifest now pins the exact sorted animation names for Workout, Plane, and Rocket instead of relying on minimum counts. Published GLBs must pass the strict range/URI parser, exact root/image/extension/budget/animation/geometry policy, and Khronos validation with an exact warning allowlist: one `NODE_SKINNED_MESH_NON_ROOT` warning for each Crane scene and none for Rocket/Froggie; any drift blocks release. Texture records are mapped to plain `{ name, mimeType, bytes, sha256, width, height }` JSON and never serialize payload buffers. The entire ten-scene poster contract is deep-bound, including routes, exact backgrounds, model/source mappings, and twenty traversal-safe outputs; abstract SVG inputs are safety-checked, while absent WebP captures remain an intentional separate runtime gate. Manifest publication uses a unique same-directory candidate and atomic replacement so a failed rename preserves the prior file and cleans the candidate. This amendment supersedes the stale minimum-animation, blanket-warning, partially bound poster, raw image-record, direct-write, and Node 22.13 details below.
+
 **Files:**
 
 - Create: `assets/poster-sources/eog.svg`
@@ -3650,6 +3652,11 @@ Expected: commit succeeds and no raw GLB is staged.
 - Create: `scripts/assets/validate.mjs`
 - Create: `tests/assets/validation.test.mjs`
 - Create: `public/models/assets-manifest.json`
+- Modify: `assets/scene-sources.json`
+- Modify: `scripts/assets/lib/manifest.mjs`
+- Modify: `scripts/assets/export-all.mjs`
+- Modify: `scripts/assets/optimize.mjs`
+- Modify: `tests/assets/source-manifest.test.mjs`
 - Modify: `package.json`
 
 **Interfaces:**
