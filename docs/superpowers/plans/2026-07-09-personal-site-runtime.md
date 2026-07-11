@@ -379,6 +379,13 @@ git commit -m "test: establish three runtime contract"
 
 ## Task 2: Define the complete scene registry and adjacent preload policy
 
+> **Implementation amendment (2026-07-11):** Registry tests independently
+> bind the literal ten-scene order, adjacency chain, and scene-to-model map in
+> addition to checking the two generated manifests. `LIVE_SCENE_IDS` and route
+> heroes use `LiveSceneId`, every key light keeps `castShadow: false`, and both
+> poster-only scenes return an empty preload list instead of crossing into a
+> later live scene.
+
 **Files:**
 - Create: `app/three/scene-registry.test.ts`
 - Create: `app/three/registry-assets.contract.test.ts`
