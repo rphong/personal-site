@@ -3,6 +3,8 @@ import { Fraunces, Nunito_Sans } from "next/font/google";
 import { SiteShell } from "../components/site-shell";
 import { createPageMetadata } from "../lib/site-metadata";
 import "./globals.css";
+import { SceneProvider } from "./three/scene-provider";
+import "./three/scene-runtime.css";
 
 export function generateMetadata(): Metadata {
   return createPageMetadata("home");
@@ -28,7 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${nunitoSans.variable} ${fraunces.variable}`}>
-        <SiteShell>{children}</SiteShell>
+        <SceneProvider>
+          <SiteShell>{children}</SiteShell>
+        </SceneProvider>
       </body>
     </html>
   );

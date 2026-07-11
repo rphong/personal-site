@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { applyRotationDelta, resetSceneRotation } from "./rotation";
+import { SceneRuntimeBoundary } from "./scene-runtime-boundary";
 import {
   getRouteHeroSceneId,
   getSceneDefinition,
@@ -20,6 +21,7 @@ import {
   type SceneRuntimeContextValue,
 } from "./scene-runtime-context";
 import { useThreePreference } from "./three-preference";
+import { ThreePreferenceToggle } from "./three-preference-toggle";
 import type { SceneId, SceneRotation, ThreeStatus } from "./types";
 
 interface Registration {
@@ -287,7 +289,9 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
 
   return (
     <SceneRuntimeContext.Provider value={value}>
+      <SceneRuntimeBoundary />
       {children}
+      <ThreePreferenceToggle />
     </SceneRuntimeContext.Provider>
   );
 }

@@ -3361,6 +3361,29 @@ git commit -m "feat: add demand-loop scene canvas"
 > report against the new activation. The new first frame must still report
 > ready exactly once.
 
+> **Task 11 implementation amendment (2026-07-11):** The lightweight
+> poster/status host is always mounted so `disabled`, `unsupported`,
+> uninitialized, and poster-only modes retain the stable runtime DOM contract.
+> `SceneCanvasBoundary` uses `React.lazy` to fetch the Three/R3F module only
+> when `canvasEnabled` is true; Save-Data, explicit-off, unsupported, and
+> unauthorized routes therefore do not pay the heavy 3D payload. A narrow
+> runtime-sibling error boundary preserves the semantic page if either dynamic
+> chunk rejects.
+>
+> The final host uses one commit-installed current-attempt record rather than
+> render-time ref mutation or an unbounded activation map. The exact activation
+> descriptor and render generation guard every callback, timer, event, and
+> status write. Context restoration advances the generation once, spurious or
+> post-failure restoration is inert, a failure is terminal for that activation,
+> and StrictMode effect replay reuses the once-only event ledger. The 25-test
+> host/toggle/shell slice and 44-test provider/host/rotation/toggle slice
+> supersede the illustrative counts below.
+>
+> Canonical WebP poster URLs are intentionally owned by the registry but are
+> not published until the poster-generation task. Task 11 is therefore not a
+> standalone deploy point; continue through Tasks 13 and 15 before browser
+> release validation.
+
 **Files:**
 - Create: `app/three/scene-runtime-host.test.tsx`
 - Create: `app/three/scene-runtime-host.tsx`
@@ -3368,11 +3391,12 @@ git commit -m "feat: add demand-loop scene canvas"
 - Create: `app/three/three-preference-toggle.tsx`
 - Create: `app/three/runtime-shell.contract.test.ts`
 - Create: `app/three/scene-runtime-boundary.tsx`
+- Create: `app/three/scene-canvas-boundary.tsx`
 - Create: `app/three/scene-runtime.css`
 - Modify: `app/three/scene-provider.tsx`
 - Modify: `app/layout.tsx`
 
-- [ ] **Step 1: Write the failing host state-machine tests**
+- [x] **Step 1: Write the failing host state-machine tests**
 
 Create `app/three/scene-runtime-host.test.tsx`:
 
@@ -3666,7 +3690,7 @@ describe("SceneRuntimeHostView", () => {
 });
 ```
 
-- [ ] **Step 2: Write the failing preference-toggle test**
+- [x] **Step 2: Write the failing preference-toggle test**
 
 Create `app/three/three-preference-toggle.test.tsx`:
 
@@ -3730,7 +3754,7 @@ describe("ThreePreferenceToggle", () => {
 });
 ```
 
-- [ ] **Step 3: Write the failing dynamic-shell source contract**
+- [x] **Step 3: Write the failing dynamic-shell source contract**
 
 Create `app/three/runtime-shell.contract.test.ts`:
 
@@ -3773,7 +3797,7 @@ describe("persistent runtime shell", () => {
 });
 ```
 
-- [ ] **Step 4: Run host/shell/toggle tests to verify RED**
+- [x] **Step 4: Run host/shell/toggle tests to verify RED**
 
 Run:
 
@@ -3783,7 +3807,7 @@ npm run test:unit -- app/three/scene-runtime-host.test.tsx app/three/three-prefe
 
 Expected: FAIL with unresolved host, toggle, boundary, and stylesheet files.
 
-- [ ] **Step 5: Implement the host view and state machine**
+- [x] **Step 5: Implement the host view and state machine**
 
 Create `app/three/scene-runtime-host.tsx`:
 
@@ -3969,7 +3993,7 @@ export function SceneRuntimeHost() {
 }
 ```
 
-- [ ] **Step 6: Implement the accessible preference control**
+- [x] **Step 6: Implement the accessible preference control**
 
 Create `app/three/three-preference-toggle.tsx`:
 
@@ -3997,7 +4021,7 @@ export function ThreePreferenceToggle() {
 }
 ```
 
-- [ ] **Step 7: Implement the dynamic WebGL-only boundary**
+- [x] **Step 7: Implement the dynamic WebGL-only boundary**
 
 Create `app/three/scene-runtime-boundary.tsx`:
 
@@ -4020,7 +4044,7 @@ export function SceneRuntimeBoundary() {
 }
 ```
 
-- [ ] **Step 8: Mount exactly one boundary and toggle inside `SceneProvider`**
+- [x] **Step 8: Mount exactly one boundary and toggle inside `SceneProvider`**
 
 Add imports to `app/three/scene-provider.tsx`:
 
@@ -4041,7 +4065,7 @@ return (
 );
 ```
 
-- [ ] **Step 9: Add the fixed host and immediate poster/canvas CSS**
+- [x] **Step 9: Add the fixed host and immediate poster/canvas CSS**
 
 Create `app/three/scene-runtime.css`:
 
@@ -4214,7 +4238,7 @@ Create `app/three/scene-runtime.css`:
 }
 ```
 
-- [ ] **Step 10: Integrate the provider at the root layout boundary**
+- [x] **Step 10: Integrate the provider at the root layout boundary**
 
 Add these imports to `app/layout.tsx` while preserving the final metadata and font declarations supplied by the foundation plan:
 
@@ -4236,7 +4260,7 @@ The final body structure must be exactly:
 
 `components/site-shell.tsx` remains the foundation navigation client component. It owns navigation, semantic route children, and footer, and it must not import `SceneProvider`, `SceneRuntimeBoundary`, or `Canvas`.
 
-- [ ] **Step 11: Run host/shell/toggle tests to verify GREEN**
+- [x] **Step 11: Run host/shell/toggle tests to verify GREEN**
 
 Run:
 
@@ -4246,7 +4270,7 @@ npm run test:unit -- app/three/scene-runtime-host.test.tsx app/three/three-prefe
 
 Expected: PASS, `3 test files passed`, `14 tests passed`.
 
-- [ ] **Step 12: Refactor with the complete component slice and type check**
+- [x] **Step 12: Refactor with the complete component slice and type check**
 
 Run:
 
@@ -4257,10 +4281,10 @@ npm run test:unit -- app/three/scene-provider.test.tsx app/three/scene-runtime-h
 
 Expected: TypeScript exits 0; Vitest reports `4 test files passed`, `34 tests passed`.
 
-- [ ] **Step 13: Commit the persistent poster-first shell**
+- [x] **Step 13: Commit the persistent poster-first shell**
 
 ```bash
-git add app/layout.tsx app/three/scene-provider.tsx app/three/scene-runtime-boundary.tsx app/three/scene-runtime-host.tsx app/three/scene-runtime-host.test.tsx app/three/three-preference-toggle.tsx app/three/three-preference-toggle.test.tsx app/three/scene-runtime.css app/three/runtime-shell.contract.test.ts
+git add app/layout.tsx app/three/scene-provider.tsx app/three/scene-canvas-boundary.tsx app/three/scene-runtime-boundary.tsx app/three/scene-runtime-host.tsx app/three/scene-runtime-host.test.tsx app/three/three-preference-toggle.tsx app/three/three-preference-toggle.test.tsx app/three/scene-runtime.css app/three/runtime-shell.contract.test.ts docs/superpowers/plans/2026-07-09-personal-site-runtime.md
 git commit -m "feat: mount persistent poster-first three runtime"
 ```
 
