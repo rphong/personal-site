@@ -92,6 +92,37 @@
       "originalSha256": "d66c19df5fa3e30b7efbc71553ebb8f2db6bef5be5544005e5da792959941382",
       "source": "assets/blender/CraneWorkout.blend"
     },
+    "froggie-display": {
+      "canonicalSha256": "dff7f50f9e2aa8dd426a28b99a435dc691214d9ef994dd781dd1fd09f81feb2c",
+      "generatorInputs": {
+        "froggieCapture": {
+          "bytes": 2337398,
+          "crop": {
+            "height": 1060,
+            "left": 254,
+            "top": 294,
+            "width": 2118
+          },
+          "output": {
+            "background": "#1C1C1C",
+            "fit": "contain",
+            "height": 900,
+            "path": "assets/blender/textures/froggie-gameplay-screen.png",
+            "width": 1600
+          },
+          "sha256": "64e43e332977a6e0d9d5b97a515dcfe0aa8846197d2e938034e73e913549d613",
+          "source": "ReferenceImages/Froggie Gameplay.png"
+        },
+        "ownedTextures": {
+          "FroggieGameplay": {
+            "bytes": 1387967,
+            "path": "assets/blender/textures/froggie-gameplay-screen.png",
+            "sha256": "7d41addf21abdbcec45ee7de9c8a33de76233770c3ef7ab3b825aea9f95cdb54"
+          }
+        }
+      },
+      "source": "assets/blender/FroggieDisplay.blend"
+    },
     "rocket": {
       "canonicalSha256": "15858eb87ba0ab8dfdd2c69041474bdf7de455fbea003f03cbdbec272994a1ac",
       "generatorInputs": {

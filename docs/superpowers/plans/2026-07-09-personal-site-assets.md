@@ -2335,6 +2335,8 @@ Expected: commit succeeds; no texture path points outside `assets/blender/textur
 
 ### Task 4: Author the canonical Froggie display scene
 
+> **2026-07-10 implementation amendment:** The reviewed first pass is a deterministic frog-faced arcade kiosk rather than the older nine-object inline recipe below. The export payload contains thirteen semantically named mesh objects beneath one inert `WEB_EXPORT_ROOT`, including paired frog eyes and pupils, a 3.45 by 1.94 gameplay screen, and applied low-poly bevel geometry. Exact authored palette values are converted from sRGB hex to Blender linear color. A deterministic look-at reference camera and Eevee key light stay outside the export root. The scene contains no ground, receiver, shadow-catcher, particle, volume, animation, or unapplied modifier; website grounding is owned by the transparent WebGL canvas and optional contact/blob shadow. The Node wrapper stages the bound Froggie texture, candidate blend, and provenance as one rollback-safe promotion, and refuses implicit canonical replacement. Focused tests compare two independent semantic builds, enforce the ground-free export contract, and prove blend/texture rollback when provenance finalization fails. The approval preview is rendered in GPU Eevee with transparent film and composited over the exact Projects route blue `#AFD4E1`. This amendment supersedes conflicting geometry, world, camera-Euler, and non-transactional wrapper details in the original inline recipe while preserving its source, provenance, size, command, and approval requirements.
+
 **Files:**
 
 - Create: `assets/blender/FroggieDisplay.blend`
@@ -2342,6 +2344,7 @@ Expected: commit succeeds; no texture path points outside `assets/blender/textur
 - Create: `scripts/assets/blender/create_froggie_display.py`
 - Create: `tests/assets/froggie-display.test.mjs`
 - Modify: `assets/blender/source-provenance.json`
+- Modify: `scripts/assets/blender/inspect_scene.py`
 - Modify: `package.json`
 
 **Interfaces:**

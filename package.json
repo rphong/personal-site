@@ -19,6 +19,8 @@
     "assets:preflight": "node scripts/assets/preflight.mjs",
     "assets:textures": "node scripts/assets/render-source-textures.mjs",
     "assets:prepare": "node scripts/assets/prepare-all.mjs",
+    "assets:froggie": "node scripts/assets/create-froggie-display.mjs",
+    "assets:froggie:replace": "node scripts/assets/create-froggie-display.mjs --replace",
     "test:assets": "node --test --test-concurrency=1 \"tests/assets/**/*.test.mjs\""
   },
   "dependencies": {

@@ -208,6 +208,20 @@ def main():
         ],
         "imageNames": sorted(image.name for image in bpy.data.images),
         "materialNames": sorted(material.name for material in bpy.data.materials),
+        "materialImages": {
+            material.name: sorted({
+                node.image.name
+                for node in material.node_tree.nodes
+                if node.bl_idname == "ShaderNodeTexImage" and node.image
+            })
+            for material in sorted(bpy.data.materials, key=lambda item: item.name)
+            if material.use_nodes
+            and material.node_tree
+            and any(
+                node.bl_idname == "ShaderNodeTexImage" and node.image
+                for node in material.node_tree.nodes
+            )
+        },
         "materialNodeTypes": material_node_types,
         "meshNames": sorted(mesh.name for mesh in bpy.data.meshes),
         "nonFileImages": sorted(
@@ -220,6 +234,24 @@ def main():
             for obj in sorted(export_objects, key=lambda item: item.name)
             if obj and custom_properties(obj)
         },
+        "objectDimensions": {
+            obj.name: rounded_vector(obj.dimensions)
+            for obj in sorted(export_objects, key=lambda item: item.name)
+            if obj
+        },
+        "objectMaterials": {
+            obj.name: [
+                slot.material.name if slot.material else None
+                for slot in obj.material_slots
+            ]
+            for obj in sorted(export_objects, key=lambda item: item.name)
+            if obj
+        },
+        "objectModifiers": {
+            obj.name: sorted(modifier.type for modifier in obj.modifiers)
+            for obj in sorted(export_objects, key=lambda item: item.name)
+            if obj
+        },
         "objectAnimationBindings": {
             obj.name: object_animation_binding(obj)
             for obj in sorted(bpy.data.objects, key=lambda item: item.name)
@@ -227,6 +259,20 @@ def main():
         },
         "objectParents": {
             obj.name: obj.parent.name if obj.parent else None
+            for obj in sorted(export_objects, key=lambda item: item.name)
+            if obj
+        },
+        "objectTypes": {
+            obj.name: obj.type
+            for obj in sorted(export_objects, key=lambda item: item.name)
+            if obj
+        },
+        "objectTransforms": {
+            obj.name: {
+                "location": rounded_vector(obj.location),
+                "rotationEuler": rounded_vector(obj.rotation_euler),
+                "scale": rounded_vector(obj.scale),
+            }
             for obj in sorted(export_objects, key=lambda item: item.name)
             if obj
         },
