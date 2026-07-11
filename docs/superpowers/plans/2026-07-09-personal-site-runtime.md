@@ -2357,9 +2357,25 @@ git commit -m "feat: add scroll-safe scene rotation input"
 
 ## Task 8: Rotate one normalized R3F root and invalidate on demand
 
+> **Implementation amendment (2026-07-11):** The final source supersedes the
+> minimal snippets below. A shared `normalizeSceneRotation` policy independently
+> defaults/clamps both axes before Three.js sees them; the root uses explicit
+> `YXZ` order, radians, and a layout effect that mutates before invalidating.
+> Effective pose plus `sceneId` drive the effect, so equivalent clamped inputs
+> stay idle while scene changes render. StrictMode assertions use relative call
+> counts because duplicate development invalidations coalesce in R3F. Tests also
+> cover replacement callbacks, keyed model detachment/remount, and exact
+> post-mutation pose observation. `@types/three@0.185.1` is a required direct
+> dev dependency for isolated pnpm type resolution. The focused slice contains
+> 26 tests.
+
 **Files:**
 - Create: `app/three/normalized-scene-root.test.tsx`
 - Create: `app/three/normalized-scene-root.tsx`
+- Modify: `app/three/rotation.test.ts`
+- Modify: `app/three/rotation.ts`
+- Modify: `package.json`
+- Modify: `package-lock.json`
 
 - [ ] **Step 1: Write the failing R3F root test**
 
@@ -2461,7 +2477,7 @@ export function NormalizedSceneRoot({
 
 Run: `npm run test:unit -- app/three/normalized-scene-root.test.tsx`
 
-Expected: PASS, `1 passed`.
+Expected: PASS, `4 passed`.
 
 - [ ] **Step 5: Refactor through the full rotation test slice**
 
@@ -2472,12 +2488,12 @@ npm run test:unit -- app/three/rotation.test.ts app/three/scene-rotation-area.te
 npx tsc --noEmit
 ```
 
-Expected: Vitest reports `3 test files passed`, `22 tests passed`; TypeScript exits 0.
+Expected: Vitest reports `3 test files passed`, `26 tests passed`; TypeScript exits 0.
 
 - [ ] **Step 6: Commit normalized scene rotation**
 
 ```bash
-git add app/three/normalized-scene-root.tsx app/three/normalized-scene-root.test.tsx
+git add app/three/normalized-scene-root.tsx app/three/normalized-scene-root.test.tsx app/three/rotation.ts app/three/rotation.test.ts package.json package-lock.json docs/superpowers/plans/2026-07-09-personal-site-runtime.md
 git commit -m "feat: rotate normalized scene root on demand"
 ```
 
@@ -2885,6 +2901,12 @@ git commit -m "feat: load meshopt scenes with bounded cache"
 ```
 
 ## Task 10: Build the sole demand-loop canvas and context lifecycle
+
+> **Demand-loop acceptance amendment (2026-07-11):** In addition to the
+> injected invalidation spy from Task 8, Task 10/14 must exercise the real
+> `frameloop="demand"`: a changed effective pose schedules a rendered frame,
+> the frame observes the new Euler (never one pose behind), and an identical or
+> idle pose does not keep rendering continuously.
 
 **Files:**
 - Create: `app/three/scene-error-boundary.test.tsx`

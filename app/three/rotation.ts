@@ -50,13 +50,7 @@ export function applyRotationDelta(
   delta: RotationDelta,
   limits: RotationLimits,
 ): SceneRotation {
-  assertValidLimits(limits);
-  const yaw = safeCurrent(current.yaw, limits.default.yaw, limits.yaw);
-  const pitch = safeCurrent(
-    current.pitch,
-    limits.default.pitch,
-    limits.pitch,
-  );
+  const { yaw, pitch } = normalizeSceneRotation(current, limits);
   return {
     yaw: clamp(
       yaw + safeDelta(delta.deltaX) * limits.degreesPerPixel,
@@ -68,6 +62,17 @@ export function applyRotationDelta(
           limits.pitch,
         )
       : pitch,
+  };
+}
+
+export function normalizeSceneRotation(
+  current: SceneRotation,
+  limits: RotationLimits,
+): SceneRotation {
+  assertValidLimits(limits);
+  return {
+    yaw: safeCurrent(current.yaw, limits.default.yaw, limits.yaw),
+    pitch: safeCurrent(current.pitch, limits.default.pitch, limits.pitch),
   };
 }
 

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applyRotationDelta, resetSceneRotation } from "./rotation";
+import {
+  applyRotationDelta,
+  normalizeSceneRotation,
+  resetSceneRotation,
+} from "./rotation";
 import type { RotationLimits } from "./types";
 
 const limits: RotationLimits = {
@@ -34,6 +38,15 @@ describe("scene rotation policy", () => {
     const rotation = resetSceneRotation(limits);
     expect(rotation).toEqual({ yaw: 3, pitch: -2 });
     expect(rotation).not.toBe(limits.default);
+  });
+
+  it("normalizes each axis independently at a rendering boundary", () => {
+    expect(
+      normalizeSceneRotation(
+        { yaw: Number.NaN, pitch: 99 },
+        limits,
+      ),
+    ).toEqual({ yaw: 3, pitch: 8 });
   });
 
   it("keeps fractional movement precise without mutating its inputs", () => {
