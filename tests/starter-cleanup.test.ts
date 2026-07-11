@@ -28,9 +28,10 @@ describe("starter cleanup", () => {
 
     expect(packageJson.name).toBe("personal-site");
     expect(packageJson.scripts).toMatchObject({
-      dev: "vinext dev",
-      build: "vinext build",
-      start: "vinext start",
+      dev: "node scripts/run-vinext.mjs dev",
+      build:
+        "node scripts/assets/validate.mjs && node scripts/run-vinext.mjs build",
+      start: "node scripts/run-vinext.mjs start",
       test: "npm run test:unit && npm run test:html",
       "test:unit": "vitest run",
       "test:html": "npm run build && node --test tests/rendered-html.test.mjs",

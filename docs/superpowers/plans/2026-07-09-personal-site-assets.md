@@ -4490,6 +4490,17 @@ Expected: commit succeeds; no `public/posters/*.webp` file is invented by this a
 
 ### Task 8: Wire reproducible orchestration, repository hygiene, and the build gate
 
+> **Implementation amendment (2026-07-11):** Full regeneration writes all
+> seven optimized GLBs and the generated manifest to one repository-local
+> staging directory, validates that staged set, and promotes the eight files as
+> a single rollback-safe batch. Normal production builds only validate the
+> committed files and launch the pinned local Vinext CLI through
+> `process.execPath` with `shell: false`; they never resolve or start Blender.
+> `validateAll` accepts an explicit staged model root for this workflow. The
+> source-texture stage renders and compares candidates without mutating tracked
+> PNGs, and an exclusive local lock rejects concurrent regeneration. The npm
+> lockfile remains unchanged unless dependency tooling actually changes it.
+
 **Files:**
 
 - Create: `scripts/assets/build-all.mjs`

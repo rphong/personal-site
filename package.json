@@ -6,9 +6,9 @@
     "node": ">=22.15.0"
   },
   "scripts": {
-    "dev": "vinext dev",
-    "build": "vinext build",
-    "start": "vinext start",
+    "dev": "node scripts/run-vinext.mjs dev",
+    "build": "node scripts/assets/validate.mjs && node scripts/run-vinext.mjs build",
+    "start": "node scripts/run-vinext.mjs start",
     "test": "npm run test:unit && npm run test:html",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp",
     "test:unit": "vitest run",
@@ -25,6 +25,7 @@
     "assets:optimize": "node scripts/assets/optimize.mjs",
     "assets:validate": "node scripts/assets/validate.mjs",
     "assets:manifest": "node scripts/assets/validate.mjs --write-manifest",
+    "assets:all": "node scripts/assets/build-all.mjs",
     "test:assets": "node --test --test-concurrency=1 \"tests/assets/**/*.test.mjs\""
   },
   "dependencies": {

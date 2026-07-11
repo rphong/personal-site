@@ -602,6 +602,7 @@ export async function writeManifestAtomically(
 
 export async function validateAll({
   root = process.cwd(),
+  modelRoot = null,
   outputPath = path.join(root, "public/models/assets-manifest.json"),
   requirePosters = false,
   writeManifest = false,
@@ -630,7 +631,9 @@ export async function validateAll({
 
   const models = {};
   for (const model of manifest.models) {
-    const modelPath = path.join(root, model.output);
+    const modelPath = modelRoot
+      ? path.join(modelRoot, path.basename(model.output))
+      : path.join(root, model.output);
     const buffer = await readFile(modelPath);
     const json = readGlbJsonBuffer(buffer);
     const rawImagePayloads = readGlbImagePayloads(buffer, json);
