@@ -37,6 +37,12 @@ describe("site shell", () => {
       "aria-current",
       "page",
     );
+    expect(navigation.querySelectorAll(".site-nav__indicator")).toHaveLength(1);
+    expect(
+      screen
+        .getByRole("link", { name: "Projects" })
+        .querySelector(".site-nav__indicator"),
+    ).toBeInTheDocument();
     expect(container.firstElementChild).toHaveAttribute(
       "data-route",
       "projects",
@@ -71,6 +77,10 @@ describe("site shell", () => {
 
     expect(css).toMatch(/color-scheme:\s*light/);
     expect(css).toMatch(/\.site-nav\s*\{[\s\S]*position:\s*fixed/);
+    expect(css).not.toMatch(/\.site-nav\s*\{[^}]*border-bottom:/);
+    expect(css).toMatch(
+      /\.site-nav__inner\s*\{[^}]*justify-content:\s*center/,
+    );
     expect(css).toMatch(/\.skip-link:focus-visible\s*\{[\s\S]*transform:\s*none/);
     expect(css).toMatch(/\.scene-stage\s*\{[\s\S]*height:\s*100svh/);
     expect(css).toMatch(/\.page-hero\s*\{[\s\S]*min-height:\s*calc\(100svh/);

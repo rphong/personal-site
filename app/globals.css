@@ -108,14 +108,13 @@ img {
   left: 0;
   z-index: 50;
   height: var(--nav-height);
-  border-bottom: 1px solid var(--hairline);
   background: var(--route-background);
 }
 
 .site-nav__inner {
   display: grid;
   grid-template-columns: repeat(4, max-content);
-  justify-content: end;
+  justify-content: center;
   align-items: center;
   gap: clamp(1.1rem, 3vw, 3rem);
   width: min(100%, calc(var(--content-max) + 2 * var(--page-gutter)));
@@ -137,14 +136,14 @@ img {
   color: var(--route-accent);
 }
 
-.site-nav__link[aria-current="page"]::after {
+.site-nav__indicator {
   position: absolute;
   right: 0;
   bottom: -0.42rem;
   left: 0;
   height: 0.12rem;
   background: currentColor;
-  content: "";
+  pointer-events: none;
 }
 
 .site-shell__content {
