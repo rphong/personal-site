@@ -11,6 +11,7 @@ const setEnabled = vi.fn();
 let preferenceInitialized = true;
 let preferenceEnabled = true;
 let preferenceSupported = true;
+const probeRendered = vi.fn();
 
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
@@ -64,6 +65,7 @@ class ObserverMock implements IntersectionObserver {
 }
 
 function Probe() {
+  probeRendered();
   const runtime = useSceneRuntime();
   const firstSetStatus = useRef(runtime.setStatus);
   const firstRotateBy = useRef(runtime.rotateBy);
@@ -112,6 +114,7 @@ describe("SceneProvider", () => {
     preferenceInitialized = true;
     preferenceEnabled = true;
     preferenceSupported = true;
+    probeRendered.mockClear();
     ObserverMock.instances = [];
     Object.defineProperty(globalThis, "IntersectionObserver", {
       configurable: true,
@@ -121,6 +124,25 @@ describe("SceneProvider", () => {
       configurable: true,
       value: 1_000,
     });
+  });
+
+  it("does not publish a new state for an equivalent clamped pose", async () => {
+    render(
+      <SceneProvider>
+        <ExperienceSections />
+        <Probe />
+      </SceneProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("runtime-probe")).toHaveTextContent("loading"),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "rotate" }));
+    expect(screen.getByTestId("runtime-probe")).toHaveTextContent("25,8");
+    const rendersAtClamp = probeRendered.mock.calls.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "rotate" }));
+    expect(probeRendered).toHaveBeenCalledTimes(rendersAtClamp);
   });
 
   it("renders complete poster markup outside the provider", () => {

@@ -38,7 +38,6 @@ export function SceneModel({
     <NormalizedSceneRoot
       sceneId={scene.id}
       rotation={rotation}
-      invalidate={invalidate}
     >
       <group ref={attachment} name={`scene-instance:${scene.id}`} />
     </NormalizedSceneRoot>

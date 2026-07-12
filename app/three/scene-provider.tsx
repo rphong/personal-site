@@ -229,14 +229,18 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
         ) {
           return current;
         }
-        return {
-          ...current,
-          rotation: applyRotationDelta(
-            current.rotation,
-            { deltaX, deltaY, allowPitch },
-            getSceneDefinition(current.activeSceneId).rotation,
-          ),
-        };
+        const rotation = applyRotationDelta(
+          current.rotation,
+          { deltaX, deltaY, allowPitch },
+          getSceneDefinition(current.activeSceneId).rotation,
+        );
+        if (
+          rotation.yaw === current.rotation.yaw &&
+          rotation.pitch === current.rotation.pitch
+        ) {
+          return current;
+        }
+        return { ...current, rotation };
       });
     },
     [activationPathname, activationSceneId, activationVersion],

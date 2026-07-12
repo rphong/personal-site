@@ -22,6 +22,11 @@ import { AdjacentScenePreloader } from "./adjacent-scene-preloader";
 import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneErrorBoundary } from "./scene-error-boundary";
 import { SceneModel } from "./scene-model";
+import {
+  connectSceneRuntimeDebug,
+  disconnectSceneRuntimeDebug,
+  recordSceneRuntimeDebugFrame,
+} from "./scene-runtime-debug";
 import type {
   SceneDefinition,
   SceneFailureReason,
@@ -299,6 +304,21 @@ function DemandRenderer({
   const reported = useRef(false);
   const failed = useRef(false);
   const frameTimes = useRef<number[]>([]);
+  const renderer = useThree((state) => state.gl) as WebGLRenderer;
+  const renderedScene = useThree((state) => state.scene);
+  const camera = useThree((state) => state.camera);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useLayoutEffect(() => {
+    connectSceneRuntimeDebug(
+      renderer,
+      renderedScene,
+      camera,
+      invalidate,
+      sceneId,
+    );
+    return () => disconnectSceneRuntimeDebug(invalidate, sceneId);
+  }, [camera, invalidate, renderedScene, renderer, sceneId]);
 
   useFrame(({ gl, scene, camera }) => {
     if (
@@ -322,6 +342,8 @@ function DemandRenderer({
       ) {
         return;
       }
+
+      recordSceneRuntimeDebugFrame(renderer, scene, sceneId);
 
       const now = performance.now();
       const previous = frameTimes.current.at(-1);

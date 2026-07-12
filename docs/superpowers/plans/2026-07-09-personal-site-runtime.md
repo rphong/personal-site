@@ -4956,11 +4956,32 @@ git commit -m "feat: add gated scene capture route"
 > the activation emits at most one ready performance mark. No offscreen contact
 > shadow passes or native shadow maps are permitted in the v1 renderer.
 
+> **Task 14 implementation amendment (2026-07-12):** The final suite contains
+> nineteen Chromium cases. A test-opt-in debug port (or the gated capture route
+> with controls) exposes the exact renderer, WebGL2 context, demand frame count,
+> rendered-root Euler, DPR/buffer bounds, shadow state, and resource-cache
+> ownership without activating on ordinary visits or canonical poster capture.
+> A deterministic post-decode hook proves that rapid activation disposes a late
+> decoded source only after disposal completes. Browser acceptance uncovered
+> two real demand-loop defects: the provider published equal clamped poses and
+> `NormalizedSceneRoot` imperatively invalidated in addition to R3F's demand
+> invalidation. The provider now preserves equal state and root rotation is a
+> declarative Three prop, producing one frame per effective pose and none for
+> equivalent overflow.
+
 **Files:**
 - Create: `tests/browser/runtime-fixtures.ts`
 - Create: `tests/browser/three-runtime.spec.ts`
+- Create: `app/three/scene-runtime-debug.ts`
+- Create: `app/three/scene-resource-debug.ts`
+- Modify: `app/three/scene-canvas.tsx`
+- Modify: `app/three/scene-loader.ts`
+- Modify: `app/three/scene-provider.tsx`
+- Modify: `app/three/scene-provider.test.tsx`
+- Modify: `app/three/normalized-scene-root.tsx`
+- Modify: `app/three/normalized-scene-root.test.tsx`
 
-- [ ] **Step 1: Write the complete failing browser suite**
+- [x] **Step 1: Write the complete failing browser suite**
 
 Create `tests/browser/three-runtime.spec.ts`:
 
@@ -5350,19 +5371,19 @@ test("allows vertical touch scrolling while horizontal drag stays bounded", asyn
 });
 ```
 
-- [ ] **Step 2: Install the pinned Chromium binary**
+- [x] **Step 2: Install the pinned Chromium binary**
 
 Run: `npx playwright install chromium`
 
 Expected: Chromium matching `@playwright/test@1.61.1` installs successfully.
 
-- [ ] **Step 3: Run the browser suite to verify RED**
+- [x] **Step 3: Run the browser suite to verify RED**
 
 Run: `npm run test:browser`
 
 Expected: FAIL with `Cannot find module './runtime-fixtures'`.
 
-- [ ] **Step 4: Implement deterministic browser assets and capture navigation helpers**
+- [x] **Step 4: Implement deterministic browser assets and capture navigation helpers**
 
 Create `tests/browser/runtime-fixtures.ts`:
 
@@ -5438,27 +5459,31 @@ export async function openScene(
 
 Expected: the helper compiles without importing application code and every model response is a deterministic valid glTF document.
 
-- [ ] **Step 5: Run the complete browser suite to verify GREEN**
+- [x] **Step 5: Run the complete browser suite to verify GREEN**
 
 Run: `npm run test:browser`
 
-Expected: PASS, `9 passed`; the same Canvas node survives real Home-to-Experience navigation and the NASA-to-EOG-to-Paycom-to-Projects sequence, Home loads first and only then idles in the Experience model, Save-Data and unsupported modes request no GLBs, context loss keeps the poster, and vertical touch scroll remains functional.
+Expected: PASS, `19 passed`; the exact Canvas, renderer, and context survive
+real navigation, poster-only bridges, failure, and recovery. The final suite
+also proves committed Meshopt decode, timeout/reactivation ownership, speculative
+promotion, late disposal, DPR bounds, exact demand frames, trusted mouse/touch
+behavior, and real `WEBGL_lose_context` recovery.
 
-- [ ] **Step 6: Refactor through unit, component, R3F, and browser layers**
+- [x] **Step 6: Refactor through unit, component, R3F, and browser layers**
 
 Run:
 
 ```bash
-npm run test:unit
-npm run test:browser
+pnpm test:unit
+pnpm test:browser
 ```
 
 Expected: all Vitest files and all nine Chromium tests pass.
 
-- [ ] **Step 7: Commit browser resilience coverage**
+- [x] **Step 7: Commit browser resilience coverage**
 
 ```bash
-git add tests/browser/runtime-fixtures.ts tests/browser/three-runtime.spec.ts
+git add app/three/normalized-scene-root.tsx app/three/normalized-scene-root.test.tsx app/three/scene-canvas.tsx app/three/scene-loader.ts app/three/scene-model.tsx app/three/scene-provider.tsx app/three/scene-provider.test.tsx app/three/scene-resource-debug.ts app/three/scene-runtime-debug.ts tests/browser/runtime-fixtures.ts tests/browser/three-runtime.spec.ts public/posters/poster-manifest.json docs/superpowers/plans/2026-07-09-personal-site-runtime.md
 git commit -m "test: cover persistent three runtime in browser"
 ```
 

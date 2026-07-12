@@ -4,6 +4,10 @@ import {
   type GLTF,
 } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import {
+  recordSceneResourceDebug,
+  runSceneModelAfterDecodeHook,
+} from "./scene-resource-debug";
 import { SceneResourceCache } from "./scene-resource-cache";
 import { disposeSceneSource } from "./scene-resources";
 
@@ -68,8 +72,14 @@ export async function loadSceneGltf(
 
   try {
     const gltf = await parseSceneGltf(data, modelBasePath(url));
+    await runSceneModelAfterDecodeHook(url);
     if (signal.aborted) {
       disposeSceneSource(gltf.scene);
+      recordSceneResourceDebug(
+        "dispose-late-decoded",
+        sceneCache.size,
+        url,
+      );
       const error = new Error(`Scene model fetch aborted for ${url}`);
       error.name = "AbortError";
       throw error;
@@ -81,31 +91,57 @@ export async function loadSceneGltf(
   }
 }
 
+const decodedUrls = new WeakMap<GLTF, string>();
+
 const sceneCache = new SceneResourceCache<GLTF>({
-  load: (url, signal) => loadSceneGltf(url, signal),
-  dispose: (gltf) => disposeSceneSource(gltf.scene),
+  load: async (url, signal) => {
+    recordSceneResourceDebug("load-start", sceneCache.size, url);
+    try {
+      const gltf = await loadSceneGltf(url, signal);
+      decodedUrls.set(gltf, url);
+      recordSceneResourceDebug("load-resolved", sceneCache.size, url);
+      return gltf;
+    } catch (error) {
+      recordSceneResourceDebug("load-rejected", sceneCache.size, url);
+      throw error;
+    }
+  },
+  dispose: (gltf) => {
+    recordSceneResourceDebug("dispose", sceneCache.size, decodedUrls.get(gltf));
+    disposeSceneSource(gltf.scene);
+  },
 });
 
 export function useSceneGltf(url: string, owner: string): GLTF {
-  return use(sceneCache.activate(url, owner));
+  const promise = sceneCache.activate(url, owner);
+  recordSceneResourceDebug("activate", sceneCache.size, url, owner);
+  return use(promise);
 }
 
 export function preloadSceneModel(url: string): Promise<GLTF> {
-  return sceneCache.preload(url);
+  const promise = sceneCache.preload(url);
+  recordSceneResourceDebug("preload", sceneCache.size, url);
+  return promise;
 }
 
 export function clearSceneModel(url: string): void {
   sceneCache.clear(url);
+  recordSceneResourceDebug("clear", sceneCache.size, url);
 }
 
 export function acquireSceneModelHostLease(): symbol {
-  return sceneCache.acquireHostLease();
+  const lease = sceneCache.acquireHostLease();
+  recordSceneResourceDebug("host-acquire", sceneCache.size);
+  return lease;
 }
 
 export function releaseSceneModelHostLease(lease: symbol): boolean {
-  return sceneCache.releaseHostLease(lease);
+  const released = sceneCache.releaseHostLease(lease);
+  if (released) recordSceneResourceDebug("host-release", sceneCache.size);
+  return released;
 }
 
 export function clearAllSceneModels(): void {
   sceneCache.clearAll();
+  recordSceneResourceDebug("clear-all", sceneCache.size);
 }
