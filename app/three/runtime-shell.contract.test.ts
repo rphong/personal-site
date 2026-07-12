@@ -106,6 +106,15 @@ describe("persistent runtime shell", () => {
     expect(cssRule(css, ".page-hero.scene-section")).toMatch(
       /background:\s*transparent/,
     );
+    const layeredHero = cssRule(css, ".page-hero--layered.scene-section");
+    expect(layeredHero).toMatch(/z-index:\s*auto/);
+    expect(layeredHero).toMatch(/isolation:\s*auto/);
+    expect(css).toMatch(
+      /\.page-hero--layered\s+\.page-hero__copy\s*\{[^}]*z-index:\s*0/,
+    );
+    expect(css).toMatch(
+      /body:has\(\.page-hero--layered\[data-scene-active="true"\]\)\s+\.scene-runtime\s*\{[^}]*background:\s*transparent/,
+    );
     expect(cssRule(css, ".model-free-surface")).toMatch(
       /background:\s*var\(--surface\)/,
     );

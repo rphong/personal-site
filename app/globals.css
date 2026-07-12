@@ -236,6 +236,38 @@ img {
   letter-spacing: -0.07em;
 }
 
+.page-hero--layered {
+  padding: 0;
+}
+
+.page-hero--layered .page-hero__wash {
+  display: none;
+}
+
+.page-hero--layered .page-hero__copy {
+  position: absolute;
+  top: 61.5%;
+  left: 50%;
+  z-index: 2;
+  width: 100%;
+  transform: translate(-50%, -50%);
+}
+
+.page-hero--layered h1 {
+  width: max-content;
+  max-width: none;
+  margin-inline: auto;
+  color: var(--route-pale-heading);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(5.5rem, 13.333vw, 16rem);
+  font-weight: 650;
+  letter-spacing: -0.075em;
+  line-height: 0.8;
+  text-align: center;
+  text-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .page-hero__summary {
   max-width: 35rem;
   margin: clamp(2rem, 5vh, 3.5rem) 0 0;
@@ -512,6 +544,25 @@ img {
 
   .page-hero h1 {
     font-size: clamp(3.8rem, 20vw, 6.5rem);
+  }
+
+  .page-hero--layered {
+    align-items: center;
+    padding: 0;
+  }
+
+  .page-hero--layered .page-hero__copy {
+    top: 61.5%;
+    padding-inline: var(--page-gutter);
+  }
+
+  .page-hero--layered h1 {
+    width: auto;
+    max-width: 100%;
+    font-size: clamp(4.8rem, 23vw, 7.25rem);
+    line-height: 0.76;
+    text-wrap: balance;
+    white-space: normal;
   }
 
   .site-shell[data-route="experience"] .page-hero h1 {

@@ -49,6 +49,7 @@ export const POSTER_RENDER_INPUT_PATHS = [
   "public/models/assets-manifest.json",
   "scripts/posters/browser.mjs",
   "scripts/posters/capture.mjs",
+  "scripts/posters/foreground.mjs",
   "scripts/posters/lib.mjs",
   "scripts/posters/pipeline.mjs",
   "scripts/run-vinext.mjs",

@@ -106,8 +106,25 @@
   background: transparent;
 }
 
+.page-hero--layered.scene-section {
+  z-index: auto;
+  isolation: auto;
+}
+
 .page-hero .scene-section__poster.page-hero__poster {
   z-index: -3;
+}
+
+.page-hero--layered .scene-section__poster.page-hero__poster {
+  z-index: 1;
+}
+
+.page-hero--layered .page-hero__copy {
+  z-index: 0;
+}
+
+body:has(.page-hero--layered[data-scene-active="true"]) .scene-runtime {
+  background: transparent;
 }
 
 .site-shell[data-route="experience"] .content-surface,

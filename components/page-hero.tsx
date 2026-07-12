@@ -6,6 +6,7 @@ type PageHeroProps = {
   title: string;
   summary: string;
   sceneId: SceneId;
+  composition?: "standard" | "layered";
   titleStyle?: "rounded" | "editorial";
 };
 
@@ -14,11 +15,14 @@ export function PageHero({
   title,
   summary,
   sceneId,
+  composition = "standard",
   titleStyle = "rounded",
 }: PageHeroProps) {
+  const isLayered = composition === "layered";
+
   return (
     <SceneSection
-      className={`page-hero page-hero--${titleStyle}`}
+      className={`page-hero page-hero--${titleStyle} page-hero--${composition}`}
       contentClassName="page-hero__content"
       posterClassName="page-hero__poster"
       posterPriority
@@ -26,13 +30,15 @@ export function PageHero({
     >
       <div className="page-hero__wash" aria-hidden="true" />
       <div className="page-hero__copy">
-        <p className="eyebrow">{eyebrow}</p>
+        {isLayered ? null : <p className="eyebrow">{eyebrow}</p>}
         <h1>{title}</h1>
-        <p className="page-hero__summary">{summary}</p>
+        {isLayered ? null : <p className="page-hero__summary">{summary}</p>}
       </div>
-      <a className="scroll-cue" href="#page-content">
-        Continue
-      </a>
+      {isLayered ? null : (
+        <a className="scroll-cue" href="#page-content">
+          Continue
+        </a>
+      )}
     </SceneSection>
   );
 }

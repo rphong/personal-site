@@ -92,6 +92,7 @@ const EXPECTED_POSTER_SCENES = [
     },
     route: "/",
     source: { kind: "web-scene", modelKey: "crane" },
+    transparent: true,
   },
   {
     background: "#DFA9B5",

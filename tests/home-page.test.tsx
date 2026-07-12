@@ -21,6 +21,14 @@ describe("home page", () => {
       screen.getByText("Currently building software at EOG Resources."),
     ).toBeInTheDocument();
     expect(container.querySelector('[data-scene-id="home-hero"]')).not.toBeNull();
+    expect(container.querySelector(".page-hero--layered")).not.toBeNull();
+    expect(screen.queryByText("Personal home")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Software developer, curious builder, and collector of projects with a little personality.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Continue" })).not.toBeInTheDocument();
     expect(screen.getByText(home.nonWorkInterest)).toBeInTheDocument();
     expect(screen.getByText(home.technicalCuriosity)).toBeInTheDocument();
 

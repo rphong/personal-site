@@ -83,6 +83,12 @@ describe("site shell", () => {
     expect(css).not.toMatch(
       /\.page-hero h1\s*\{[^}]*color:\s*var\(--route-pale-heading\)/,
     );
+    expect(css).toMatch(
+      /\.page-hero--layered h1\s*\{[^}]*color:\s*var\(--route-pale-heading\)/,
+    );
+    expect(css).toMatch(
+      /\.page-hero--layered h1\s*\{[^}]*white-space:\s*nowrap/,
+    );
     expect(css).toMatch(/\.content-surface\s*\{[\s\S]*background:\s*#eeeeee/i);
     expect(css).toMatch(
       /@media\s*\(max-width:\s*767px\)\s*\{[\s\S]*?\.content-grid\s*\{[^}]*grid-template-columns:\s*1fr;/,

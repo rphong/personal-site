@@ -9,6 +9,7 @@ import {
   posterRenderInputsSha256,
   sha256Buffer,
 } from "../../scripts/posters/lib.mjs";
+import { makeFlatBackgroundTransparent } from "../../scripts/posters/foreground.mjs";
 import { posterOperationRoot } from "../../scripts/posters/pipeline.mjs";
 
 type VariantName = "desktop" | "mobile";
@@ -25,6 +26,7 @@ interface PosterContract {
   readonly scenes: readonly {
     readonly id: string;
     readonly background: string;
+    readonly transparent?: true;
     readonly source:
       | { readonly kind: "web-scene"; readonly modelKey: string }
       | { readonly kind: "svg"; readonly path: string };
@@ -393,6 +395,13 @@ test("captures every poster contract output deterministically", async ({
         }
       }
 
+      if (scene.transparent) {
+        sourceBuffer = await makeFlatBackgroundTransparent(
+          sourceBuffer,
+          scene.background,
+        );
+      }
+
       const source = await decodedPixels(sourceBuffer);
       expect(source.info.width).toBe(outputWidth);
       expect(source.info.height).toBe(outputHeight);
@@ -429,7 +438,7 @@ test("captures every poster contract output deterministically", async ({
         outputHeight,
         rgbFromHex(scene.background),
       );
-      expect(inspection.minimumAlpha).toBe(255);
+      expect(inspection.minimumAlpha).toBe(scene.transparent ? 0 : 255);
       expect(
         inspection.backgroundMaxDelta,
         `${scene.id}/${variantName} corner background drifted`,

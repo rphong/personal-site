@@ -163,6 +163,26 @@ describe("final public assets", () => {
     }
   });
 
+  it("keeps both home hero posters transparent for foreground layering", async () => {
+    for (const variant of variants) {
+      const { data } = await sharp(
+        absolutePath(`public/posters/home-hero-${variant}.webp`),
+      )
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      let minimumAlpha = 255;
+      let maximumAlpha = 0;
+      for (let index = 3; index < data.length; index += 4) {
+        minimumAlpha = Math.min(minimumAlpha, data[index]);
+        maximumAlpha = Math.max(maximumAlpha, data[index]);
+      }
+
+      expect(minimumAlpha).toBe(0);
+      expect(maximumAlpha).toBe(255);
+    }
+  });
+
   it("does not publish retired full-frame or raw gameplay exports", async () => {
     const retiredPublicFiles = [
       "public/posters/home-reference.png",

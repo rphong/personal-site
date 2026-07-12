@@ -75,7 +75,7 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/home-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([4.2, 2.7, 6.8], [-2.2, 0.8, 1.4], 34, DESKTOP_AREA),
+    desktop: frame([4.2, 2.7, 6.8], [1, 0.8, 1.4], 34, DESKTOP_AREA),
     mobile: frame([3.8, 3.2, 8.6], [0.2, -0.4, 0.3], 38, MOBILE_AREA),
     lighting: lighting("#9ECCC0", [4, 6, 5]),
     rotation: DEFAULT_ROTATION,

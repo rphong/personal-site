@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "contractSha256": "3b26839da330b709c4599994f2fa59608b2e6ec721db409157f3196a1ad07a62",
-  "renderInputsSha256": "74362f39051b9b94f6a2900a6059a1c91e5b2d2121aa2d4671b1682eb95fff0d",
+  "contractSha256": "b97b814ea306e5ed5912e27696b2601be81e1135f6d57937cfebcb7531145ad2",
+  "renderInputsSha256": "73f7e661b25f9ebe223824746df62c5eb22f888d787745d5b07be824c9d7d6f3",
   "renderer": {
     "browser": "chromium",
     "browserVersion": "149.0.7827.55",
@@ -108,8 +108,8 @@
       "path": "public/posters/home-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 11474,
-      "sha256": "88cd6b6fa8b381ee96d7127b4fbf12a4fbc28df6323dc59bd23e2378842154f7"
+      "bytes": 13260,
+      "sha256": "2f5bfa44677b7942762dd54c7662f7f3ead013c416711f2d053471d03afa9cd9"
     },
     {
       "sceneId": "home-hero",
@@ -117,8 +117,8 @@
       "path": "public/posters/home-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 7864,
-      "sha256": "5b8db46598f0d06cde6cdbd81e310b97e1dab89196341af8f3c0a226206117fd"
+      "bytes": 9464,
+      "sha256": "3b7b49e3a16a0aa4c1022fc93cbeaf98226aeba4d08cc238273aeb9b8d90979a"
     },
     {
       "sceneId": "league-ban",

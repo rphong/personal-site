@@ -17,6 +17,7 @@
       "id": "home-hero",
       "route": "/",
       "background": "#9ECCC0",
+      "transparent": true,
       "source": { "kind": "web-scene", "modelKey": "crane" },
       "outputs": { "desktop": "public/posters/home-hero-desktop.webp", "mobile": "public/posters/home-hero-mobile.webp" }
     },
