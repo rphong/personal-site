@@ -1,3 +1,5 @@
+import type { SceneId } from "../app/three/types";
+
 export type RouteKey = "home" | "experience" | "projects" | "contact";
 
 export type RoutePalette = {
@@ -14,8 +16,7 @@ export type RouteDefinition = {
   readonly description: string;
   readonly eyebrow: string;
   readonly heroSummary: string;
-  readonly heroPoster: string;
-  readonly heroSceneId: string;
+  readonly heroSceneId: SceneId;
   readonly order: number;
   readonly palette: RoutePalette;
 };
@@ -33,7 +34,6 @@ export const routes = [
     eyebrow: "Personal home",
     heroSummary:
       "Software developer, curious builder, and collector of projects with a little personality.",
-    heroPoster: "/posters/home-reference.png",
     heroSceneId: "home-hero",
     order: 0,
     palette: {
@@ -52,7 +52,6 @@ export const routes = [
     eyebrow: "Work, in my own words",
     heroSummary:
       "Three chapters shaped by high-stakes tools, technical data, and software people depend on.",
-    heroPoster: "/posters/experience-reference.png",
     heroSceneId: "experience-hero",
     order: 1,
     palette: {
@@ -71,7 +70,6 @@ export const routes = [
     eyebrow: "Built for the fun of it",
     heroSummary:
       "A pair of formative projects remembered for curiosity, collaboration, and flair.",
-    heroPoster: "/posters/projects-reference.png",
     heroSceneId: "projects-hero",
     order: 2,
     palette: {
@@ -90,7 +88,6 @@ export const routes = [
     eyebrow: "Say hello",
     heroSummary:
       "The direct routes to my inbox, work, code, résumé, and phone.",
-    heroPoster: "/posters/contact-reference.png",
     heroSceneId: "contact-hero",
     order: 3,
     palette: {
@@ -166,9 +163,7 @@ export type RoleEntry = {
 export type ExperienceChapter = {
   readonly id: "nasa" | "eog" | "paycom";
   readonly company: string;
-  readonly sceneId: string;
-  readonly poster: string;
-  readonly requiredLive: boolean;
+  readonly sceneId: SceneId;
   readonly roles: readonly RoleEntry[];
   readonly narrative: readonly string[];
 };
@@ -178,8 +173,6 @@ export const experience = [
     id: "nasa",
     company: "NASA",
     sceneId: "nasa-rocket",
-    poster: "/posters/experience-reference.png",
-    requiredLive: true,
     roles: [
       { title: "Software Developer Intern", dates: "2023–2024" },
       { title: "Software Developer Intern", dates: "2022–2023" },
@@ -193,8 +186,6 @@ export const experience = [
     id: "eog",
     company: "EOG Resources",
     sceneId: "eog-poster",
-    poster: "/posters/experience-reference.png",
-    requiredLive: false,
     roles: [
       { title: "Software Developer", dates: "2025–Present" },
       { title: "Software Developer Intern", dates: "2024" },
@@ -208,8 +199,6 @@ export const experience = [
     id: "paycom",
     company: "Paycom",
     sceneId: "paycom-poster",
-    poster: "/posters/experience-reference.png",
-    requiredLive: false,
     roles: [{ title: "Software Developer Intern", dates: "2023" }],
     narrative: [
       "At Paycom, I built an ASP.NET and React Web API that used FedEx APIs to support more than 15,000 packages each week, then built out a test suite that reached 90 percent coverage.",
@@ -221,10 +210,7 @@ export const experience = [
 export type ProjectChapter = {
   readonly id: "league-ban-site" | "froggie-adventures";
   readonly name: string;
-  readonly sceneId: string;
-  readonly poster: string;
-  readonly posterAlt: string;
-  readonly requiredLive: true;
+  readonly sceneId: SceneId;
   readonly reflection: string;
   readonly technicalLine: string;
   readonly repository: string;
@@ -235,9 +221,6 @@ export const projects = [
     id: "league-ban-site",
     name: "League Ban Site",
     sceneId: "league-ban",
-    poster: "/posters/projects-reference.png",
-    posterAlt: "",
-    requiredLive: true,
     reflection:
       "League Ban Site began with a simple connection: I was already playing League of Legends, and I wanted to see what would happen if I turned that familiarity into a coding project. Building around match data made software feel less abstract and pushed me to keep learning because the problem already meant something to me.",
     technicalLine:
@@ -248,10 +231,6 @@ export const projects = [
     id: "froggie-adventures",
     name: "Froggie Adventures",
     sceneId: "froggie-adventures",
-    poster: "/images/froggie-gameplay.png",
-    posterAlt:
-      "Froggie Adventures gameplay showing a pixel-art frog, platforms, hearts, and a score counter.",
-    requiredLive: true,
     reflection:
       "Froggie Adventures is the project I remember most for the teamwork. I helped lead a three-person team, which meant sharing ideas, dividing responsibility, and bringing separate pieces together into something we could demonstrate publicly. Seeing the game take shape as a group made shipping feel as rewarding as the code itself.",
     technicalLine:

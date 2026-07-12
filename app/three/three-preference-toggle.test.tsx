@@ -58,28 +58,38 @@ describe("ThreePreferenceToggle", () => {
     expect(setThreeEnabled).toHaveBeenCalledWith(true);
   });
 
-  it.each([
-    { initialized: false, supported: true, label: "3D loading" },
-    { initialized: true, supported: false, label: "3D unavailable" },
-  ])(
-    "disables the control when initialized=$initialized and supported=$supported",
-    ({ initialized, supported, label }) => {
-      const { runtime, setThreeEnabled } = value({
-        threeEnabled: false,
-        threeInitialized: initialized,
-        threeSupported: supported,
-      });
-      render(
-        <SceneRuntimeContext.Provider value={runtime}>
-          <ThreePreferenceToggle />
-        </SceneRuntimeContext.Provider>,
-      );
+  it("does not server-render a permanently loading control before initialization", () => {
+    const { runtime } = value({
+      threeEnabled: false,
+      threeInitialized: false,
+    });
+    render(
+      <SceneRuntimeContext.Provider value={runtime}>
+        <ThreePreferenceToggle />
+      </SceneRuntimeContext.Provider>,
+    );
 
-      const button = screen.getByRole("button", { name: label });
-      expect(button).toBeDisabled();
-      expect(button).toHaveAttribute("type", "button");
-      fireEvent.click(button);
-      expect(setThreeEnabled).not.toHaveBeenCalled();
-    },
-  );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByText("3D loading")).not.toBeInTheDocument();
+  });
+
+  it("disables the control when WebGL2 is unavailable", () => {
+    const label = "3D unavailable";
+    const { runtime, setThreeEnabled } = value({
+      threeEnabled: false,
+      threeInitialized: true,
+      threeSupported: false,
+    });
+    render(
+      <SceneRuntimeContext.Provider value={runtime}>
+        <ThreePreferenceToggle />
+      </SceneRuntimeContext.Provider>,
+    );
+
+    const button = screen.getByRole("button", { name: label });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("type", "button");
+    fireEvent.click(button);
+    expect(setThreeEnabled).not.toHaveBeenCalled();
+  });
 });

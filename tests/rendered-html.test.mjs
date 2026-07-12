@@ -57,6 +57,142 @@ function chapterHeadings(html) {
     .map(([, , text]) => text.replace(/<[^>]*>/g, "").trim());
 }
 
+const ROUTE_SCENE_POSTERS = {
+  "/": [
+    {
+      id: "home-hero",
+      desktop: "/posters/home-hero-desktop.webp",
+      mobile: "/posters/home-hero-mobile.webp",
+      requiredLive: "true",
+    },
+  ],
+  "/experience": [
+    {
+      id: "experience-hero",
+      desktop: "/posters/experience-hero-desktop.webp",
+      mobile: "/posters/experience-hero-mobile.webp",
+      requiredLive: "true",
+    },
+    {
+      id: "experience-intro",
+      desktop: "/posters/experience-intro-desktop.webp",
+      mobile: "/posters/experience-intro-mobile.webp",
+      requiredLive: "true",
+    },
+    {
+      id: "nasa-rocket",
+      desktop: "/posters/nasa-rocket-desktop.webp",
+      mobile: "/posters/nasa-rocket-mobile.webp",
+      requiredLive: "true",
+    },
+    {
+      id: "eog-poster",
+      desktop: "/posters/eog-poster-desktop.webp",
+      mobile: "/posters/eog-poster-mobile.webp",
+      requiredLive: "false",
+    },
+    {
+      id: "paycom-poster",
+      desktop: "/posters/paycom-poster-desktop.webp",
+      mobile: "/posters/paycom-poster-mobile.webp",
+      requiredLive: "false",
+    },
+  ],
+  "/projects": [
+    {
+      id: "projects-hero",
+      desktop: "/posters/projects-hero-desktop.webp",
+      mobile: "/posters/projects-hero-mobile.webp",
+      requiredLive: "true",
+    },
+    {
+      id: "league-ban",
+      desktop: "/posters/league-ban-desktop.webp",
+      mobile: "/posters/league-ban-mobile.webp",
+      requiredLive: "true",
+    },
+    {
+      id: "froggie-adventures",
+      desktop: "/posters/froggie-adventures-desktop.webp",
+      mobile: "/posters/froggie-adventures-mobile.webp",
+      requiredLive: "true",
+    },
+  ],
+  "/contact": [
+    {
+      id: "contact-hero",
+      desktop: "/posters/contact-hero-desktop.webp",
+      mobile: "/posters/contact-hero-mobile.webp",
+      requiredLive: "true",
+    },
+  ],
+};
+
+function initialDocument(html) {
+  const closingTag = "</html>";
+  const end = html.indexOf(closingTag);
+  assert.notEqual(end, -1, "response should contain a complete HTML document");
+  return html.slice(0, end + closingTag.length);
+}
+
+function attributeValue(attributes, name) {
+  const match = attributes.match(
+    new RegExp(`(?:^|\\s)${escapeRegExp(name)}=(["'])(.*?)\\1`, "i"),
+  );
+  return match?.[2];
+}
+
+function assertScenePosters(html, expected) {
+  const document = initialDocument(html);
+  const posterPattern =
+    /<section\b(?<section>[^>]*)>\s*<picture\b(?<picture>[^>]*)>\s*<source\b(?<source>[^>]*)>\s*<img\b(?<image>[^>]*)>\s*<\/picture>/gi;
+  const actual = [...document.matchAll(posterPattern)]
+    .filter(({ groups }) => attributeValue(groups?.section ?? "", "data-scene-id"))
+    .map(({ groups }) => ({
+      id: attributeValue(groups?.section ?? "", "data-scene-id"),
+      requiredLive: attributeValue(
+        groups?.section ?? "",
+        "data-required-live",
+      ),
+      status: attributeValue(groups?.section ?? "", "data-scene-status"),
+      pictureClass: attributeValue(groups?.picture ?? "", "class"),
+      media: attributeValue(groups?.source ?? "", "media"),
+      mobile: attributeValue(groups?.source ?? "", "srcSet"),
+      mobileWidth: attributeValue(groups?.source ?? "", "width"),
+      mobileHeight: attributeValue(groups?.source ?? "", "height"),
+      desktop: attributeValue(groups?.image ?? "", "src"),
+      alt: attributeValue(groups?.image ?? "", "alt"),
+      desktopWidth: attributeValue(groups?.image ?? "", "width"),
+      desktopHeight: attributeValue(groups?.image ?? "", "height"),
+      decoding: attributeValue(groups?.image ?? "", "decoding"),
+    }));
+
+  assert.deepEqual(
+    actual.map(({ id }) => id),
+    expected.map(({ id }) => id),
+    "scene sections should server-render once in canonical route order",
+  );
+
+  for (const [index, scene] of expected.entries()) {
+    const poster = actual[index];
+    assert.equal(poster.requiredLive, scene.requiredLive, `${scene.id} live policy`);
+    assert.equal(poster.status, "poster", `${scene.id} should SSR poster-first`);
+    assert.match(poster.pictureClass ?? "", /\bscene-section__poster\b/);
+    assert.equal(poster.media, "(max-width: 767px)");
+    assert.equal(poster.mobile, scene.mobile, `${scene.id} mobile poster`);
+    assert.equal(poster.mobileWidth, "585");
+    assert.equal(poster.mobileHeight, "1266");
+    assert.equal(poster.desktop, scene.desktop, `${scene.id} desktop poster`);
+    assert.equal(poster.alt, "", `${scene.id} poster should be decorative`);
+    assert.equal(poster.desktopWidth, "1920");
+    assert.equal(poster.desktopHeight, "1080");
+    assert.equal(poster.decoding, "async");
+  }
+
+  assert.doesNotMatch(document, /<canvas\b/i);
+  assert.doesNotMatch(document, /\/models\/[^"']+\.glb/i);
+}
+
 function assertPreviewDocument(html, title) {
   assert.match(
     html,
@@ -68,6 +204,7 @@ function assertPreviewDocument(html, title) {
   );
   assert.doesNotMatch(html, /<link[^>]+rel=["']canonical["']/i);
   assert.doesNotMatch(html, /<canvas\b/i);
+  assert.doesNotMatch(html, /3D loading|three-preference-toggle/i);
   const nav = html.match(
     /<nav[^>]*aria-label=["']Primary navigation["'][\s\S]*?<\/nav>/i,
   );
@@ -87,6 +224,7 @@ test("server-renders the complete Home page without JavaScript or WebGL", async 
 
   const html = await response.text();
   assertPreviewDocument(html, "Richard Phong");
+  assertScenePosters(html, ROUTE_SCENE_POSTERS["/"]);
   assert.match(html, /Welcome to my corner/);
   assert.match(html, /Currently building software at EOG Resources/);
   assert.match(
@@ -102,6 +240,7 @@ test("server-renders Experience in approved company order", async () => {
 
   const html = await response.text();
   assertPreviewDocument(html, "Experience | Richard Phong");
+  assertScenePosters(html, ROUTE_SCENE_POSTERS["/experience"]);
   assert.deepEqual(chapterHeadings(html), ["NASA", "EOG Resources", "Paycom"]);
   assert.match(html, /Artemis III preparation/);
   assert.match(html, /40–50 seconds to 1–2 seconds/);
@@ -114,6 +253,7 @@ test("server-renders Projects in approved project order", async () => {
 
   const html = await response.text();
   assertPreviewDocument(html, "Projects | Richard Phong");
+  assertScenePosters(html, ROUTE_SCENE_POSTERS["/projects"]);
   assert.deepEqual(chapterHeadings(html), [
     "League Ban Site",
     "Froggie Adventures",
@@ -129,6 +269,7 @@ test("server-renders every Contact action and privacy disclosure", async () => {
 
   const html = await response.text();
   assertPreviewDocument(html, "Contact | Richard Phong");
+  assertScenePosters(html, ROUTE_SCENE_POSTERS["/contact"]);
   assert.match(html, /mailto:richard\.phong424@gmail\.com/);
   assert.match(html, /https:\/\/linkedin\.com\/in\/richard-phong\//);
   assert.match(html, /https:\/\/github\.com\/rphong/);
@@ -159,7 +300,7 @@ test("preview image requests fall back when optimizer bindings are absent", asyn
   const worker = await loadWorker("image-without-bindings");
   const response = await worker.fetch(
     new Request(
-      "http://localhost/_vinext/image?url=%2Fposters%2Fhome-reference.png&w=1080&q=75",
+      "http://localhost/_vinext/image?url=%2Fposters%2Fhome-hero-desktop.webp&w=1080&q=75",
     ),
     {},
     executionContext(),
@@ -168,6 +309,6 @@ test("preview image requests fall back when optimizer bindings are absent", asyn
   assert.equal(response.status, 302);
   assert.equal(
     response.headers.get("location"),
-    "http://localhost/posters/home-reference.png",
+    "http://localhost/posters/home-hero-desktop.webp",
   );
 });

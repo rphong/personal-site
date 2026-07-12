@@ -1,11 +1,11 @@
-import { ScenePoster } from "./scene-poster";
+import { SceneSection } from "../app/three/scene-section";
+import type { SceneId } from "../app/three/types";
 
 type PageHeroProps = {
   eyebrow: string;
   title: string;
   summary: string;
-  poster: string;
-  sceneId: string;
+  sceneId: SceneId;
   titleStyle?: "rounded" | "editorial";
 };
 
@@ -13,16 +13,17 @@ export function PageHero({
   eyebrow,
   title,
   summary,
-  poster,
   sceneId,
   titleStyle = "rounded",
 }: PageHeroProps) {
   return (
-    <section
+    <SceneSection
       className={`page-hero page-hero--${titleStyle}`}
-      data-scene-id={sceneId}
+      contentClassName="page-hero__content"
+      posterClassName="page-hero__poster"
+      posterPriority
+      sceneId={sceneId}
     >
-      <ScenePoster className="page-hero__poster" priority src={poster} />
       <div className="page-hero__wash" aria-hidden="true" />
       <div className="page-hero__copy">
         <p className="eyebrow">{eyebrow}</p>
@@ -32,6 +33,6 @@ export function PageHero({
       <a className="scroll-cue" href="#page-content">
         Continue
       </a>
-    </section>
+    </SceneSection>
   );
 }

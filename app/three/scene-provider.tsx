@@ -44,6 +44,8 @@ interface RuntimeState {
   readonly rotation: SceneRotation;
 }
 
+const SCENE_ACTIVATION_VIEWPORT_RATIO = 0.08;
+
 function createRouteState(
   pathname: string,
   activationVersion: number,
@@ -153,10 +155,12 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
           .sort(
             (left, right) =>
               Math.abs(
-                left.boundingClientRect.top - window.innerHeight * 0.45,
+                left.boundingClientRect.top -
+                  window.innerHeight * SCENE_ACTIVATION_VIEWPORT_RATIO,
               ) -
               Math.abs(
-                right.boundingClientRect.top - window.innerHeight * 0.45,
+                right.boundingClientRect.top -
+                  window.innerHeight * SCENE_ACTIVATION_VIEWPORT_RATIO,
               ),
           );
 
@@ -167,7 +171,7 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       },
       {
         root: null,
-        rootMargin: "-45% 0px -54% 0px",
+        rootMargin: "-8% 0px -91% 0px",
         threshold: 0,
       },
     );

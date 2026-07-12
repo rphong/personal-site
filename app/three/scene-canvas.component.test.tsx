@@ -93,6 +93,8 @@ describe("SceneCanvasContents", () => {
 
   it.each([
     [1280, "desktop"],
+    [768, "desktop"],
+    [767, "mobile"],
     [390, "mobile"],
   ] as const)("applies the %s px %s registry camera", async (width, mode) => {
     const props = ports();

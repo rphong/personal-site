@@ -55,14 +55,24 @@ describe("projects page", () => {
       "froggie-adventures",
     ]);
 
-    const leaguePoster = chapters[0].querySelector("img");
-    expect(leaguePoster).toHaveAttribute("src", "/posters/projects-reference.png");
-    expect(leaguePoster).toHaveAttribute("alt", "");
     expect(
-      within(chapters[1]).getByAltText(
-        "Froggie Adventures gameplay showing a pixel-art frog, platforms, hearts, and a score counter.",
-      ),
-    ).toHaveAttribute("src", "/images/froggie-gameplay.png");
+      chapters.map((chapter) => [
+        chapter.querySelector("source")?.getAttribute("srcset"),
+        chapter.querySelector("img")?.getAttribute("src"),
+        chapter.querySelector("img")?.getAttribute("alt"),
+      ]),
+    ).toEqual([
+      [
+        "/posters/league-ban-mobile.webp",
+        "/posters/league-ban-desktop.webp",
+        "",
+      ],
+      [
+        "/posters/froggie-adventures-mobile.webp",
+        "/posters/froggie-adventures-desktop.webp",
+        "",
+      ],
+    ]);
 
     const repositoryLinks = chapters.map((chapter) =>
       within(chapter).getByRole("link"),

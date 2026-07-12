@@ -14,7 +14,6 @@ export default function ContactPage() {
     <main>
       <PageHero
         eyebrow={route.eyebrow}
-        poster={route.heroPoster}
         sceneId={route.heroSceneId}
         summary={route.heroSummary}
         title={route.title}

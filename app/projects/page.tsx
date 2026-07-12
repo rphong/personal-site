@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { PageHero } from "../../components/page-hero";
-import { ScenePoster } from "../../components/scene-poster";
 import { projects, routeByKey } from "../../content/site-content";
 import { createPageMetadata } from "../../lib/site-metadata";
+import { SceneSection } from "../three/scene-section";
 
 const route = routeByKey.projects;
 
@@ -15,14 +15,13 @@ export default function ProjectsPage() {
     <main>
       <PageHero
         eyebrow={route.eyebrow}
-        poster={route.heroPoster}
         sceneId={route.heroSceneId}
         summary={route.heroSummary}
         title={route.title}
       />
       <article className="content-surface" id="page-content">
-        <div className="content-inner">
-          <header className="content-grid">
+        <header className="model-free-surface projects-intro">
+          <div className="content-inner content-grid">
             <div>
               <p className="section-kicker">Formative favorites</p>
               <h2 className="section-heading">
@@ -37,19 +36,20 @@ export default function ProjectsPage() {
                 meaningful through the people building it with me.
               </p>
             </div>
-          </header>
-          <div className="chapter-list">
-            {projects.map((project) => (
-              <section
-                className="chapter"
-                data-required-live={project.requiredLive}
-                data-scene-id={project.sceneId}
-                id={project.id}
-                key={project.id}
-              >
-                <div className="chapter-layout">
-                  <ScenePoster alt={project.posterAlt} src={project.poster} />
-                  <div>
+          </div>
+        </header>
+        <div className="chapter-list">
+          {projects.map((project) => (
+            <SceneSection
+              className="chapter"
+              id={project.id}
+              key={project.id}
+              sceneId={project.sceneId}
+            >
+              <div className="chapter-layout">
+                <div aria-hidden="true" className="chapter-model-space" />
+                <div className="chapter-copy">
+                  <div className="chapter-copy__inner">
                     <p className="section-kicker">Creative project</p>
                     <h2 className="chapter-heading">{project.name}</h2>
                     <div className="prose">
@@ -66,9 +66,9 @@ export default function ProjectsPage() {
                     </a>
                   </div>
                 </div>
-              </section>
-            ))}
-          </div>
+              </div>
+            </SceneSection>
+          ))}
         </div>
       </article>
     </main>

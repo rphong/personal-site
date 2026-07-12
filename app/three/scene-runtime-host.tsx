@@ -88,12 +88,43 @@ export function SceneRuntimeHostView({
 }: SceneRuntimeHostViewProps) {
   const [renderVersion, setRenderVersion] = useState(0);
   const activationToken = `${scene.id}:${activationVersion}`;
+  const [posterReadyToken, setPosterReadyToken] = useState<string | null>(null);
+  const posterReady = posterReadyToken === activationToken;
+  const activePosterToken = useRef(activationToken);
   const descriptor = useMemo<ActivationDescriptor>(
     () => ({ token: activationToken, sceneId: scene.id }),
     [activationToken, scene.id],
   );
   const renderVersionRef = useRef(renderVersion);
   const currentAttempt = useRef<CurrentAttempt | null>(null);
+
+  useLayoutEffect(() => {
+    activePosterToken.current = activationToken;
+  }, [activationToken]);
+
+  const posterLoaded = useCallback(
+    (image: HTMLImageElement) => {
+      const candidateToken = activationToken;
+      const markReady = () => {
+        if (
+          activePosterToken.current === candidateToken &&
+          image.isConnected
+        ) {
+          setPosterReadyToken(candidateToken);
+        }
+      };
+
+      if (typeof image.decode !== "function") {
+        markReady();
+        return;
+      }
+
+      void image.decode().then(markReady, () => {
+        // Keep the section-owned poster visible when decoding fails.
+      });
+    },
+    [activationToken],
+  );
 
   useLayoutEffect(() => {
     renderVersionRef.current = renderVersion;
@@ -287,11 +318,14 @@ export function SceneRuntimeHostView({
       data-testid="scene-runtime-host"
       data-three-status={status}
       data-active-scene-id={scene.id}
+      data-poster-ready={posterReady ? "true" : "false"}
       style={{ "--scene-background": scene.background } as CSSProperties}
     >
       <ScenePoster
+        key={activationToken}
         scene={scene}
         className="scene-runtime__poster"
+        onLoad={posterLoaded}
         priority
       />
       {canvasEnabled ? (

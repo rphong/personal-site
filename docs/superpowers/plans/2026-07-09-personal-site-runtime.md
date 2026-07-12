@@ -4298,18 +4298,61 @@ git commit -m "feat: mount persistent poster-first three runtime"
 > routes from briefly
 > publishing canonical poster URLs that return 404.
 
+> **Task 12 implementation amendment (2026-07-11):** The committed model
+> silhouettes make a shared two-column model/copy grid unsafe: several models
+> cross that boundary at useful display sizes. Production routes therefore use
+> a full-viewport visual stage followed by an opaque copy block. `SceneSection`
+> derives poster URLs and `requiredLive` from the registry, so content no longer
+> duplicates runtime policy. The fixed host keeps the active poster until its
+> own replacement poster has decoded, uses the same 8% activation/rotation
+> geometry at desktop and mobile sizes, and leaves EOG and Paycom poster-only.
+> Route heroes use a narrower copy wash and route-specific camera targets so
+> live models remain visible beside desktop copy and above mobile copy. The
+> canonical hero posters are recaptured after those camera changes.
+>
+> Final audit tightened two release seams. Fixed-poster readiness is keyed to
+> the activation token and waits for `HTMLImageElement.decode()` so A→B→A
+> reactivation and slow decoding cannot expose a blank frame. Mobile heroes
+> clamp their copy width, the long Experience title receives a 320px-safe size,
+> the 3D preference control is omitted until initialization and cleared from
+> the mobile footer, navigation links receive 44px targets, and the shell now
+> provides a focus-visible skip link.
+
 **Files:**
-- Create: `app/three/foundation-runtime-integration.test.ts`
+- Create: `app/three/foundation-runtime-integration.test.tsx`
 - Modify: `content/site-content.ts`
 - Modify: `components/page-hero.tsx`
 - Modify: `app/page.tsx`
 - Modify: `app/experience/page.tsx`
 - Modify: `app/projects/page.tsx`
 - Modify: `app/contact/page.tsx`
+- Modify: `app/globals.css`
+- Modify: `app/three/scene-poster.tsx`
+- Modify: `app/three/scene-provider.tsx`
+- Modify: `app/three/scene-registry.ts`
+- Modify: `app/three/scene-runtime-host.tsx`
+- Modify: `app/three/scene-runtime.css`
+- Modify: `app/three/scene-section.tsx`
+- Modify: `app/three/runtime-shell.contract.test.ts`
+- Modify: `app/three/scene-canvas.component.test.tsx`
+- Modify: `app/three/scene-provider.test.tsx`
+- Modify: `app/three/scene-registry.test.ts`
+- Modify: `app/three/scene-runtime-host.test.tsx`
+- Modify: `app/three/three-preference-toggle.tsx`
+- Modify: `app/three/three-preference-toggle.test.tsx`
+- Delete: `components/scene-poster.tsx`
+- Modify: `components/site-shell.tsx`
+- Modify: `tests/projects-page.test.tsx`
+- Modify: `tests/rendered-html.test.mjs`
+- Modify: `tests/site-shell.test.tsx`
+- Modify: `public/posters/*-hero-{desktop,mobile}.webp`
+- Modify: `public/posters/poster-manifest.json`
 
-- [ ] **Step 1: Write the failing content-path and registration source test**
+- [x] **Step 1: Write the failing route-registration and poster-authority test**
 
-Create `app/three/foundation-runtime-integration.test.ts`:
+Create `app/three/foundation-runtime-integration.test.tsx`. The final test uses
+rendered route components rather than source-string counts; the block below is
+the original RED sketch.
 
 ```ts
 import { readFile } from "node:fs/promises";
@@ -4358,13 +4401,13 @@ describe("foundation to runtime integration", () => {
 });
 ```
 
-- [ ] **Step 2: Run the integration test to verify RED**
+- [x] **Step 2: Run the integration test to verify RED**
 
-Run: `npm run test:unit -- app/three/foundation-runtime-integration.test.ts`
+Run: `pnpm test:unit -- app/three/foundation-runtime-integration.test.tsx`
 
 Expected: FAIL because content still references foundation PNGs and the page components do not import `SceneSection`.
 
-- [ ] **Step 3: Type content scene IDs and replace every content poster path**
+- [x] **Step 3: Type content scene IDs and remove duplicated runtime policy**
 
 Add this import to the top of `content/site-content.ts`:
 
@@ -4374,24 +4417,10 @@ import type { SceneId } from "../app/three/types";
 
 Change `RouteDefinition.heroSceneId`, `ExperienceChapter.sceneId`, and `ProjectChapter.sceneId` from `string` to `SceneId`.
 
-Replace the nine content poster values exactly:
-
-```ts
-// routes
-heroPoster: "/posters/home-hero-desktop.webp",
-heroPoster: "/posters/experience-hero-desktop.webp",
-heroPoster: "/posters/projects-hero-desktop.webp",
-heroPoster: "/posters/contact-hero-desktop.webp",
-
-// experience
-poster: "/posters/nasa-rocket-desktop.webp",
-poster: "/posters/eog-poster-desktop.webp",
-poster: "/posters/paycom-poster-desktop.webp",
-
-// projects
-poster: "/posters/league-ban-desktop.webp",
-poster: "/posters/froggie-adventures-desktop.webp",
-```
+Remove `heroPoster`, chapter/project `poster`, `posterAlt`, and
+`requiredLive` fields from content. `scene-registry.ts` is the single authority
+for canonical desktop/mobile poster paths and live policy; `SceneSection`
+derives both from its typed `sceneId`.
 
 After the edit, run:
 
@@ -4401,7 +4430,7 @@ rg -n "reference\.png|/images/froggie-gameplay\.png" content/site-content.ts
 
 Expected: no matches and exit code 1.
 
-- [ ] **Step 4: Replace `PageHero` with a registered runtime section**
+- [x] **Step 4: Replace `PageHero` with a registered runtime section**
 
 Replace `components/page-hero.tsx` completely:
 
@@ -4446,7 +4475,7 @@ export function PageHero({
 }
 ```
 
-- [ ] **Step 5: Remove the obsolete `poster` prop from all four PageHero calls**
+- [x] **Step 5: Remove the obsolete `poster` prop from all four PageHero calls**
 
 Apply this exact deletion once in each of `app/page.tsx`, `app/experience/page.tsx`, `app/projects/page.tsx`, and `app/contact/page.tsx`:
 
@@ -4459,7 +4488,11 @@ Apply this exact deletion once in each of `app/page.tsx`, `app/experience/page.t
          title={route.title}
 ```
 
-- [ ] **Step 6: Register the Experience introduction and every company chapter**
+- [x] **Step 6: Register the Experience introduction and every company chapter**
+
+The implementation amendment above supersedes the original two-column sample:
+each scene now renders a full visual stage followed by an opaque copy block,
+and `SceneSection` derives `requiredLive` from the registry.
 
 In `app/experience/page.tsx`, replace the `ScenePoster` import with:
 
@@ -4528,7 +4561,10 @@ Replace the outer element inside `experience.map` with this complete registered 
 </SceneSection>
 ```
 
-- [ ] **Step 7: Register both project chapters**
+- [x] **Step 7: Register both project chapters**
+
+As in Step 6, the full-stage/opaque-copy amendment supersedes the original
+two-column sample and removes the duplicated `data-required-live` prop.
 
 In `app/projects/page.tsx`, replace the `ScenePoster` import with:
 
@@ -4577,27 +4613,29 @@ Replace the outer element inside `projects.map` with:
 </SceneSection>
 ```
 
-- [ ] **Step 8: Run the integration test to verify GREEN**
+- [x] **Step 8: Run the integration test to verify GREEN**
 
-Run: `npm run test:unit -- app/three/foundation-runtime-integration.test.ts`
+Run: `pnpm test:unit -- app/three/foundation-runtime-integration.test.tsx`
 
-Expected: PASS, `2 passed`.
+Expected: PASS. The final suite covers every route, exact scene order, picture
+dimensions and sources, unique registration, registry authority, and the
+full-stage/opaque-copy CSS contract.
 
-- [ ] **Step 9: Refactor through content, route, and type suites**
+- [x] **Step 9: Refactor through content, route, and type suites**
 
 Run:
 
 ```bash
-npx tsc --noEmit
-npm run test:unit -- app/three/foundation-runtime-integration.test.ts tests/site-content.test.ts tests/home-page.test.tsx tests/experience-page.test.tsx tests/projects-page.test.tsx tests/contact-page.test.tsx
+pnpm exec tsc --noEmit
+pnpm test:unit
 ```
 
 Expected: TypeScript exits 0 and all named content/route tests pass.
 
-- [ ] **Step 10: Commit registered production sections**
+- [x] **Step 10: Commit registered production sections**
 
 ```bash
-git add content/site-content.ts components/page-hero.tsx app/page.tsx app/experience/page.tsx app/projects/page.tsx app/contact/page.tsx app/three/foundation-runtime-integration.test.ts
+git add app components content docs/superpowers/plans/2026-07-09-personal-site-runtime.md public/posters tests
 git commit -m "feat: register every production scene section"
 ```
 

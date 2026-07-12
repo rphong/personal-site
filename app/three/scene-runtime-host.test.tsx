@@ -130,12 +130,22 @@ describe("SceneRuntimeHostView", () => {
     vi.useRealTimers();
   });
 
-  it("keeps the poster visible until the first successful live frame", () => {
+  it("keeps the poster visible until the fixed poster is decoded and the first live frame succeeds", async () => {
     render(<HostHarness />);
 
     const host = screen.getByTestId("scene-runtime-host");
     const canvas = screen.getByTestId("fake-canvas");
+    const image = host.querySelector("img")!;
+    let resolveDecode!: () => void;
+    const decode = new Promise<void>((resolve) => {
+      resolveDecode = resolve;
+    });
+    Object.defineProperty(image, "decode", {
+      configurable: true,
+      value: vi.fn(() => decode),
+    });
     expect(host).toHaveAttribute("data-three-status", "loading");
+    expect(host).toHaveAttribute("data-poster-ready", "false");
     expect(host.querySelector("img")).toHaveAttribute(
       "src",
       "/posters/home-hero-desktop.webp",
@@ -152,6 +162,14 @@ describe("SceneRuntimeHostView", () => {
       "/posters/home-hero-mobile.webp",
     );
     expect(host.style.getPropertyValue("--scene-background")).toBe("#9ECCC0");
+    fireEvent.load(image);
+    expect(host).toHaveAttribute("data-poster-ready", "false");
+    await act(async () => {
+      resolveDecode();
+      await decode;
+      await Promise.resolve();
+    });
+    expect(host).toHaveAttribute("data-poster-ready", "true");
     expect(canvas).toHaveAttribute("data-load-enabled", "true");
     expect(canvas).toHaveAttribute("data-preload-ready", "false");
     expect(screen.queryByTestId("scene-rotation-area")).not.toBeInTheDocument();
@@ -168,6 +186,67 @@ describe("SceneRuntimeHostView", () => {
 
     fireEvent.click(screen.getByTestId("first-frame"));
     expect(emitSceneRuntimeEvent).toHaveBeenCalledOnce();
+  });
+
+  it("keys fixed-poster readiness to the current activation and decoded image", async () => {
+    render(<PersistenceHarness />);
+    const host = screen.getByTestId("scene-runtime-host");
+    const firstHomeImage = host.querySelector("img")!;
+    Object.defineProperty(firstHomeImage, "decode", {
+      configurable: true,
+      value: vi.fn().mockResolvedValue(undefined),
+    });
+
+    expect(host).toHaveAttribute("data-poster-ready", "false");
+    fireEvent.load(firstHomeImage);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(host).toHaveAttribute("data-poster-ready", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "show EOG" }));
+    expect(host).toHaveAttribute("data-active-scene-id", "eog-poster");
+    expect(host).toHaveAttribute("data-poster-ready", "false");
+    const eogImage = host.querySelector("img")!;
+    let resolveEogDecode!: () => void;
+    const eogDecode = new Promise<void>((resolve) => {
+      resolveEogDecode = resolve;
+    });
+    Object.defineProperty(eogImage, "decode", {
+      configurable: true,
+      value: vi.fn(() => eogDecode),
+    });
+    fireEvent.load(eogImage);
+    expect(host).toHaveAttribute("data-poster-ready", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: "reactivate home" }));
+    expect(host).toHaveAttribute("data-active-scene-id", "home-hero");
+    expect(host).toHaveAttribute("data-poster-ready", "false");
+    const secondHomeImage = host.querySelector("img")!;
+    let resolveSecondHomeDecode!: () => void;
+    const secondHomeDecode = new Promise<void>((resolve) => {
+      resolveSecondHomeDecode = resolve;
+    });
+    Object.defineProperty(secondHomeImage, "decode", {
+      configurable: true,
+      value: vi.fn(() => secondHomeDecode),
+    });
+    fireEvent.load(secondHomeImage);
+    expect(host).toHaveAttribute("data-poster-ready", "false");
+
+    await act(async () => {
+      resolveEogDecode();
+      await eogDecode;
+      await Promise.resolve();
+    });
+    expect(host).toHaveAttribute("data-poster-ready", "false");
+
+    await act(async () => {
+      resolveSecondHomeDecode();
+      await secondHomeDecode;
+      await Promise.resolve();
+    });
+    expect(host).toHaveAttribute("data-poster-ready", "true");
   });
 
   it.each(["fetch", "decode", "webgl2-unavailable"] as const)(

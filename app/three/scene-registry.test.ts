@@ -49,6 +49,18 @@ describe("scene registry", () => {
       expect(scene.modelUrl).toMatch(/^\/models\/.+\.glb$/);
       expect(scene.poster.desktop).toMatch(/^\/posters\/.+-desktop\.webp$/);
       expect(scene.poster.mobile).toMatch(/^\/posters\/.+-mobile\.webp$/);
+      expect(scene.desktop.rotationArea).toEqual({
+        top: 8,
+        right: 8,
+        bottom: 8,
+        left: 8,
+      });
+      expect(scene.mobile.rotationArea).toEqual({
+        top: 8,
+        right: 8,
+        bottom: 8,
+        left: 8,
+      });
       for (const frame of [scene.desktop, scene.mobile]) {
         expect(frame.cameraPosition).toHaveLength(3);
         expect(frame.cameraTarget).toHaveLength(3);

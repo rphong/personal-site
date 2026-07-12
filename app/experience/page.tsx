@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { PageHero } from "../../components/page-hero";
-import { ScenePoster } from "../../components/scene-poster";
 import { contact, experience, routeByKey } from "../../content/site-content";
 import { createPageMetadata } from "../../lib/site-metadata";
+import { SceneSection } from "../three/scene-section";
 
 const route = routeByKey.experience;
 
@@ -15,47 +15,50 @@ export default function ExperiencePage() {
     <main>
       <PageHero
         eyebrow={route.eyebrow}
-        poster={route.heroPoster}
         sceneId={route.heroSceneId}
         summary={route.heroSummary}
         title={route.title}
       />
       <article className="content-surface" id="page-content">
-        <div className="content-inner">
-          <header
-            className="content-grid"
-            data-required-live="true"
-            data-scene-id="experience-intro"
-          >
-            <div>
-              <p className="section-kicker">The through line</p>
-              <h2 className="section-heading">
-                Learning by building what matters.
-              </h2>
+        <SceneSection
+          className="chapter chapter--intro"
+          sceneId="experience-intro"
+        >
+          <div className="chapter-layout">
+            <div aria-hidden="true" className="chapter-model-space" />
+            <div className="chapter-copy">
+              <div className="chapter-copy__inner">
+                <p className="section-kicker">The through line</p>
+                <h2 className="section-heading">
+                  Learning by building what matters.
+                </h2>
+                <div className="prose">
+                  <p>
+                    I think about my experience as a set of company chapters
+                    rather than a list of disconnected tasks. Each one changed
+                    the scale, stakes, or audience of the software I was
+                    learning to build.
+                  </p>
+                  <a className="text-link" download href={contact.resumeHref}>
+                    Download my résumé
+                  </a>
+                </div>
+              </div>
             </div>
-            <div className="prose">
-              <p>
-                I think about my experience as a set of company chapters rather
-                than a list of disconnected tasks. Each one changed the scale,
-                stakes, or audience of the software I was learning to build.
-              </p>
-              <a className="text-link" download href={contact.resumeHref}>
-                Download my résumé
-              </a>
-            </div>
-          </header>
-          <div className="chapter-list">
-            {experience.map((chapter) => (
-              <section
-                className="chapter"
-                data-required-live={chapter.requiredLive}
-                data-scene-id={chapter.sceneId}
-                id={chapter.id}
-                key={chapter.id}
-              >
-                <div className="chapter-layout">
-                  <ScenePoster src={chapter.poster} />
-                  <div>
+          </div>
+        </SceneSection>
+        <div className="chapter-list">
+          {experience.map((chapter) => (
+            <SceneSection
+              className="chapter"
+              id={chapter.id}
+              key={chapter.id}
+              sceneId={chapter.sceneId}
+            >
+              <div className="chapter-layout">
+                <div aria-hidden="true" className="chapter-model-space" />
+                <div className="chapter-copy">
+                  <div className="chapter-copy__inner">
                     <p className="section-kicker">Company chapter</p>
                     <h2 className="chapter-heading">{chapter.company}</h2>
                     <ul
@@ -79,9 +82,9 @@ export default function ExperiencePage() {
                     </div>
                   </div>
                 </div>
-              </section>
-            ))}
-          </div>
+              </div>
+            </SceneSection>
+          ))}
         </div>
       </article>
     </main>

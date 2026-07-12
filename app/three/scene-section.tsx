@@ -50,6 +50,7 @@ export function SceneSection({
       ref={elementRef}
       className={`scene-section ${className}`.trim()}
       data-scene-id={sceneId}
+      data-required-live={scene.requiredLive}
       data-scene-active={isActive ? "true" : "false"}
       data-scene-status={isActive && runtime ? runtime.status : "poster"}
     >

@@ -14,9 +14,14 @@ export function SiteShell({ children }: SiteShellProps) {
 
   return (
     <div className="site-shell" data-route={activeRoute}>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <div aria-hidden="true" className="scene-stage" data-scene-stage />
       <SiteNav activeRoute={activeRoute} />
-      <div className="site-shell__content">{children}</div>
+      <div className="site-shell__content" id="main-content" tabIndex={-1}>
+        {children}
+      </div>
       <SiteFooter />
     </div>
   );

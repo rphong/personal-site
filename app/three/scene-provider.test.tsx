@@ -199,7 +199,7 @@ describe("SceneProvider", () => {
       ),
     );
     expect(ObserverMock.instances).toHaveLength(1);
-    expect(ObserverMock.instances[0].rootMargin).toBe("-45% 0px -54% 0px");
+    expect(ObserverMock.instances[0].rootMargin).toBe("-8% 0px -91% 0px");
     expect(screen.getByText("intro").closest("[data-scene-id]")).toHaveAttribute(
       "data-scene-id",
       "experience-intro",

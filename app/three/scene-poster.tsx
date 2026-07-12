@@ -3,10 +3,12 @@ import type { SceneDefinition } from "./types";
 export function ScenePoster({
   scene,
   className,
+  onLoad,
   priority = false,
 }: {
   readonly scene: SceneDefinition;
   readonly className: string;
+  readonly onLoad?: (image: HTMLImageElement) => void;
   readonly priority?: boolean;
 }) {
   return (
@@ -26,6 +28,7 @@ export function ScenePoster({
         decoding="async"
         fetchPriority={priority ? "high" : "auto"}
         loading={priority ? "eager" : "lazy"}
+        onLoad={(event) => onLoad?.(event.currentTarget)}
       />
     </picture>
   );

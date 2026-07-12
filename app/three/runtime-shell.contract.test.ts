@@ -107,7 +107,7 @@ describe("persistent runtime shell", () => {
       /background:\s*transparent/,
     );
     expect(cssRule(css, ".model-free-surface")).toMatch(
-      /background:\s*#eeeeee/,
+      /background:\s*var\(--surface\)/,
     );
     const toggle = cssRule(css, ".three-preference-toggle");
     expect(toggle).toMatch(/z-index:\s*100/);

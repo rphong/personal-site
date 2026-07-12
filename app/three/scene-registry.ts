@@ -29,15 +29,15 @@ const DEFAULT_ROTATION: RotationLimits = {
 };
 
 const DESKTOP_AREA: PercentInsets = {
-  top: 12,
+  top: 8,
   right: 8,
-  bottom: 12,
-  left: 42,
+  bottom: 8,
+  left: 8,
 };
 const MOBILE_AREA: PercentInsets = {
   top: 8,
   right: 8,
-  bottom: 48,
+  bottom: 8,
   left: 8,
 };
 
@@ -75,8 +75,8 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/home-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([4.2, 2.7, 6.8], [0, 0.8, 0], 34, DESKTOP_AREA),
-    mobile: frame([3.8, 3.2, 8.6], [0, 1.2, 0], 38, MOBILE_AREA),
+    desktop: frame([4.2, 2.7, 6.8], [-2.2, 0.8, 1.4], 34, DESKTOP_AREA),
+    mobile: frame([3.8, 3.2, 8.6], [0.2, -0.4, 0.3], 38, MOBILE_AREA),
     lighting: lighting("#9ECCC0", [4, 6, 5]),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "experience-hero",
@@ -93,8 +93,8 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/experience-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([5.8, 3.2, 7.4], [0, 0.9, 0], 36, DESKTOP_AREA),
-    mobile: frame([5.2, 4.1, 9.6], [0, 1.4, 0], 40, MOBILE_AREA),
+    desktop: frame([5.8, 3.2, 7.4], [-2.4, 0.9, 1.8], 36, DESKTOP_AREA),
+    mobile: frame([5.2, 4.1, 9.6], [0.2, -0.3, 0.3], 40, MOBILE_AREA),
     lighting: lighting("#DFA9B5", [5, 7, 4]),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "experience-intro",
@@ -183,8 +183,13 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/projects-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([6.2, 3.6, 8.4], [0, 1, 0], 36, DESKTOP_AREA),
-    mobile: frame([5.5, 4.4, 10.8], [0, 1.5, 0], 40, MOBILE_AREA),
+    desktop: frame(
+      [6.2, 3.6, 8.4],
+      [-2.5, 1, 1.8],
+      36,
+      DESKTOP_AREA,
+    ),
+    mobile: frame([5.5, 4.4, 10.8], [0.2, -0.3, 0.3], 40, MOBILE_AREA),
     lighting: lighting("#AFD4E1", [5, 7, 5]),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "league-ban",
@@ -237,8 +242,8 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/contact-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([5.8, 3.2, 7.4], [0, 0.9, 0], 36, DESKTOP_AREA),
-    mobile: frame([5.2, 4.1, 9.6], [0, 1.4, 0], 40, MOBILE_AREA),
+    desktop: frame([5.8, 3.2, 7.4], [-2.4, 0.9, 1.8], 36, DESKTOP_AREA),
+    mobile: frame([5.2, 4.1, 9.6], [0.2, -0.3, 0.3], 40, MOBILE_AREA),
     lighting: lighting("#C9BAE4", [5, 7, 4]),
     rotation: DEFAULT_ROTATION,
     nextSceneId: null,

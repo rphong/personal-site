@@ -4,14 +4,14 @@ import { useSceneRuntime } from "./scene-runtime-context";
 
 export function ThreePreferenceToggle() {
   const runtime = useSceneRuntime();
-  const unavailable = !runtime.threeInitialized || !runtime.threeSupported;
-  const label = !runtime.threeInitialized
-    ? "3D loading"
-    : !runtime.threeSupported
-      ? "3D unavailable"
-      : runtime.threeEnabled
-        ? "3D on"
-        : "3D off";
+  if (!runtime.threeInitialized) return null;
+
+  const unavailable = !runtime.threeSupported;
+  const label = !runtime.threeSupported
+    ? "3D unavailable"
+    : runtime.threeEnabled
+      ? "3D on"
+      : "3D off";
 
   return (
     <button
