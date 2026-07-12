@@ -6070,6 +6070,14 @@ git commit -m "build: capture deterministic scene posters"
 
 ## Task 16: Replace foundation public artifacts and close the asset/poster release gate
 
+> **Implementation result (2026-07-12):** The final release contract now
+> requires the resume, both manifests, and all twenty canonical WebPs. Source
+> references under `ReferenceImages/` remain immutable and hash-pinned. Poster
+> manifest verification uses the canonical JSON contract hash (rather than the
+> raw file-byte hash), matching the capture pipeline. A clean production build
+> also proved that none of the five retired public exports survive under
+> `dist/client`.
+
 **Files:**
 - Create: `tests/runtime-production-validation.test.ts`
 - Replace: `tests/public-assets.test.ts`
@@ -6083,7 +6091,7 @@ git commit -m "build: capture deterministic scene posters"
 - Delete: `public/posters/contact-reference.png`
 - Delete: `public/images/froggie-gameplay.png`
 
-- [ ] **Step 1: Write the failing final-release wiring test**
+- [x] **Step 1: Write the failing final-release wiring test**
 
 Create `tests/runtime-production-validation.test.ts`:
 
@@ -6143,13 +6151,13 @@ describe("runtime production validation wiring", () => {
 });
 ```
 
-- [ ] **Step 2: Run the release wiring test to verify RED**
+- [x] **Step 2: Run the release wiring test to verify RED**
 
-Run: `npm run test:unit -- tests/runtime-production-validation.test.ts`
+Run: `pnpm exec vitest run tests/runtime-production-validation.test.ts`
 
 Expected: FAIL because the foundation-only error is still returned and final poster/manifests are absent from `requiredPublicAssets`.
 
-- [ ] **Step 3: Replace the production validation library with final runtime assets**
+- [x] **Step 3: Replace the production validation library with final runtime assets**
 
 Replace `lib/production-validation.ts` completely:
 
@@ -6251,7 +6259,7 @@ export async function collectProductionValidationErrors({
 }
 ```
 
-- [ ] **Step 4: Type the asset validator for the TypeScript production executable**
+- [x] **Step 4: Type the asset validator for the TypeScript production executable**
 
 Create `scripts/assets/validate.d.mts`:
 
@@ -6265,7 +6273,7 @@ export interface ValidateAllOptions {
 export function validateAll(options?: ValidateAllOptions): Promise<unknown>;
 ```
 
-- [ ] **Step 5: Make the production executable await model and poster manifests**
+- [x] **Step 5: Make the production executable await model and poster manifests**
 
 Replace `scripts/validate-production.ts` completely:
 
@@ -6295,7 +6303,7 @@ if (errors.length > 0) {
 }
 ```
 
-- [ ] **Step 6: Replace the foundation production-validation test**
+- [x] **Step 6: Replace the foundation production-validation test**
 
 Replace `tests/production-validation.test.ts` completely:
 
@@ -6361,7 +6369,7 @@ describe("production validation", () => {
 });
 ```
 
-- [ ] **Step 7: Replace public asset tests with immutable-source and final-manifest checks**
+- [x] **Step 7: Replace public asset tests with immutable-source and final-manifest checks**
 
 Replace `tests/public-assets.test.ts` completely:
 
@@ -6462,7 +6470,7 @@ describe("final public assets", () => {
 });
 ```
 
-- [ ] **Step 8: Delete the four retired Figma frames and raw gameplay screenshot**
+- [x] **Step 8: Delete the four retired Figma frames and raw gameplay screenshot**
 
 Run each command separately after the canonical WebPs pass Task 15:
 
@@ -6476,18 +6484,18 @@ Remove-Item -LiteralPath "public\images\froggie-gameplay.png"
 
 Expected: all five files are absent. Their source files under `ReferenceImages/` remain untouched; the cropped gameplay texture remains packed inside the Froggie GLB and is not published as a raw screenshot.
 
-- [ ] **Step 9: Run final asset/release wiring tests to verify GREEN**
+- [x] **Step 9: Run final asset/release wiring tests to verify GREEN**
 
 Run:
 
 ```bash
-npm run test:unit -- tests/runtime-production-validation.test.ts tests/production-validation.test.ts tests/public-assets.test.ts
+pnpm exec vitest run tests/runtime-production-validation.test.ts tests/production-validation.test.ts tests/public-assets.test.ts
 node scripts/assets/validate.mjs --require-posters
 ```
 
 Expected: Vitest reports `3 test files passed`; asset/poster validation passes.
 
-- [ ] **Step 10: Verify the foundation hard stop and public reference URLs are gone**
+- [x] **Step 10: Verify the foundation hard stop and public reference URLs are gone**
 
 Run:
 
@@ -6497,7 +6505,7 @@ rg -n "FOUNDATION_PREVIEW_ONLY_MESSAGE|-reference\.png|froggie-gameplay\.png" li
 
 Expected: no matches and exit code 1.
 
-- [ ] **Step 11: Commit the final public/release contract**
+- [x] **Step 11: Commit the final public/release contract**
 
 ```bash
 git add -A lib/production-validation.ts scripts/assets/validate.d.mts scripts/validate-production.ts tests/production-validation.test.ts tests/runtime-production-validation.test.ts tests/public-assets.test.ts public/posters public/images

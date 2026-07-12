@@ -10,16 +10,30 @@ import {
   type RuntimeEnvironment,
 } from "./deployment";
 
-export const FOUNDATION_PREVIEW_ONLY_MESSAGE =
-  "Foundation reference posters are preview-only; production requires deterministic scene posters and every required GLB.";
-
 export const requiredPublicAssets = [
   "public/Richard-Phong-Resume.pdf",
-  "public/posters/home-reference.png",
-  "public/posters/experience-reference.png",
-  "public/posters/projects-reference.png",
-  "public/posters/contact-reference.png",
-  "public/images/froggie-gameplay.png",
+  "public/models/assets-manifest.json",
+  "public/posters/poster-manifest.json",
+  "public/posters/home-hero-desktop.webp",
+  "public/posters/home-hero-mobile.webp",
+  "public/posters/experience-hero-desktop.webp",
+  "public/posters/experience-hero-mobile.webp",
+  "public/posters/experience-intro-desktop.webp",
+  "public/posters/experience-intro-mobile.webp",
+  "public/posters/nasa-rocket-desktop.webp",
+  "public/posters/nasa-rocket-mobile.webp",
+  "public/posters/eog-poster-desktop.webp",
+  "public/posters/eog-poster-mobile.webp",
+  "public/posters/paycom-poster-desktop.webp",
+  "public/posters/paycom-poster-mobile.webp",
+  "public/posters/projects-hero-desktop.webp",
+  "public/posters/projects-hero-mobile.webp",
+  "public/posters/league-ban-desktop.webp",
+  "public/posters/league-ban-mobile.webp",
+  "public/posters/froggie-adventures-desktop.webp",
+  "public/posters/froggie-adventures-mobile.webp",
+  "public/posters/contact-hero-desktop.webp",
+  "public/posters/contact-hero-mobile.webp",
 ] as const;
 
 export function collectProductionConfigErrors(
@@ -47,7 +61,6 @@ export function collectProductionConfigErrors(
       (field) => `Owner copy is still gated: ${field}.`,
     ),
   );
-  errors.push(FOUNDATION_PREVIEW_ONLY_MESSAGE);
 
   return errors;
 }
@@ -56,7 +69,6 @@ export async function collectMissingAssetErrors(
   root = process.cwd(),
 ): Promise<string[]> {
   const errors: string[] = [];
-
   for (const relativePath of requiredPublicAssets) {
     try {
       await access(path.join(root, relativePath));
@@ -81,6 +93,5 @@ export async function collectProductionValidationErrors({
     Promise.resolve(collectProductionConfigErrors(env, ownerFields)),
     collectMissingAssetErrors(root),
   ]);
-
   return [...configErrors, ...assetErrors];
 }

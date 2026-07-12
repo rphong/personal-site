@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OWNER_INPUT_SENTINEL } from "../content/site-content";
 import {
-  FOUNDATION_PREVIEW_ONLY_MESSAGE,
   collectProductionConfigErrors,
   requiredPublicAssets,
 } from "../lib/production-validation";
@@ -19,16 +18,15 @@ const unresolvedOwnerFields = {
 };
 
 describe("production validation", () => {
-  it("rejects a preview, owner-gated copy, and the foundation asset phase", () => {
+  it("rejects a preview and owner-gated copy", () => {
     expect(collectProductionConfigErrors({}, unresolvedOwnerFields)).toEqual([
       "SITE_ENV must equal production for a production release.",
       "Owner copy is still gated: home.nonWorkInterest.",
       "Owner copy is still gated: home.technicalCuriosity.",
-      FOUNDATION_PREVIEW_ONLY_MESSAGE,
     ]);
   });
 
-  it("leaves only the explicit asset-phase gate after config and copy resolve", () => {
+  it("passes config and copy once their explicit inputs resolve", () => {
     expect(
       collectProductionConfigErrors(
         {
@@ -37,10 +35,10 @@ describe("production validation", () => {
         },
         completedOwnerFields,
       ),
-    ).toEqual([FOUNDATION_PREVIEW_ONLY_MESSAGE]);
+    ).toEqual([]);
   });
 
-  it("reports invalid production origins without losing other gates", () => {
+  it("reports an invalid production origin", () => {
     expect(
       collectProductionConfigErrors(
         {
@@ -49,20 +47,19 @@ describe("production validation", () => {
         },
         completedOwnerFields,
       ),
-    ).toEqual([
-      "Production SITE_URL must use https.",
-      FOUNDATION_PREVIEW_ONLY_MESSAGE,
-    ]);
+    ).toEqual(["Production SITE_URL must use https."]);
   });
 
-  it("checks every foundation public artifact", () => {
-    expect(requiredPublicAssets).toEqual([
-      "public/Richard-Phong-Resume.pdf",
-      "public/posters/home-reference.png",
-      "public/posters/experience-reference.png",
-      "public/posters/projects-reference.png",
-      "public/posters/contact-reference.png",
-      "public/images/froggie-gameplay.png",
-    ]);
+  it("requires final manifests and all twenty canonical posters", () => {
+    expect(requiredPublicAssets).toHaveLength(23);
+    expect(
+      requiredPublicAssets.filter((asset) => asset.endsWith(".webp")),
+    ).toHaveLength(20);
+    expect(requiredPublicAssets).toContain(
+      "public/models/assets-manifest.json",
+    );
+    expect(requiredPublicAssets).toContain(
+      "public/posters/poster-manifest.json",
+    );
   });
 });
