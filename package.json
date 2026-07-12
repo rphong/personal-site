@@ -14,6 +14,7 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:browser": "playwright test tests/browser/three-runtime.spec.ts",
+    "test:performance": "node scripts/assets/validate.mjs && node scripts/run-vinext.mjs build && playwright test --config=playwright.performance.config.ts",
     "test:runtime": "npm run test:unit && npm run test:browser",
     "posters:browser": "node scripts/posters/browser.mjs",
     "posters:capture": "node scripts/posters/capture.mjs --write",

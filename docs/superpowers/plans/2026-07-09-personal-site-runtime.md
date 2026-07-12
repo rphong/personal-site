@@ -6527,73 +6527,96 @@ git commit -m "feat: close final model and poster release gate"
 > buffer dimensions, antialias policy, and context power preference so any
 > later quality/performance adjustment is evidence-driven.
 
+> **Implementation result (2026-07-12):** A dedicated production-build
+> Playwright lab now runs the generated Worker and asset binding through
+> Wrangler at desktop and mobile sizes, each with real 3D and Save-Data modes.
+> It records LCP classification/timing, canonical CLS, raw route-swap shifts,
+> WebGL/Meshopt long tasks and TBT, trusted drag-to-paint latency, renderer idle
+> frames, requested/negotiated context policy, DPR, and drawing-buffer size.
+> The first release baseline is preserved in
+> `docs/superpowers/evidence/2026-07-12-web-vitals-lab.md`.
+
 **Files:**
-- Verify only; change an owning file only when a named check exposes a defect.
+- Create: `playwright.performance.config.ts`
+- Create: `tests/browser/performance-metrics.ts`
+- Create: `tests/browser/performance.spec.ts`
+- Create: `tests/performance-metrics.test.ts`
+- Create: `docs/superpowers/evidence/2026-07-12-web-vitals-lab.md`
+- Modify: `package.json`
+- Modify: `public/posters/poster-manifest.json` (render-input hash only)
 
-- [ ] **Step 1: Run every pure, component, and R3F test**
+- [x] **Measured amendment gate: Run the production Web Vitals matrix**
 
-Run: `npm run test:unit`
+Run: `pnpm test:performance`
+
+Expected: four Chromium production cases pass: desktop/mobile × real 3D and
+Save-Data. Each run attaches its complete metrics JSON; no SwiftShader FPS is
+used as a release budget.
+
+- [x] **Step 1: Run every pure, component, and R3F test**
+
+Run: `pnpm test:unit`
 
 Expected: every foundation and runtime Vitest file passes; no test is skipped because WebGL is unavailable in JSDOM.
 
-- [ ] **Step 2: Verify models, final posters, and deterministic recapture**
+- [x] **Step 2: Verify models, final posters, and deterministic recapture**
 
 Run:
 
 ```bash
-npm run assets:validate
+pnpm assets:validate
 node scripts/assets/validate.mjs --require-posters
-npm run test:posters
-npm run posters:check
+pnpm test:posters
+pnpm posters:check
 ```
 
 Expected: all four commands pass; seven GLBs and twenty WebPs satisfy their manifests; pixel comparison remains within the 0.1% gate.
 
-- [ ] **Step 3: Run the runtime browser suite**
+- [x] **Step 3: Run the runtime browser suite**
 
-Run: `npm run test:browser`
+Run: `pnpm test:browser`
 
-Expected: PASS, `9 passed`; real route navigation and poster-only bridges preserve the exact Canvas element, poster/error/context-loss fallbacks remain complete, reduced-data/local preference paths issue no forbidden loads, and touch scrolling works.
+Expected: PASS, `19 passed`; real route navigation and poster-only bridges preserve the exact Canvas element, poster/error/context-loss fallbacks remain complete, reduced-data/local preference paths issue no forbidden loads, and touch scrolling works.
 
-- [ ] **Step 4: Run semantic HTML, lint, type, and Cloudflare-compatible build checks**
+- [x] **Step 4: Run semantic HTML, lint, type, and Cloudflare-compatible build checks**
 
 Run:
 
 ```bash
-npx tsc --noEmit
-npm run test:html
-npm run lint
-npm run build
+pnpm exec tsc --noEmit
+pnpm test:html
+pnpm lint
+pnpm build
 ```
 
 Expected: all commands exit 0; rendered HTML still contains meaningful route content and deterministic poster elements without requiring WebGL.
 
-- [ ] **Step 5: Prove the asset-phase hard stop is gone while owner copy remains gated**
+- [x] **Step 5: Prove the asset-phase hard stop is gone while owner copy remains gated**
 
 Set each environment value on its own PowerShell line:
 
 ```powershell
 $env:SITE_ENV = "production"
 $env:SITE_URL = "https://richardphong.example"
-npm run validate:production
+pnpm validate:production
 Remove-Item Env:SITE_ENV
 Remove-Item Env:SITE_URL
 ```
 
 Expected: exit 1 reports only `home.nonWorkInterest` and `home.technicalCuriosity`. It does not report missing GLBs, posters, manifests, foundation reference images, or the removed asset-phase hard stop.
 
-- [ ] **Step 6: Audit runtime performance invariants in source**
+- [x] **Step 6: Audit runtime performance invariants in source**
 
 Run:
 
 ```bash
-rg -n "frameloop=\"demand\"|dpr=\{\[1, 1\.5\]\}|MeshoptDecoder|data-three-status|data-active-scene-id|scene-ready:|rotation-health" app/three
-rg -n "OrbitControls|MapControls|PresentationControls|frameloop=\"always\"|transition:" app/three
+rg -n -g '!*.test.*' "frameloop=\"demand\"|dpr=\{\[1, 1\.5\]\}|MeshoptDecoder|data-three-status|data-active-scene-id|scene-ready:|rotation-health" app/three
+rg -n -g '!*.test.*' "OrbitControls|MapControls|PresentationControls|frameloop=\"always\"|transition:" app/three
 ```
 
 Expected: the first command finds every required invariant. The second command finds no matches and exits 1.
 
-- [ ] **Step 7: Confirm no unrelated or generated scratch files are staged**
+- [x] **Step 7: Confirm no unrelated or generated scratch files are staged**
 
 Run:
 
@@ -6604,16 +6627,17 @@ git diff --check
 
 Expected: only intentional runtime code, tests, generated canonical posters/manifests, and the documented reference-image deletions appear; `git diff --check` exits 0.
 
-- [ ] **Step 8: Commit any final test-driven correction**
+- [x] **Step 8: Commit the measured production performance contract**
 
-If Step 1–7 required an owning-file correction, commit only that correction and its regression test:
+Commit the dedicated lab, its pure metric tests, the recorded baseline, and the
+manifest-only render-input signature refresh:
 
 ```bash
-git add app components content lib scripts tests public/posters package.json package-lock.json
-git commit -m "fix: satisfy three runtime regression gate"
+git add playwright.performance.config.ts package.json public/posters/poster-manifest.json tests/browser/performance-metrics.ts tests/browser/performance.spec.ts tests/performance-metrics.test.ts docs/superpowers
+git commit -m "test: enforce production web vitals contract"
 ```
 
-Expected: commit succeeds. If no correction was needed, do not create an empty commit.
+Expected: commit succeeds with no canonical WebP byte changes.
 
 ## Spec coverage ledger
 
