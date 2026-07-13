@@ -63,10 +63,10 @@ function lighting(background: string, position: Vector3Tuple): SceneLighting {
 }
 
 const HOME_LIGHTING: SceneLighting = {
-  ambient: { color: "#ffffff", intensity: 1.6 },
+  ambient: { color: "#e8f3f0", intensity: 2.4 },
   key: {
-    color: "#d8eee8",
-    intensity: 2.2,
+    color: "#e8f3f0",
+    intensity: 1.4,
     position: [-3.5, 6, 4.5],
     castShadow: false,
   },
@@ -85,13 +85,13 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/home-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([3.95, 1.7, 2.25], [0, 0.3, 0], 34, DESKTOP_AREA),
+    desktop: frame([6.5, 2.8, 3.7], [0, 0.1, 0], 34, DESKTOP_AREA),
     mobile: frame([8.2, 3.5, 4.7], [0, -0.2, 0], 38, MOBILE_AREA),
     lighting: HOME_LIGHTING,
     contactShadow: {
-      opacity: 0.32,
-      position: [0, -0.47, -0.2],
-      scale: [2.8, 1.7],
+      opacity: 0.16,
+      position: [-0.25, -0.47, -0.6],
+      scale: [1.8, 0.8],
       textureSize: 64,
     },
     rotation: DEFAULT_ROTATION,

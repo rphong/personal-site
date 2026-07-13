@@ -101,16 +101,16 @@ describe("scene registry", () => {
   it("grounds only Home with one low-resolution blob and no shadow-map light", () => {
     const home = getSceneDefinition("home-hero");
     expect(home.contactShadow).toEqual({
-      opacity: 0.32,
-      position: [0, -0.47, -0.2],
-      scale: [2.8, 1.7],
+      opacity: 0.16,
+      position: [-0.25, -0.47, -0.6],
+      scale: [1.8, 0.8],
       textureSize: 64,
     });
     expect(home.lighting).toEqual({
-      ambient: { color: "#ffffff", intensity: 1.6 },
+      ambient: { color: "#e8f3f0", intensity: 2.4 },
       key: {
-        color: "#d8eee8",
-        intensity: 2.2,
+        color: "#e8f3f0",
+        intensity: 1.4,
         position: [-3.5, 6, 4.5],
         castShadow: false,
       },
