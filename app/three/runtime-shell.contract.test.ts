@@ -75,7 +75,7 @@ describe("persistent runtime shell", () => {
     expect(host).toMatch(/height:\s*100svh/);
     expect(host).toMatch(/overflow:\s*hidden/);
     expect(host).toMatch(/pointer-events:\s*none/);
-    expect(host).toMatch(/z-index:\s*0/);
+    expect(host).toMatch(/z-index:\s*1/);
     expect(host).toMatch(/background:\s*var\(--scene-background\)/);
 
     expect(cssRule(css, ".scene-runtime__poster")).toMatch(

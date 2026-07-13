@@ -25,6 +25,7 @@
       "id": "experience-hero",
       "route": "/experience",
       "background": "#DFA9B5",
+      "transparent": true,
       "source": { "kind": "web-scene", "modelKey": "crane-workout" },
       "outputs": { "desktop": "public/posters/experience-hero-desktop.webp", "mobile": "public/posters/experience-hero-mobile.webp" }
     },
@@ -60,6 +61,7 @@
       "id": "projects-hero",
       "route": "/projects",
       "background": "#AFD4E1",
+      "transparent": true,
       "source": { "kind": "web-scene", "modelKey": "crane-making-table" },
       "outputs": { "desktop": "public/posters/projects-hero-desktop.webp", "mobile": "public/posters/projects-hero-mobile.webp" }
     },
@@ -81,6 +83,7 @@
       "id": "contact-hero",
       "route": "/contact",
       "background": "#C9BAE4",
+      "transparent": true,
       "source": { "kind": "web-scene", "modelKey": "crane-workout" },
       "outputs": { "desktop": "public/posters/contact-hero-desktop.webp", "mobile": "public/posters/contact-hero-mobile.webp" }
     }

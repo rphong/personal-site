@@ -103,6 +103,7 @@ const EXPECTED_POSTER_SCENES = [
     },
     route: "/experience",
     source: { kind: "web-scene", modelKey: "crane-workout" },
+    transparent: true,
   },
   {
     background: "#DFA9B5",
@@ -153,6 +154,7 @@ const EXPECTED_POSTER_SCENES = [
     },
     route: "/projects",
     source: { kind: "web-scene", modelKey: "crane-making-table" },
+    transparent: true,
   },
   {
     background: "#AFD4E1",
@@ -183,6 +185,7 @@ const EXPECTED_POSTER_SCENES = [
     },
     route: "/contact",
     source: { kind: "web-scene", modelKey: "crane-workout" },
+    transparent: true,
   },
 ];
 

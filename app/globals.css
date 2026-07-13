@@ -250,7 +250,7 @@ img {
 
 .page-hero--layered .page-hero__copy {
   position: absolute;
-  top: 61.5%;
+  top: 48%;
   left: 50%;
   z-index: 2;
   width: 100%;
@@ -262,14 +262,25 @@ img {
   max-width: none;
   margin-inline: auto;
   color: var(--route-pale-heading);
-  font-family: var(--font-display), Georgia, serif;
-  font-size: clamp(5.5rem, 13.333vw, 16rem);
-  font-weight: 650;
-  letter-spacing: -0.075em;
+  font-family: var(--font-body), "Trebuchet MS", sans-serif;
+  font-size: clamp(5.5rem, 14.5vw, 17.5rem);
+  font-weight: 850;
+  letter-spacing: -0.055em;
   line-height: 0.8;
   text-align: center;
   text-wrap: nowrap;
   white-space: nowrap;
+}
+
+.site-shell[data-route="home"] .page-hero__copy {
+  top: 61.5%;
+}
+
+.page-hero--layered.page-hero--editorial h1 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(5.5rem, 13.333vw, 16rem);
+  font-weight: 650;
+  letter-spacing: -0.075em;
 }
 
 .page-hero__summary {
@@ -285,6 +296,7 @@ img {
   position: absolute;
   bottom: 1.5rem;
   left: 50%;
+  z-index: 2;
   color: var(--route-accent);
   font-size: 0.72rem;
   font-weight: 800;
@@ -556,7 +568,7 @@ img {
   }
 
   .page-hero--layered .page-hero__copy {
-    top: 61.5%;
+    top: 48%;
     padding-inline: var(--page-gutter);
   }
 
@@ -571,6 +583,10 @@ img {
 
   .site-shell[data-route="experience"] .page-hero h1 {
     font-size: clamp(3rem, 15.5vw, 6.5rem);
+  }
+
+  .page-hero--layered.page-hero--editorial h1 {
+    font-size: clamp(4.8rem, 23vw, 7.25rem);
   }
 
   .site-footer {

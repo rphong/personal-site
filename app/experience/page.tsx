@@ -14,9 +14,7 @@ export default function ExperiencePage() {
   return (
     <main>
       <PageHero
-        eyebrow={route.eyebrow}
         sceneId={route.heroSceneId}
-        summary={route.heroSummary}
         title={route.title}
       />
       <article className="content-surface" id="page-content">

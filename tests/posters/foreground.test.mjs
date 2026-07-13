@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import sharp from "sharp";
@@ -37,4 +38,29 @@ test("rejects malformed background colors", async () => {
     makeFlatBackgroundTransparent(Buffer.from("not-an-image"), "mint"),
     /Invalid foreground background/,
   );
+});
+
+test("keeps every layered route hero poster transparent", async () => {
+  const contract = JSON.parse(
+    await readFile("assets/poster-contract.json", "utf8"),
+  );
+  const heroScenes = contract.scenes.filter((scene) =>
+    scene.id.endsWith("-hero"),
+  );
+
+  assert.deepEqual(
+    heroScenes.map((scene) => scene.id),
+    ["home-hero", "experience-hero", "projects-hero", "contact-hero"],
+  );
+
+  for (const scene of heroScenes) {
+    assert.equal(scene.transparent, true, `${scene.id} must composite over HTML`);
+    for (const output of Object.values(scene.outputs)) {
+      assert.equal(
+        (await sharp(output).metadata()).hasAlpha,
+        true,
+        `${output} must retain alpha for title layering`,
+      );
+    }
+  }
 });
