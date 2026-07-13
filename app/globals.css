@@ -75,12 +75,17 @@ img {
 }
 
 .scene-stage {
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  top: calc(-1 * var(--nav-height));
+  left: 0;
   z-index: 0;
   width: 100%;
   height: 100svh;
   pointer-events: none;
+}
+
+.scene-capture-viewport > .scene-stage {
+  top: 0;
 }
 
 .skip-link {

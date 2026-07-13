@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractSha256": "b97b814ea306e5ed5912e27696b2601be81e1135f6d57937cfebcb7531145ad2",
-  "renderInputsSha256": "45303f61b78b253274c70674438f86c27855856784febd6c514807047075de06",
+  "renderInputsSha256": "fc5df27a693f5d4bb074fcf33b954449761d8dd9525b45adb7755556124a9e38",
   "renderer": {
     "browser": "chromium",
     "browserVersion": "149.0.7827.55",

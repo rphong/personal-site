@@ -36,6 +36,8 @@ describe("persistent runtime shell", () => {
     expect(canvasBoundary).toContain("lazy(");
     expect(canvasBoundary).toContain("<Suspense fallback={null}>");
     expect(host).toContain("SceneCanvasBoundary");
+    expect(host).toContain("createPortal(");
+    expect(host).toContain("runtime.activeSectionElement");
     expect(host).not.toMatch(/import\s*\{[^}]*SceneCanvas[,}]/);
   });
 
@@ -57,16 +59,23 @@ describe("persistent runtime shell", () => {
     );
   });
 
-  it("uses immediate poster/canvas visibility and a fixed full viewport host", async () => {
-    const css = await source("app/three/scene-runtime.css");
+  it("uses immediate poster/canvas visibility and a section-anchored host", async () => {
+    const [css, globalCss] = await Promise.all([
+      source("app/three/scene-runtime.css"),
+      source("app/globals.css"),
+    ]);
     const host = cssRule(css, ".scene-runtime");
-    expect(host).toMatch(/position:\s*fixed/);
+    const stage = cssRule(globalCss, ".scene-stage");
+    expect(stage).toMatch(/position:\s*absolute/);
+    expect(stage).not.toMatch(/position:\s*fixed/);
+    expect(host).toMatch(/position:\s*absolute/);
+    expect(host).not.toMatch(/position:\s*fixed/);
     expect(host).toMatch(/inset:\s*0/);
     expect(host).toMatch(/width:\s*100%/);
     expect(host).toMatch(/height:\s*100svh/);
     expect(host).toMatch(/overflow:\s*hidden/);
     expect(host).toMatch(/pointer-events:\s*none/);
-    expect(host).toMatch(/z-index:\s*1/);
+    expect(host).toMatch(/z-index:\s*0/);
     expect(host).toMatch(/background:\s*var\(--scene-background\)/);
 
     expect(cssRule(css, ".scene-runtime__poster")).toMatch(
