@@ -108,7 +108,9 @@ function inspectPixels(
         Math.abs(pixels[offset + 1] - background[1]),
         Math.abs(pixels[offset + 2] - background[2]),
       );
-      if (delta > 12) {
+      // Lossy WebP may assign arbitrary RGB values to fully transparent
+      // pixels. Only visible pixels can represent clipped focal content.
+      if (pixels[offset + 3] > 0 && delta > 12) {
         foreground += 1;
         minimumForegroundX = Math.min(minimumForegroundX, x);
         minimumForegroundY = Math.min(minimumForegroundY, y);
