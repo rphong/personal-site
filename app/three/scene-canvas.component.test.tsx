@@ -123,6 +123,9 @@ describe("SceneCanvasContents", () => {
     expect(
       renderer.scene.findAllByProps({ name: "mock-model:home-hero" }),
     ).toHaveLength(1);
+    expect(
+      renderer.scene.findAllByProps({ name: "contact-blob-shadow" }),
+    ).toHaveLength(1);
     lifecycle.events.length = 0;
 
     await renderer.update(
@@ -135,6 +138,9 @@ describe("SceneCanvasContents", () => {
 
     expect(
       renderer.scene.findAllByProps({ name: "mock-model:home-hero" }),
+    ).toHaveLength(0);
+    expect(
+      renderer.scene.findAllByProps({ name: "contact-blob-shadow" }),
     ).toHaveLength(0);
     expect(lifecycle.events).toEqual(["model-detached", "cache-cleared"]);
 

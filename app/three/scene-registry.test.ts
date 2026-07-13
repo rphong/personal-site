@@ -98,6 +98,28 @@ describe("scene registry", () => {
     expect(getSceneDefinition("paycom-poster").requiredLive).toBe(false);
   });
 
+  it("grounds only Home with one low-resolution blob and no shadow-map light", () => {
+    const home = getSceneDefinition("home-hero");
+    expect(home.contactShadow).toEqual({
+      opacity: 0.32,
+      position: [0, -0.47, -0.2],
+      scale: [2.8, 1.7],
+      textureSize: 64,
+    });
+    expect(home.lighting).toEqual({
+      ambient: { color: "#ffffff", intensity: 1.6 },
+      key: {
+        color: "#d8eee8",
+        intensity: 2.2,
+        position: [-3.5, 6, 4.5],
+        castShadow: false,
+      },
+    });
+    for (const id of LIVE_SCENE_IDS.filter((id) => id !== "home-hero")) {
+      expect("contactShadow" in getSceneDefinition(id)).toBe(false);
+    }
+  });
+
   it("maps each real route to its destination hero", () => {
     expect(getRouteHeroSceneId("/")).toBe("home-hero");
     expect(getRouteHeroSceneId("/experience")).toBe("experience-hero");
