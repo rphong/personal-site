@@ -63,9 +63,9 @@ const FORBIDDEN_EXTENSIONS = [
 ];
 const EXPECTED_VALIDATOR_WARNING_CODES = {
   crane: ["NODE_SKINNED_MESH_NON_ROOT"],
-  "crane-making-table": ["NODE_SKINNED_MESH_NON_ROOT"],
-  "crane-on-league": ["NODE_SKINNED_MESH_NON_ROOT"],
-  "crane-throwing-plane": ["NODE_SKINNED_MESH_NON_ROOT"],
+  "crane-making-table": [],
+  "crane-on-league": [],
+  "crane-throwing-plane": [],
   "crane-workout": ["NODE_SKINNED_MESH_NON_ROOT"],
   "froggie-display": [],
   rocket: [],

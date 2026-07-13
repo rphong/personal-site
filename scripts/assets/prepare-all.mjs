@@ -53,6 +53,24 @@ const WEB_GROUND_BY_MODEL = {
   rocket: { mesh: "Plane", object: "Ground" },
 };
 
+const STATIC_CRANE_POSE_BY_MODEL = {
+  "crane-making-table": {
+    frame: 2,
+    policy: "bake-skinned-mesh-pose-v1",
+    version: 1,
+  },
+  "crane-on-league": {
+    frame: 48,
+    policy: "bake-skinned-mesh-pose-v1",
+    version: 1,
+  },
+  "crane-throwing-plane": {
+    frame: 19,
+    policy: "bake-skinned-mesh-pose-v1",
+    version: 1,
+  },
+};
+
 async function exists(filePath) {
   try {
     await access(filePath);
@@ -137,6 +155,9 @@ async function buildGeneratorInputs({
       ...WEB_GROUND_CLEANUP,
       ...WEB_GROUND_BY_MODEL[model.key],
     };
+  }
+  if (STATIC_CRANE_POSE_BY_MODEL[model.key]) {
+    generatorInputs.staticCranePose = STATIC_CRANE_POSE_BY_MODEL[model.key];
   }
   return Object.keys(generatorInputs).length > 0
     ? { generatorInputs }
@@ -470,13 +491,18 @@ export async function prepareAll({
     );
   }
   if (replace && !only) {
-    throw new Error("--replace requires one explicit --only model key");
+    throw new Error("--replace requires explicit --only model keys");
   }
+  const onlyKeys = only
+    ? new Set(Array.isArray(only) ? only : String(only).split(","))
+    : null;
   const selected = manifest.models.filter(
-    (model) => model.origin && (!only || model.key === only),
+    (model) => model.origin && (!onlyKeys || onlyKeys.has(model.key)),
   );
-  if (only && selected.length !== 1) {
-    throw new Error(`Unknown imported model key: ${only}`);
+  if (onlyKeys && selected.length !== onlyKeys.size) {
+    const known = new Set(selected.map((model) => model.key));
+    const unknown = [...onlyKeys].filter((key) => !known.has(key));
+    throw new Error(`Unknown imported model key: ${unknown.join(",")}`);
   }
   const candidateRoot = path.join(root, ".tmp/assets/curated");
   await mkdir(candidateRoot, { recursive: true });
@@ -545,6 +571,12 @@ export async function prepareAll({
       }
       if (model.key === "crane-workout") {
         scriptArgs.push("--crane-workout-remove-hidden-hand-mirror");
+      }
+      if (STATIC_CRANE_POSE_BY_MODEL[model.key]) {
+        scriptArgs.push(
+          "--static-crane-pose-frame",
+          String(STATIC_CRANE_POSE_BY_MODEL[model.key].frame),
+        );
       }
       blenderRunner({
         blenderBin,

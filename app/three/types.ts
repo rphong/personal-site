@@ -75,6 +75,13 @@ export interface SceneContactShadow {
   readonly textureSize: 64;
 }
 
+export interface StaticScenePose {
+  readonly clips: readonly {
+    readonly name: string;
+    readonly timeSeconds: number;
+  }[];
+}
+
 export interface ScenePosterDefinition {
   readonly desktop: string;
   readonly mobile: string;
@@ -99,6 +106,7 @@ export interface LiveSceneDefinition
   extends SceneDefinitionBase<LiveSceneId> {
   readonly requiredLive: true;
   readonly modelUrl: `/models/${string}.glb`;
+  readonly staticPose?: StaticScenePose;
 }
 
 export interface PosterOnlySceneDefinition

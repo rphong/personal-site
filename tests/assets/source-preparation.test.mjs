@@ -40,6 +40,11 @@ const leagueWebGroundCleanup = {
   shadowStrategy: "transparent-canvas-contact-shadow-v1",
   version: 1,
 };
+const leagueStaticCranePose = {
+  frame: 48,
+  policy: "bake-skinned-mesh-pose-v1",
+  version: 1,
+};
 
 test.beforeEach(async () => {
   await rm(tempRoot, { force: true, recursive: true });
@@ -282,6 +287,7 @@ test("changed League SVG fails unrelated replacement validation without mutating
               )),
             },
           },
+          staticCranePose: leagueStaticCranePose,
           webGroundCleanup: leagueWebGroundCleanup,
         },
       },
@@ -380,6 +386,7 @@ async function createPrepareAllFixture(name) {
           source,
           generatorInputs: {
             ownedTextures,
+            staticCranePose: leagueStaticCranePose,
             webGroundCleanup: leagueWebGroundCleanup,
           },
         },
@@ -420,6 +427,10 @@ async function assertPrepareAllFixtureMatches(snapshot) {
 
 function deterministicLeagueRunner({ scriptArgs }) {
   assert.ok(scriptArgs.includes("--remove-web-ground"));
+  assert.equal(
+    scriptArgs[scriptArgs.indexOf("--static-crane-pose-frame") + 1],
+    "48",
+  );
   const destination = scriptArgs[scriptArgs.indexOf("--destination") + 1];
   const dashboard = scriptArgs[scriptArgs.indexOf("--league-dashboard") + 1];
   const history = scriptArgs[scriptArgs.indexOf("--league-history") + 1];

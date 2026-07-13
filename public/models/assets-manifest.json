@@ -26,7 +26,7 @@
     },
     "crane-making-table": {
       "animations": [],
-      "bytes": 41116,
+      "bytes": 32040,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "KHR_mesh_quantization"
@@ -36,21 +36,19 @@
         "KHR_mesh_quantization"
       ],
       "materials": 6,
-      "nodes": 40,
+      "nodes": 12,
       "primitives": 13,
-      "sha256": "eb113ee2542d254051ac9aae27326357301844f2581119c75be67380976bcccf",
-      "sourceSha256": "62b7ea16c5d59c994cb51580fa3fa118589b0947a5a7db9e1eb83da47b9967cd",
+      "sha256": "ac202977ac3a41b79c673a3fee91f203e3e2039d6f7d1d2bb90b9be29a411770",
+      "sourceSha256": "dc937e9233e1a8925d95ea03a1ef564640472569249b1e9a9a7edb4e0d97760d",
       "textures": [],
       "triangles": 1491,
       "url": "/models/crane-making-table.glb",
-      "validatorWarningCodes": [
-        "NODE_SKINNED_MESH_NON_ROOT"
-      ],
-      "vertices": 2579
+      "validatorWarningCodes": [],
+      "vertices": 2581
     },
     "crane-on-league": {
       "animations": [],
-      "bytes": 83744,
+      "bytes": 74684,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "EXT_texture_webp",
@@ -62,10 +60,10 @@
         "KHR_mesh_quantization"
       ],
       "materials": 8,
-      "nodes": 103,
+      "nodes": 76,
       "primitives": 76,
-      "sha256": "f064b758ecff96087730e3cce421b0d6f69a27d5fb733192ef7cd0ef361cb980",
-      "sourceSha256": "3b8fd5dd30a05219878132ef89acd015c71718e5dcc307c928488de141cf319a",
+      "sha256": "7696b27e48fc002250171f6ea1352cc4af5fa244da5bddc1d619d7269d1d383e",
+      "sourceSha256": "361849ef8ff6b80692bda475d7edbc0393817bfd3cc62ad376e2aa59efde1d7c",
       "textures": [
         {
           "bytes": 8082,
@@ -86,17 +84,15 @@
       ],
       "triangles": 1885,
       "url": "/models/crane-on-league.glb",
-      "validatorWarningCodes": [
-        "NODE_SKINNED_MESH_NON_ROOT"
-      ],
-      "vertices": 3344
+      "validatorWarningCodes": [],
+      "vertices": 3351
     },
     "crane-throwing-plane": {
       "animations": [
         "EmptyAction",
         "Hat propellerAction.002"
       ],
-      "bytes": 42468,
+      "bytes": 33660,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "KHR_mesh_quantization"
@@ -106,17 +102,15 @@
         "KHR_mesh_quantization"
       ],
       "materials": 6,
-      "nodes": 35,
+      "nodes": 7,
       "primitives": 7,
-      "sha256": "5c227aebaf14f62a30a4a548ca1e59be4d3ed2466fc8766f7ed6139291877074",
-      "sourceSha256": "04e00fb1d293847251e515c5217a37f13991524b78c5b8a8f9424961218c0307",
+      "sha256": "08c432dd6461ed13874f3f9958f27de7036f2fd9be9fe52ef3c337630dada248",
+      "sourceSha256": "62f4dd4810bdf41b4f42364f70d31fccad22890804f6b4b8c7090eb109907ff8",
       "textures": [],
       "triangles": 1380,
       "url": "/models/crane-throwing-plane.glb",
-      "validatorWarningCodes": [
-        "NODE_SKINNED_MESH_NON_ROOT"
-      ],
-      "vertices": 2338
+      "validatorWarningCodes": [],
+      "vertices": 2340
     },
     "crane-workout": {
       "animations": [

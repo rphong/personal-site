@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractSha256": "4c67e30914d1ef0aad513f764daeabdb6f2270d99f4957dd0c30659965645e7e",
-  "renderInputsSha256": "4ef20b4e6d457205755cc07cf07670fec08a0facc71cdab060f796ddad4b6700",
+  "renderInputsSha256": "e6ad999b7c64fba279d72bbb868e1a5034dd321d6876acfa1505eecd2e22cc5e",
   "renderer": {
     "browser": "chromium",
     "browserVersion": "149.0.7827.55",
@@ -18,8 +18,8 @@
       "path": "public/posters/contact-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 13666,
-      "sha256": "f5d303a5cd383f8c8814a4cdab3bc05488f33d3906287290ac3d7c735dc0687f"
+      "bytes": 12748,
+      "sha256": "3caf3d20074aec88a3eeedd69d494d27051c304c5a3183c19521624fe8bb9e96"
     },
     {
       "sceneId": "contact-hero",
@@ -27,8 +27,8 @@
       "path": "public/posters/contact-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 10148,
-      "sha256": "7f7fe159ba44537d435d4aa58a35c594fe7fb8cf09904b3efedb9c6163c276eb"
+      "bytes": 9176,
+      "sha256": "f985aaf1cd91963f8d507bbaa96579a154d259eb1cfcfe417649b6017e9f3ae3"
     },
     {
       "sceneId": "eog-poster",
@@ -54,8 +54,8 @@
       "path": "public/posters/experience-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 12702,
-      "sha256": "6bb574ea0b5f60acd1b6e015c56e811e9b6795cd7cdb7536bef2c064dd048e4a"
+      "bytes": 11998,
+      "sha256": "a844fbfd7f3a0fc2b90f97866ae6799aa0251937a8e411b11a0feeb7abb9aaee"
     },
     {
       "sceneId": "experience-hero",
@@ -63,8 +63,8 @@
       "path": "public/posters/experience-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 9186,
-      "sha256": "6a3b0efdb5811c08a56415920849c27feedc25425094fd34824178fc97ac6946"
+      "bytes": 8518,
+      "sha256": "e4ff08c6c747dac6943b5cd55997e82c140a62709a89674346fcec88bdcd6e62"
     },
     {
       "sceneId": "experience-intro",
@@ -72,8 +72,8 @@
       "path": "public/posters/experience-intro-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 9376,
-      "sha256": "a5b395bc78cbf9fd41e56a10b18e771ba727a3a32d9c84c499a6f47900017300"
+      "bytes": 8506,
+      "sha256": "ddf0ec8d1ef7312ca61c886465dd154d888375e13548e48991a6ca615003c175"
     },
     {
       "sceneId": "experience-intro",
@@ -81,8 +81,8 @@
       "path": "public/posters/experience-intro-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 6514,
-      "sha256": "95665fc945913701f10859880a7caa21b647a386a4bdd6615304405668408c57"
+      "bytes": 4088,
+      "sha256": "93f9a8d12ee5b9dfcb54b2f8348fe8286198017cfb507f3e218bb9f9cabcdb34"
     },
     {
       "sceneId": "froggie-adventures",
@@ -126,8 +126,8 @@
       "path": "public/posters/league-ban-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 28220,
-      "sha256": "b8888a41e77c8b1204f63a2c69e3a12b2ca1d60222408a10e7003c7b16cb50af"
+      "bytes": 28360,
+      "sha256": "9dac70e82408d33dc1f10f5fa5e2432f935b08823ef12e426c49aa98b3146f8c"
     },
     {
       "sceneId": "league-ban",
@@ -135,8 +135,8 @@
       "path": "public/posters/league-ban-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 15304,
-      "sha256": "dee8a6e347ab6430eda91e1aa1daf4b36455ae17d319b033a0bf090dec45a1f6"
+      "bytes": 12768,
+      "sha256": "9f91551aa1382d6604468789aa07b0d716e3e7e018460bec3e1a4fd76a85e77a"
     },
     {
       "sceneId": "nasa-rocket",
@@ -180,8 +180,8 @@
       "path": "public/posters/projects-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 15090,
-      "sha256": "abbbdc1d8323e04a501372ea014319a0d91fc0f5267e3b44e06d0b63ccf301be"
+      "bytes": 14218,
+      "sha256": "b31eb874d46db69d3e12bb2b2163ec0680b713925e99ecdbc8241e47b95e52e2"
     },
     {
       "sceneId": "projects-hero",
@@ -189,8 +189,8 @@
       "path": "public/posters/projects-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 11222,
-      "sha256": "ca347279087cbb50e61c3c752fe7b51e4d57920b37891a6ba743aa07c3e83385"
+      "bytes": 10784,
+      "sha256": "dc88d2fa1496fdb35365de0019ef902982a722678b69c8c1b1b0910139c3a100"
     }
   ]
 }
