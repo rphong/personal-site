@@ -28,7 +28,10 @@ describe("home page", () => {
         "Software developer, curious builder, and collector of projects with a little personality.",
       ),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Continue" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Scroll down" })).toHaveAttribute(
+      "href",
+      "#page-content",
+    );
     expect(screen.getByText(home.nonWorkInterest)).toBeInTheDocument();
     expect(screen.getByText(home.technicalCuriosity)).toBeInTheDocument();
 

@@ -13,9 +13,7 @@ export default function ContactPage() {
   return (
     <main>
       <PageHero
-        eyebrow={route.eyebrow}
         sceneId={route.heroSceneId}
-        summary={route.heroSummary}
         title={route.title}
       />
       <section className="content-surface" id="page-content">

@@ -15,10 +15,7 @@ export default function HomePage() {
   return (
     <main>
       <PageHero
-        composition="layered"
-        eyebrow={route.eyebrow}
         sceneId={route.heroSceneId}
-        summary={route.heroSummary}
         title={route.title}
         titleStyle="editorial"
       />
