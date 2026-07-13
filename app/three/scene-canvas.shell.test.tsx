@@ -1,5 +1,5 @@
 import { act, render } from "@testing-library/react";
-import type { WebGLRenderer } from "three";
+import { PerspectiveCamera, Vector3, type WebGLRenderer } from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getSceneDefinition } from "./scene-registry";
 import {
@@ -52,6 +52,48 @@ describe("SceneCanvas shell", () => {
     });
     expect(canvasCalls.mock.calls[0][0].gl).toBeTypeOf("function");
   });
+
+  it.each([
+    [1280, "desktop"],
+    [390, "mobile"],
+  ] as const)(
+    "applies the complete %s px %s camera frame before the Canvas can render",
+    (width, mode) => {
+      const scene = getSceneDefinition("home-hero");
+      render(
+        <SceneCanvas
+          scene={scene}
+          rotation={{ yaw: 0, pitch: 0 }}
+          activationVersion={1}
+          renderVersion={0}
+          loadEnabled
+          preloadReady={false}
+          onFirstFrame={vi.fn()}
+          onFailure={vi.fn()}
+          onContextLost={vi.fn()}
+          onContextRestored={vi.fn()}
+        />,
+      );
+      const camera = new PerspectiveCamera();
+      const frame = scene[mode];
+      const expectedDirection = new Vector3(...frame.cameraTarget)
+        .sub(new Vector3(...frame.cameraPosition))
+        .normalize();
+
+      canvasCalls.mock.calls[0][0].onCreated({
+        camera,
+        size: { width },
+      });
+
+      expect(camera.position.toArray()).toEqual([...frame.cameraPosition]);
+      expect(camera.fov).toBe(frame.fov);
+      expect(
+        camera
+          .getWorldDirection(new Vector3())
+          .distanceTo(expectedDirection),
+      ).toBeLessThan(0.000_001);
+    },
+  );
 
   it("creates WebGL2 once and turns construction failure into one inert fallback", async () => {
     const defaults = {

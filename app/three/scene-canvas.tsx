@@ -2,11 +2,13 @@
 
 import {
   Canvas,
+  type RootState,
   useFrame,
   useThree,
 } from "@react-three/fiber";
 import {
   Suspense,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -165,12 +167,15 @@ function ResponsiveCamera({ scene }: { readonly scene: SceneDefinition }) {
   const invalidate = useThree((state) => state.invalidate);
 
   useLayoutEffect(() => {
-    const frame = width <= 767 ? scene.mobile : scene.desktop;
-    applyCameraFrame(camera, frame);
+    applyCameraFrame(camera, cameraFrameForWidth(scene, width));
     invalidate();
   }, [camera, invalidate, scene, width]);
 
   return null;
+}
+
+function cameraFrameForWidth(scene: SceneDefinition, width: number) {
+  return width <= 767 ? scene.mobile : scene.desktop;
 }
 
 function applyCameraFrame(
@@ -517,6 +522,16 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
     props.scene.id,
     rendererFailed,
   ]);
+  const initializeCamera = useCallback(
+    ({ camera, size }: RootState) => {
+      // Canvas otherwise renders once from its desktop-only camera prop before
+      // ResponsiveCamera's layout effect can apply the measured breakpoint.
+      // Configure the complete registry frame during root creation so even the
+      // first possible WebGL render matches the poster and later live frames.
+      applyCameraFrame(camera, cameraFrameForWidth(props.scene, size.width));
+    },
+    [props.scene],
+  );
 
   return (
     <Canvas
@@ -529,6 +544,7 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
         fov: props.scene.desktop.fov,
       }}
       gl={rendererFactory}
+      onCreated={initializeCamera}
     >
       <SceneCanvasGate availability={availability} props={props} />
     </Canvas>
