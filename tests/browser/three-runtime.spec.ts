@@ -268,39 +268,56 @@ test("anchors active scene visuals to their sections while desktop and mobile ve
         "experience-hero",
       );
       await expect(host).toHaveAttribute("data-three-status", "ready");
+
+      const activateAndAssertOwner = async (
+        route: string,
+        sceneId: string,
+        expectedStatus: "ready" | "poster",
+      ) => {
+        if (new URL(page.url()).pathname !== route) await page.goto(route);
+        const owner = page.locator(`[data-scene-id="${sceneId}"]`);
+        await owner.evaluate((element) => {
+          const top = element.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo(0, top - window.innerHeight * 0.08);
+        });
+        await expect(host).toHaveAttribute("data-active-scene-id", sceneId);
+        await expect(host).toHaveAttribute(
+          "data-three-status",
+          expectedStatus,
+        );
+        expect(
+          await host.evaluate(
+            (element, activeSceneId) =>
+              element.parentElement?.getAttribute("data-scene-owner-id") ===
+                activeSceneId &&
+              element.parentElement?.parentElement?.getAttribute(
+                "data-scene-id",
+              ) === activeSceneId,
+            sceneId,
+          ),
+          `${viewport.name} ${sceneId} runtime stage should track its section owner`,
+        ).toBe(true);
+      };
+
+      await activateAndAssertOwner(
+        "/experience",
+        "experience-hero",
+        "ready",
+      );
       await page.evaluate(() => {
         window.__issue4Canvas = document.querySelector("canvas");
       });
-      const section = page.locator('[data-scene-id="experience-intro"]');
-      await section.evaluate((element) => {
-        document.documentElement.style.scrollBehavior = "auto";
-        const top = element.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo(0, top - window.innerHeight * 0.08);
-      });
-      await expect(host).toHaveAttribute(
-        "data-active-scene-id",
+      await activateAndAssertOwner(
+        "/experience",
         "experience-intro",
+        "ready",
       );
-      await expect(host).toHaveAttribute("data-three-status", "ready");
       expect(
         await page.evaluate(
           () => document.querySelector("canvas") === window.__issue4Canvas,
         ),
         `${viewport.name} section activation should retain the Canvas node`,
       ).toBe(true);
-      expect(
-        await host.evaluate(
-          (element, sceneId) =>
-            element.parentElement?.getAttribute("data-scene-owner-id") ===
-              sceneId &&
-            element.parentElement?.parentElement?.getAttribute(
-              "data-scene-id",
-            ) === sceneId,
-          "experience-intro",
-        ),
-        `${viewport.name} runtime stage should track the active section owner`,
-      ).toBe(true);
-
       const before = await page.evaluate(() => {
         const sectionElement = document.querySelector(
           '[data-scene-id="experience-intro"]',
@@ -346,6 +363,34 @@ test("anchors active scene visuals to their sections while desktop and mobile ve
       const hostDelta = (after?.hostTop ?? 0) - (before?.hostTop ?? 0);
       expect(Math.abs(sectionDelta)).toBeGreaterThan(1);
       expect(hostDelta).toBeCloseTo(sectionDelta, 1);
+
+      await page.getByRole("button", { name: "3D on" }).click();
+      await expect(host).toHaveAttribute("data-three-status", "disabled");
+      await expect(host.locator("picture")).toBeVisible();
+      expect(
+        await host.evaluate(
+          (element) =>
+            element.parentElement?.parentElement?.getAttribute(
+              "data-scene-id",
+            ) === "experience-intro",
+        ),
+        `${viewport.name} poster fallback should remain with its section owner`,
+      ).toBe(true);
+      await page.getByRole("button", { name: "3D off" }).click();
+      await expect(host).toHaveAttribute("data-three-status", "ready");
+
+      for (const [route, sceneId, status] of [
+        ["/experience", "nasa-rocket", "ready"],
+        ["/experience", "eog-poster", "poster"],
+        ["/experience", "paycom-poster", "poster"],
+        ["/projects", "projects-hero", "ready"],
+        ["/projects", "league-ban", "ready"],
+        ["/projects", "froggie-adventures", "ready"],
+        ["/contact", "contact-hero", "ready"],
+        ["/", "home-hero", "ready"],
+      ] as const) {
+        await activateAndAssertOwner(route, sceneId, status);
+      }
     } finally {
       await disposeFixture(models);
       await context.close();
