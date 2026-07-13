@@ -68,6 +68,13 @@ export interface SceneLighting {
   };
 }
 
+export interface SceneContactShadow {
+  readonly opacity: number;
+  readonly position: Vector3Tuple;
+  readonly scale: readonly [width: number, depth: number];
+  readonly textureSize: 64;
+}
+
 export interface ScenePosterDefinition {
   readonly desktop: string;
   readonly mobile: string;
@@ -83,6 +90,7 @@ interface SceneDefinitionBase<Id extends SceneId> {
   readonly desktop: SceneFrame;
   readonly mobile: SceneFrame;
   readonly lighting: SceneLighting;
+  readonly contactShadow?: SceneContactShadow;
   readonly rotation: RotationLimits;
   readonly nextSceneId: SceneId | null;
 }

@@ -19,6 +19,7 @@ import {
   type WebGLRendererParameters,
 } from "three";
 import { AdjacentScenePreloader } from "./adjacent-scene-preloader";
+import { ContactBlobShadow } from "./contact-blob-shadow";
 import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneErrorBoundary } from "./scene-error-boundary";
 import { SceneModel } from "./scene-model";
@@ -392,6 +393,9 @@ function ModelLayer({
         scene={props.scene}
         rotation={props.rotation}
       />
+      {props.scene.contactShadow ? (
+        <ContactBlobShadow definition={props.scene.contactShadow} />
+      ) : null}
       <DemandRenderer
         health={health}
         sceneId={props.scene.id}
