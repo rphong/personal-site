@@ -12,6 +12,8 @@ function value(overrides: Partial<SceneRuntimeContextValue> = {}) {
   const runtime: SceneRuntimeContextValue = {
     activeSceneId: "home-hero",
     activeScene: getSceneDefinition("home-hero"),
+    activeSectionElement: null,
+    sceneStageElement: null,
     activationVersion: 0,
     sceneActivationAllowed: true,
     status: "ready",
@@ -21,6 +23,7 @@ function value(overrides: Partial<SceneRuntimeContextValue> = {}) {
     threeSupported: true,
     activateScene: vi.fn(),
     registerSection: vi.fn(() => vi.fn()),
+    registerSceneStage: vi.fn(),
     setStatus: vi.fn(),
     rotateBy: vi.fn(),
     setThreeEnabled,

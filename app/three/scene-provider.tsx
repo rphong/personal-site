@@ -96,6 +96,21 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
   const [state, setState] = useState<RuntimeState>(() =>
     createRouteState(pathname, 0),
   );
+  const [activeSectionElement, setActiveSectionElement] =
+    useState<HTMLElement | null>(null);
+  const [sceneStageElement, setSceneStageElement] =
+    useState<HTMLElement | null>(null);
+  const sceneStageElementRef = useRef<HTMLElement | null>(null);
+  const activeRegistrationRef = useRef({
+    pathname: state.pathname,
+    sceneId: state.activeSceneId,
+  });
+  useLayoutEffect(() => {
+    activeRegistrationRef.current = {
+      pathname: state.pathname,
+      sceneId: state.activeSceneId,
+    };
+  }, [state.activeSceneId, state.pathname]);
 
   if (state.pathname !== pathname) {
     setState(createRouteState(pathname, state.activationVersion + 1));
@@ -118,6 +133,14 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     ) {
       return;
     }
+    const matchingElement = [...registrations.current.entries()].find(
+      ([, registration]) =>
+        registration.sceneId === sceneId &&
+        registration.pathname === currentPathname,
+    )?.[0];
+    setActiveSectionElement(
+      matchingElement instanceof HTMLElement ? matchingElement : null,
+    );
     setState((current) => {
       if (current.pathname !== currentPathname) return current;
       if (
@@ -182,14 +205,36 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     (sceneId: SceneId, element: HTMLElement) => {
       registrations.current.set(element, { sceneId, pathname });
       ensureObserver()?.observe(element);
+      const activeRegistration = activeRegistrationRef.current;
+      if (
+        activeRegistration.pathname === pathname &&
+        activeRegistration.sceneId === sceneId
+      ) {
+        setActiveSectionElement(element);
+      }
 
       return () => {
         observer.current?.unobserve(element);
         registrations.current.delete(element);
+        setActiveSectionElement((current) =>
+          current === element ? null : current,
+        );
       };
     },
     [ensureObserver, pathname],
   );
+
+  const registerSceneStage = useCallback((element: HTMLElement | null) => {
+    sceneStageElementRef.current = element;
+    setSceneStageElement(element);
+  }, []);
+
+  useLayoutEffect(() => {
+    const stage = sceneStageElementRef.current;
+    if (!stage || !activeSectionElement) return;
+    activeSectionElement.append(stage);
+    stage.dataset.sceneOwnerId = state.activeSceneId;
+  }, [activeSectionElement, sceneStageElement, state.activeSceneId]);
 
   useEffect(
     () => () => {
@@ -264,6 +309,8 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     () => ({
       activeSceneId: state.activeSceneId,
       activeScene,
+      activeSectionElement,
+      sceneStageElement,
       activationVersion: state.activationVersion,
       sceneActivationAllowed: state.activationAllowed,
       status,
@@ -273,17 +320,21 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       threeSupported: preference.supported,
       activateScene,
       registerSection,
+      registerSceneStage,
       setStatus,
       rotateBy,
       setThreeEnabled,
     }),
     [
       activeScene,
+      activeSectionElement,
+      sceneStageElement,
       activateScene,
       preference.enabled,
       preference.initialized,
       preference.supported,
       registerSection,
+      registerSceneStage,
       rotateBy,
       setStatus,
       setThreeEnabled,
