@@ -15,8 +15,13 @@
       "source": "assets/blender/Crane.blend"
     },
     "crane-making-table": {
-      "canonicalSha256": "62b7ea16c5d59c994cb51580fa3fa118589b0947a5a7db9e1eb83da47b9967cd",
+      "canonicalSha256": "dc937e9233e1a8925d95ea03a1ef564640472569249b1e9a9a7edb4e0d97760d",
       "generatorInputs": {
+        "staticCranePose": {
+          "frame": 2,
+          "policy": "bake-skinned-mesh-pose-v1",
+          "version": 1
+        },
         "webGroundCleanup": {
           "mesh": "Plane.001",
           "object": "Shadow Catcher",
@@ -29,7 +34,7 @@
       "source": "assets/blender/CraneMakingTable.blend"
     },
     "crane-on-league": {
-      "canonicalSha256": "3b8fd5dd30a05219878132ef89acd015c71718e5dcc307c928488de141cf319a",
+      "canonicalSha256": "361849ef8ff6b80692bda475d7edbc0393817bfd3cc62ad376e2aa59efde1d7c",
       "generatorInputs": {
         "ownedTextures": {
           "LeagueBanDashboard": {
@@ -43,6 +48,11 @@
             "sha256": "7b55cc55c2fda59131f1e372e923738c801ee048ec674797753fc4f81723acdf"
           }
         },
+        "staticCranePose": {
+          "frame": 48,
+          "policy": "bake-skinned-mesh-pose-v1",
+          "version": 1
+        },
         "webGroundCleanup": {
           "mesh": "Plane.001",
           "object": "Shadow Catcher",
@@ -55,8 +65,13 @@
       "source": "assets/blender/CraneOnLeague.blend"
     },
     "crane-throwing-plane": {
-      "canonicalSha256": "04e00fb1d293847251e515c5217a37f13991524b78c5b8a8f9424961218c0307",
+      "canonicalSha256": "62f4dd4810bdf41b4f42364f70d31fccad22890804f6b4b8c7090eb109907ff8",
       "generatorInputs": {
+        "staticCranePose": {
+          "frame": 19,
+          "policy": "bake-skinned-mesh-pose-v1",
+          "version": 1
+        },
         "webGroundCleanup": {
           "mesh": "Plane.001",
           "object": "Shadow Catcher",

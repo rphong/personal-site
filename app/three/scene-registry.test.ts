@@ -120,6 +120,42 @@ describe("scene registry", () => {
     }
   });
 
+  it("samples the reviewed interaction poses once without enabling playback", () => {
+    const workoutPose = {
+      clips: [
+        { name: "Dumbell L", timeSeconds: 65 / 24 },
+        { name: "Dumbell R", timeSeconds: 65 / 24 },
+        { name: "Lifting Weights", timeSeconds: 65 / 24 },
+      ],
+    };
+    expect(getSceneDefinition("experience-hero").staticPose).toEqual(
+      workoutPose,
+    );
+    expect(getSceneDefinition("contact-hero").staticPose).toEqual(workoutPose);
+    expect(getSceneDefinition("experience-intro").staticPose).toEqual({
+      clips: [
+        { name: "EmptyAction", timeSeconds: 18 / 24 },
+        { name: "Hat propellerAction.002", timeSeconds: 2 / 24 },
+      ],
+    });
+    for (const id of LIVE_SCENE_IDS.filter(
+      (id) =>
+        id !== "experience-hero" &&
+        id !== "experience-intro" &&
+        id !== "contact-hero",
+    )) {
+      expect("staticPose" in getSceneDefinition(id)).toBe(false);
+    }
+  });
+
+  it("keeps the League mobile workstation context in its reviewed frame", () => {
+    expect(getSceneDefinition("league-ban").mobile).toMatchObject({
+      cameraPosition: [8.4, 6.3, 16.2],
+      cameraTarget: [0, 1.5, 0],
+      fov: 40,
+    });
+  });
+
   it("maps each real route to its destination hero", () => {
     expect(getRouteHeroSceneId("/")).toBe("home-hero");
     expect(getRouteHeroSceneId("/experience")).toBe("experience-hero");

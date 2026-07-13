@@ -2,11 +2,61 @@
 
 import { useThree } from "@react-three/fiber";
 import { useLayoutEffect, useRef } from "react";
-import { Group } from "three";
+import {
+  AnimationClip,
+  AnimationMixer,
+  Group,
+  LoopOnce,
+  type Object3D,
+} from "three";
 import { NormalizedSceneRoot } from "./normalized-scene-root";
 import { useSceneGltf } from "./scene-loader";
 import { cloneRuntimeScene, disposeRuntimeScene } from "./scene-resources";
 import type { LiveSceneDefinition, SceneRotation } from "./types";
+
+export function applyStaticScenePose(
+  root: Object3D,
+  animations: readonly AnimationClip[],
+  pose: NonNullable<LiveSceneDefinition["staticPose"]>,
+): AnimationMixer {
+  const clips = new Map(animations.map((clip) => [clip.name, clip]));
+  const requested = new Set<string>();
+  for (const { name, timeSeconds } of pose.clips) {
+    if (requested.has(name)) {
+      throw new Error(`Static scene pose clip is duplicated: ${name}`);
+    }
+    requested.add(name);
+    const clip = clips.get(name);
+    if (
+      clip &&
+      (!Number.isFinite(timeSeconds) ||
+        timeSeconds < 0 ||
+        timeSeconds > clip.duration)
+    ) {
+      throw new Error(`Static scene pose time is outside ${name}`);
+    }
+  }
+  const missing = pose.clips
+    .map(({ name }) => name)
+    .filter((name) => !clips.has(name));
+  if (missing.length > 0) {
+    throw new Error(`Static scene pose clips are missing: ${missing.join(", ")}`);
+  }
+
+  const mixer = new AnimationMixer(root);
+  const actions = pose.clips.map(({ name, timeSeconds }) => {
+    const action = mixer.clipAction(clips.get(name)!);
+    action.setLoop(LoopOnce, 1);
+    action.clampWhenFinished = true;
+    action.play();
+    action.time = timeSeconds;
+    return action;
+  });
+  mixer.update(0);
+  for (const action of actions) action.paused = true;
+  root.updateMatrixWorld(true);
+  return mixer;
+}
 
 export function SceneModel({
   attemptKey,
@@ -25,14 +75,19 @@ export function SceneModel({
     const parent = attachment.current;
     if (!parent) return;
     const runtimeScene = cloneRuntimeScene(gltf.scene);
+    const mixer = scene.staticPose
+      ? applyStaticScenePose(runtimeScene, gltf.animations, scene.staticPose)
+      : null;
     parent.add(runtimeScene);
     invalidate();
     return () => {
       parent.remove(runtimeScene);
+      mixer?.stopAllAction();
+      mixer?.uncacheRoot(runtimeScene);
       disposeRuntimeScene(runtimeScene);
       invalidate();
     };
-  }, [gltf.scene, invalidate]);
+  }, [gltf.animations, gltf.scene, invalidate, scene.staticPose]);
 
   return (
     <NormalizedSceneRoot

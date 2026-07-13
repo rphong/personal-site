@@ -95,6 +95,14 @@ WEB_GROUND_METADATA_KEYS = (
     "web_ground_removed_mesh",
     "web_ground_shadow_strategy",
 )
+STATIC_CRANE_POSE_BAKE_VERSION = 1
+STATIC_CRANE_POSE_BAKE_POLICY = "bake-skinned-mesh-pose-v1"
+STATIC_CRANE_POSE_METADATA_KEYS = (
+    "static_crane_pose_bake_version",
+    "static_crane_pose_bake_policy",
+    "static_crane_pose_frame",
+    "static_crane_pose_mesh",
+)
 
 
 def parse_args():
@@ -109,12 +117,115 @@ def parse_args():
     )
     parser.add_argument("--remove-web-ground", action="store_true")
     parser.add_argument("--rocket-smoke-bake-frame", type=int)
+    parser.add_argument("--static-crane-pose-frame", type=int)
     return parser.parse_args(argv)
 
 
 def require(condition, message):
     if not condition:
         raise RuntimeError(message)
+
+
+def validate_completed_static_crane_pose_bake(root, frame):
+    present = [key for key in STATIC_CRANE_POSE_METADATA_KEYS if key in root]
+    if not present:
+        return False
+    require(
+        len(present) == len(STATIC_CRANE_POSE_METADATA_KEYS),
+        "Static crane pose bake metadata is partial or inconsistent",
+    )
+    require(
+        int(root["static_crane_pose_bake_version"]) == STATIC_CRANE_POSE_BAKE_VERSION,
+        "Static crane pose bake version drifted",
+    )
+    require(
+        root["static_crane_pose_bake_policy"] == STATIC_CRANE_POSE_BAKE_POLICY,
+        "Static crane pose bake policy drifted",
+    )
+    require(
+        int(root["static_crane_pose_frame"]) == frame,
+        "Static crane pose bake frame drifted",
+    )
+    mesh_name = root["static_crane_pose_mesh"]
+    mesh = bpy.data.objects.get(mesh_name)
+    require(mesh is not None and mesh.type == "MESH", "Static crane pose mesh is missing")
+    require(mesh.parent == root, "Static crane pose mesh left the export root")
+    require(
+        not any(modifier.type == "ARMATURE" for modifier in mesh.modifiers),
+        "Static crane pose mesh regained an armature modifier",
+    )
+    require(
+        not any(obj.type == "ARMATURE" for obj in root.children_recursive),
+        "Static crane pose armature was not removed",
+    )
+    return True
+
+
+def bake_static_crane_pose(root, frame):
+    if validate_completed_static_crane_pose_bake(root, frame):
+        return
+    require(
+        not any(key in root for key in STATIC_CRANE_POSE_METADATA_KEYS),
+        "Static crane pose bake metadata is partial or inconsistent",
+    )
+    armatures = [obj for obj in root.children_recursive if obj.type == "ARMATURE"]
+    require(len(armatures) == 1, "Static crane pose bake requires exactly one armature")
+    armature = armatures[0]
+    animation = armature.animation_data
+    require(
+        animation is None or (
+            animation.action is None
+            and len(animation.drivers) == 0
+            and len(animation.nla_tracks) == 0
+        ),
+        "Static crane pose bake only supports an unanimated armature",
+    )
+
+    bpy.context.scene.frame_set(frame)
+    bpy.context.view_layer.update()
+    if bpy.context.object and bpy.context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.object.select_all(action="DESELECT")
+    armature.hide_set(False)
+    armature.hide_viewport = False
+    armature.select_set(True)
+    bpy.context.view_layer.objects.active = armature
+    posed_meshes = []
+    for obj in root.children_recursive:
+        armature_modifiers = [
+            modifier
+            for modifier in obj.modifiers
+            if modifier.type == "ARMATURE" and modifier.object == armature
+        ]
+        if not armature_modifiers:
+            continue
+        require(obj.type == "MESH", "Static crane pose armature drives a non-mesh object")
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.hide_set(False)
+        obj.hide_viewport = False
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        for modifier in armature_modifiers:
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+        world = obj.matrix_world.copy()
+        obj.parent = root
+        obj.matrix_world = world
+        posed_meshes.append(obj)
+    require(len(posed_meshes) == 1, "Static crane pose bake requires exactly one skinned mesh")
+    armature_data = armature.data
+    bpy.data.objects.remove(armature, do_unlink=True)
+    if armature_data.users == 0:
+        bpy.data.armatures.remove(armature_data)
+    bpy.context.view_layer.update()
+
+    root["static_crane_pose_bake_version"] = STATIC_CRANE_POSE_BAKE_VERSION
+    root["static_crane_pose_bake_policy"] = STATIC_CRANE_POSE_BAKE_POLICY
+    root["static_crane_pose_frame"] = frame
+    root["static_crane_pose_mesh"] = posed_meshes[0].name
+    require(
+        validate_completed_static_crane_pose_bake(root, frame),
+        "Static crane pose bake validation failed",
+    )
 
 
 def resolve_external_image(image):
@@ -1496,6 +1607,8 @@ def main():
         cleanup_crane_workout_hidden_mirror(root)
     if args.rocket_smoke_bake_frame is not None:
         bake_rocket_smoke(root, args.rocket_smoke_bake_frame)
+    if args.static_crane_pose_frame is not None:
+        bake_static_crane_pose(root, args.static_crane_pose_frame)
     if args.remove_web_ground:
         cleanup_web_ground(root)
 

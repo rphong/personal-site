@@ -8,7 +8,7 @@ import {
   type Route,
 } from "@playwright/test";
 
-const TRIANGLE_GLTF = JSON.stringify({
+const TRIANGLE_GLTF = {
   asset: { version: "2.0", generator: "runtime-browser-test" },
   scene: 0,
   scenes: [{ nodes: [0] }],
@@ -33,7 +33,65 @@ const TRIANGLE_GLTF = JSON.stringify({
       max: [1, 1, 0],
     },
   ],
-});
+} as const;
+
+const STATIC_POSE_CLIPS_BY_MODEL: Readonly<Record<string, readonly string[]>> = {
+  "/models/crane-throwing-plane.glb": [
+    "EmptyAction",
+    "Hat propellerAction.002",
+  ],
+  "/models/crane-workout.glb": [
+    "Dumbell L",
+    "Dumbell R",
+    "Lifting Weights",
+  ],
+};
+
+function triangleGltf(pathname: string): string {
+  const clipNames = STATIC_POSE_CLIPS_BY_MODEL[pathname] ?? [];
+  if (clipNames.length === 0) return JSON.stringify(TRIANGLE_GLTF);
+  return JSON.stringify({
+    ...TRIANGLE_GLTF,
+    animations: clipNames.map((name) => ({
+      name,
+      channels: [{ sampler: 0, target: { node: 0, path: "translation" } }],
+      samplers: [{ input: 1, output: 2, interpolation: "LINEAR" }],
+    })),
+    buffers: [
+      ...TRIANGLE_GLTF.buffers,
+      {
+        byteLength: 8,
+        uri: "data:application/octet-stream;base64,AAAAAAAAQEA=",
+      },
+      {
+        byteLength: 24,
+        uri: "data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      },
+    ],
+    bufferViews: [
+      ...TRIANGLE_GLTF.bufferViews,
+      { buffer: 1, byteOffset: 0, byteLength: 8 },
+      { buffer: 2, byteOffset: 0, byteLength: 24 },
+    ],
+    accessors: [
+      ...TRIANGLE_GLTF.accessors,
+      {
+        bufferView: 1,
+        componentType: 5126,
+        count: 2,
+        type: "SCALAR",
+        min: [0],
+        max: [3],
+      },
+      {
+        bufferView: 2,
+        componentType: 5126,
+        count: 2,
+        type: "VEC3",
+      },
+    ],
+  });
+}
 
 const POSTER_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900">
@@ -349,7 +407,7 @@ export async function fulfillModels(
         await route.fulfill({
           status: 200,
           contentType: "model/gltf+json",
-          body: TRIANGLE_GLTF,
+          body: triangleGltf(record.pathname),
         });
         return;
       case "committed": {
