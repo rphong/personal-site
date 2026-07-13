@@ -66,6 +66,7 @@ declare global {
     __task14GotCapture?: boolean;
     __task14LostCapture?: boolean;
     __task14TouchCancels?: boolean[];
+    __issue4Canvas?: HTMLCanvasElement | null;
   }
 }
 
@@ -243,6 +244,160 @@ async function disposeFixture(
   }
 }
 
+test("anchors active scene visuals to their sections while desktop and mobile vertical scrolling stays untrapped", async ({
+  browser,
+}, testInfo) => {
+  for (const viewport of [
+    { name: "desktop", width: 1280, height: 800, isMobile: false },
+    { name: "mobile", width: 390, height: 844, isMobile: true },
+  ] as const) {
+    const context = await createRuntimeContext(browser, testInfo, {
+      viewport: { width: viewport.width, height: viewport.height },
+      isMobile: viewport.isMobile,
+      hasTouch: viewport.isMobile,
+    });
+    const page = await context.newPage();
+    await fulfillPosters(page);
+    const models = await fulfillModels(page);
+
+    try {
+      await page.goto("/experience");
+      const host = page.getByTestId("scene-runtime-host");
+      await expect(host).toHaveAttribute(
+        "data-active-scene-id",
+        "experience-hero",
+      );
+      await expect(host).toHaveAttribute("data-three-status", "ready");
+
+      const activateAndAssertOwner = async (
+        route: string,
+        sceneId: string,
+        expectedStatus: "ready" | "poster",
+      ) => {
+        if (new URL(page.url()).pathname !== route) await page.goto(route);
+        const owner = page.locator(`[data-scene-id="${sceneId}"]`);
+        await owner.evaluate((element) => {
+          const top = element.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo(0, top - window.innerHeight * 0.08);
+        });
+        await expect(host).toHaveAttribute("data-active-scene-id", sceneId);
+        await expect(host).toHaveAttribute(
+          "data-three-status",
+          expectedStatus,
+        );
+        expect(
+          await host.evaluate(
+            (element, activeSceneId) =>
+              element.parentElement?.getAttribute("data-scene-owner-id") ===
+                activeSceneId &&
+              element.parentElement?.parentElement?.getAttribute(
+                "data-scene-id",
+              ) === activeSceneId,
+            sceneId,
+          ),
+          `${viewport.name} ${sceneId} runtime stage should track its section owner`,
+        ).toBe(true);
+      };
+
+      await activateAndAssertOwner(
+        "/experience",
+        "experience-hero",
+        "ready",
+      );
+      await page.evaluate(() => {
+        window.__issue4Canvas = document.querySelector("canvas");
+      });
+      await activateAndAssertOwner(
+        "/experience",
+        "experience-intro",
+        "ready",
+      );
+      expect(
+        await page.evaluate(
+          () => document.querySelector("canvas") === window.__issue4Canvas,
+        ),
+        `${viewport.name} section activation should retain the Canvas node`,
+      ).toBe(true);
+      const before = await page.evaluate(() => {
+        const sectionElement = document.querySelector(
+          '[data-scene-id="experience-intro"]',
+        );
+        const hostElement = document.querySelector(
+          '[data-testid="scene-runtime-host"]',
+        );
+        if (!sectionElement || !hostElement) return null;
+        return {
+          scrollY: window.scrollY,
+          sectionTop: sectionElement.getBoundingClientRect().top,
+          hostTop: hostElement.getBoundingClientRect().top,
+        };
+      });
+      expect(before).not.toBeNull();
+
+      const rotationArea = page.getByTestId("scene-rotation-area");
+      const box = await rotationArea.boundingBox();
+      if (!box) throw new Error(`${viewport.name} rotation area has no bounds`);
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.wheel(0, 240);
+      await expect
+        .poll(() => page.evaluate(() => window.scrollY))
+        .toBeGreaterThan(before?.scrollY ?? 0);
+
+      const after = await page.evaluate(() => {
+        const sectionElement = document.querySelector(
+          '[data-scene-id="experience-intro"]',
+        );
+        const hostElement = document.querySelector(
+          '[data-testid="scene-runtime-host"]',
+        );
+        if (!sectionElement || !hostElement) return null;
+        return {
+          sectionTop: sectionElement.getBoundingClientRect().top,
+          hostTop: hostElement.getBoundingClientRect().top,
+        };
+      });
+      expect(after).not.toBeNull();
+
+      const sectionDelta =
+        (after?.sectionTop ?? 0) - (before?.sectionTop ?? 0);
+      const hostDelta = (after?.hostTop ?? 0) - (before?.hostTop ?? 0);
+      expect(Math.abs(sectionDelta)).toBeGreaterThan(1);
+      expect(hostDelta).toBeCloseTo(sectionDelta, 1);
+
+      await page.getByRole("button", { name: "3D on" }).click();
+      await expect(host).toHaveAttribute("data-three-status", "disabled");
+      await expect(host.locator("picture")).toBeVisible();
+      expect(
+        await host.evaluate(
+          (element) =>
+            element.parentElement?.parentElement?.getAttribute(
+              "data-scene-id",
+            ) === "experience-intro",
+        ),
+        `${viewport.name} poster fallback should remain with its section owner`,
+      ).toBe(true);
+      await page.getByRole("button", { name: "3D off" }).click();
+      await expect(host).toHaveAttribute("data-three-status", "ready");
+
+      for (const [route, sceneId, status] of [
+        ["/experience", "nasa-rocket", "ready"],
+        ["/experience", "eog-poster", "poster"],
+        ["/experience", "paycom-poster", "poster"],
+        ["/projects", "projects-hero", "ready"],
+        ["/projects", "league-ban", "ready"],
+        ["/projects", "froggie-adventures", "ready"],
+        ["/contact", "contact-hero", "ready"],
+        ["/", "home-hero", "ready"],
+      ] as const) {
+        await activateAndAssertOwner(route, sceneId, status);
+      }
+    } finally {
+      await disposeFixture(models);
+      await context.close();
+    }
+  }
+});
+
 test("decodes a committed meshopt GLB on alpha WebGL2 and swaps on the first real frame", async ({
   page,
 }) => {
@@ -372,7 +527,9 @@ test("keeps the exact Canvas, renderer, and WebGL2 context across real App Route
     await expect(host).toHaveAttribute("data-active-scene-id", "home-hero");
     await expect(host).toHaveAttribute("data-three-status", "ready");
     await expect(
-      page.locator('[data-scene-id="home-hero"] img'),
+      page.locator(
+        '[data-scene-id="home-hero"] > .scene-section__poster img',
+      ),
     ).toHaveAttribute("fetchpriority", "high");
     expect(assets[0]).toBe("/posters/home-hero-desktop.webp");
     await rememberRuntimeIdentity(page);
@@ -400,10 +557,14 @@ test("keeps the exact Canvas, renderer, and WebGL2 context across real App Route
     ).toBe(connectedCallsBefore);
     await expect(page.locator("canvas")).toHaveCount(1);
     await expect(
-      page.locator('[data-scene-id="experience-hero"] img'),
+      page.locator(
+        '[data-scene-id="experience-hero"] > .scene-section__poster img',
+      ),
     ).toHaveAttribute("loading", "eager");
     await expect(
-      page.locator('[data-scene-id="nasa-rocket"] img'),
+      page.locator(
+        '[data-scene-id="nasa-rocket"] > .scene-section__poster img',
+      ),
     ).toHaveAttribute("loading", "lazy");
   } finally {
     await disposeFixture(models);
@@ -723,7 +884,9 @@ test("requests only the current model until its ready frame, then one adjacent m
     await expectSingleReadyMark(page, "home-hero");
     await models.waitForRequest(EXPERIENCE_MODEL);
     expect(models.requested).toEqual([HOME_MODEL, EXPERIENCE_MODEL]);
-    expect(models.pendingCount(EXPERIENCE_MODEL)).toBe(1);
+    await expect
+      .poll(() => models.pendingCount(EXPERIENCE_MODEL))
+      .toBe(1);
     expect(models.requestCount(INTRO_MODEL)).toBe(0);
     const preloadOrder = await page.evaluate((nextUrl) => {
       const ready = window.__runtimeAcceptanceProbe?.events.find(

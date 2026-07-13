@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentType, CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import {
   useCallback,
   useEffect,
@@ -357,7 +358,9 @@ export function SceneRuntimeHostView({
 
 export function SceneRuntimeHost() {
   const runtime = useSceneRuntime();
-  return (
+  if (!runtime.sceneStageElement || !runtime.activeSectionElement) return null;
+
+  return createPortal(
     <SceneRuntimeHostView
       scene={runtime.activeScene}
       status={runtime.status}
@@ -372,6 +375,7 @@ export function SceneRuntimeHost() {
       onStatusChange={runtime.setStatus}
       onRotate={runtime.rotateBy}
       CanvasComponent={SceneCanvasBoundary}
-    />
+    />,
+    runtime.sceneStageElement,
   );
 }

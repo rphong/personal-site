@@ -8,9 +8,10 @@ signal. The foundation has four server-rendered routes:
 - `/projects`
 - `/contact`
 
-The current slice uses approved Figma exports as preview posters and preserves a
-single fixed scene-stage seam. The Three.js runtime, optimized GLBs, and
-deterministic scene posters belong to the next implementation slice.
+The site uses one persistent Three.js runtime with optimized GLBs and
+deterministic poster fallbacks. Each live visual is mounted inside its owning
+section so it moves naturally with that section instead of remaining fixed
+behind scrolling content.
 
 ## Requirements
 
