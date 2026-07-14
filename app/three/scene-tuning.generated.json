@@ -1,1 +1,43 @@
-{}
+{
+  "projects-hero": {
+    "desktop": {
+      "cameraPosition": [
+        6.2,
+        3.6,
+        8.4
+      ],
+      "cameraTarget": [
+        0.2,
+        0.8,
+        0.3
+      ],
+      "fov": 36
+    },
+    "mobile": {
+      "cameraPosition": [
+        5.5,
+        4.4,
+        10.8
+      ],
+      "cameraTarget": [
+        0.2,
+        0.8,
+        0.3
+      ],
+      "fov": 40
+    },
+    "model": {
+      "position": [
+        1.7,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        -51,
+        0
+      ],
+      "scale": 1.33
+    }
+  }
+}
