@@ -169,6 +169,32 @@ describe("NormalizedSceneRoot", () => {
     await renderer.unmount();
   });
 
+  it("adds the saved model pose around the bounded interactive rotation", async () => {
+    const renderer = await ReactThreeTestRenderer.create(
+      <NormalizedSceneRoot
+        sceneId="home-hero"
+        rotation={{ yaw: 5, pitch: -2 }}
+        transform={{
+          position: [1, 2, 3],
+          rotation: [10, 20, 30],
+          scale: 1.5,
+        }}
+      >
+        <mesh />
+      </NormalizedSceneRoot>,
+    );
+    const root = renderer.scene.findByProps({
+      name: "scene-root:home-hero",
+    }).instance as Group;
+
+    expect(root.position.toArray()).toEqual([1, 2, 3]);
+    expect(root.scale.toArray()).toEqual([1.5, 1.5, 1.5]);
+    expect(root.rotation.x).toBeCloseTo(MathUtils.degToRad(8));
+    expect(root.rotation.y).toBeCloseTo(MathUtils.degToRad(25));
+    expect(root.rotation.z).toBeCloseTo(MathUtils.degToRad(30));
+    await renderer.unmount();
+  });
+
   it("detaches the old model and poses one destination root on a keyed swap", async () => {
     const homeModel = new Group();
     homeModel.name = "home-model";

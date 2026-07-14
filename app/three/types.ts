@@ -55,6 +55,24 @@ export interface SceneFrame {
   readonly rotationArea: PercentInsets;
 }
 
+export interface SceneModelTransform {
+  readonly position: Vector3Tuple;
+  readonly rotation: Vector3Tuple;
+  readonly scale: number;
+}
+
+export interface SceneCameraTuning {
+  readonly cameraPosition: Vector3Tuple;
+  readonly cameraTarget: Vector3Tuple;
+  readonly fov: number;
+}
+
+export interface SceneTuning {
+  readonly desktop: SceneCameraTuning;
+  readonly mobile: SceneCameraTuning;
+  readonly model: SceneModelTransform;
+}
+
 export interface SceneLighting {
   readonly ambient: {
     readonly color: string;
@@ -107,6 +125,7 @@ export interface LiveSceneDefinition
   readonly requiredLive: true;
   readonly modelUrl: `/models/${string}.glb`;
   readonly staticPose?: StaticScenePose;
+  readonly modelTransform: SceneModelTransform;
 }
 
 export interface PosterOnlySceneDefinition

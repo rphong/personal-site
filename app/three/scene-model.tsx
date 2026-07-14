@@ -93,6 +93,7 @@ export function SceneModel({
     <NormalizedSceneRoot
       sceneId={scene.id}
       rotation={rotation}
+      transform={scene.modelTransform}
     >
       <group ref={attachment} name={`scene-instance:${scene.id}`} />
     </NormalizedSceneRoot>

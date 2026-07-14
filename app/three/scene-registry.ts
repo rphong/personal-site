@@ -6,6 +6,7 @@ import type {
   SceneFrame,
   SceneId,
   SceneLighting,
+  SceneModelTransform,
   SiteRoute,
   Vector3Tuple,
 } from "./types";
@@ -26,6 +27,12 @@ const DEFAULT_ROTATION: RotationLimits = {
   pitch: [-8, 8],
   default: { yaw: 0, pitch: 0 },
   degreesPerPixel: 0.14,
+};
+
+const DEFAULT_MODEL_TRANSFORM: SceneModelTransform = {
+  position: [0, 0, 0],
+  rotation: [0, 0, 0],
+  scale: 1,
 };
 
 const DESKTOP_AREA: PercentInsets = {
@@ -80,6 +87,7 @@ export const SCENE_DEFINITIONS = {
     background: "#9ECCC0",
     requiredLive: true,
     modelUrl: "/models/crane.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/home-hero-desktop.webp",
       mobile: "/posters/home-hero-mobile.webp",
@@ -104,6 +112,7 @@ export const SCENE_DEFINITIONS = {
     background: "#DFA9B5",
     requiredLive: true,
     modelUrl: "/models/crane-workout.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/experience-hero-desktop.webp",
       mobile: "/posters/experience-hero-mobile.webp",
@@ -129,6 +138,7 @@ export const SCENE_DEFINITIONS = {
     background: "#DFA9B5",
     requiredLive: true,
     modelUrl: "/models/crane-throwing-plane.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/experience-intro-desktop.webp",
       mobile: "/posters/experience-intro-mobile.webp",
@@ -153,6 +163,7 @@ export const SCENE_DEFINITIONS = {
     background: "#DFA9B5",
     requiredLive: true,
     modelUrl: "/models/rocket.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/nasa-rocket-desktop.webp",
       mobile: "/posters/nasa-rocket-mobile.webp",
@@ -207,6 +218,7 @@ export const SCENE_DEFINITIONS = {
     background: "#AFD4E1",
     requiredLive: true,
     modelUrl: "/models/crane-making-table.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/projects-hero-desktop.webp",
       mobile: "/posters/projects-hero-mobile.webp",
@@ -230,6 +242,7 @@ export const SCENE_DEFINITIONS = {
     background: "#AFD4E1",
     requiredLive: true,
     modelUrl: "/models/crane-on-league.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/league-ban-desktop.webp",
       mobile: "/posters/league-ban-mobile.webp",
@@ -248,6 +261,7 @@ export const SCENE_DEFINITIONS = {
     background: "#AFD4E1",
     requiredLive: true,
     modelUrl: "/models/froggie-display.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/froggie-adventures-desktop.webp",
       mobile: "/posters/froggie-adventures-mobile.webp",
@@ -266,6 +280,7 @@ export const SCENE_DEFINITIONS = {
     background: "#C9BAE4",
     requiredLive: true,
     modelUrl: "/models/crane-workout.glb",
+    modelTransform: DEFAULT_MODEL_TRANSFORM,
     poster: {
       desktop: "/posters/contact-hero-desktop.webp",
       mobile: "/posters/contact-hero-mobile.webp",

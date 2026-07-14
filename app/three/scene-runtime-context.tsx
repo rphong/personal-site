@@ -5,6 +5,7 @@ import type {
   SceneDefinition,
   SceneId,
   SceneRotation,
+  SceneTuning,
   ThreeStatus,
 } from "./types";
 
@@ -33,6 +34,10 @@ export interface SceneRuntimeContextValue {
     allowPitch: boolean,
   ) => void;
   readonly setThreeEnabled: (enabled: boolean) => void;
+  readonly setDebugTuning?: (
+    sceneId: SceneId,
+    tuning: SceneTuning | null,
+  ) => void;
 }
 
 export const SceneRuntimeContext =

@@ -22,7 +22,14 @@ import {
 } from "./scene-runtime-context";
 import { useThreePreference } from "./three-preference";
 import { ThreePreferenceToggle } from "./three-preference-toggle";
-import type { SceneId, SceneRotation, ThreeStatus } from "./types";
+import { SceneDebugPanel } from "./scene-debug-panel";
+import { applySceneTuning } from "./scene-tuning";
+import type {
+  SceneId,
+  SceneRotation,
+  SceneTuning,
+  ThreeStatus,
+} from "./types";
 
 interface Registration {
   readonly sceneId: SceneId;
@@ -111,6 +118,10 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       sceneId: state.activeSceneId,
     };
   }, [state.activeSceneId, state.pathname]);
+  const [debugTuning, setDebugTuningState] = useState<{
+    readonly sceneId: SceneId;
+    readonly tuning: SceneTuning;
+  } | null>(null);
 
   if (state.pathname !== pathname) {
     setState(createRouteState(pathname, state.activationVersion + 1));
@@ -303,8 +314,25 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     [persistThreeEnabled],
   );
 
+  const setDebugTuning = useCallback(
+    (sceneId: SceneId, tuning: SceneTuning | null) => {
+      setDebugTuningState(tuning ? { sceneId, tuning } : null);
+    },
+    [],
+  );
+
   const status = effectiveStatus(state, preference);
-  const activeScene = getSceneDefinition(state.activeSceneId);
+  const registeredScene = getSceneDefinition(state.activeSceneId);
+  const activeScene = useMemo(
+    () =>
+      applySceneTuning(
+        registeredScene,
+        debugTuning?.sceneId === state.activeSceneId
+          ? debugTuning.tuning
+          : undefined,
+      ),
+    [debugTuning, registeredScene, state.activeSceneId],
+  );
   const value = useMemo<SceneRuntimeContextValue>(
     () => ({
       activeSceneId: state.activeSceneId,
@@ -324,6 +352,7 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       setStatus,
       rotateBy,
       setThreeEnabled,
+      setDebugTuning,
     }),
     [
       activeScene,
@@ -338,6 +367,7 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       rotateBy,
       setStatus,
       setThreeEnabled,
+      setDebugTuning,
       state.activeSceneId,
       state.activationVersion,
       state.activationAllowed,
@@ -351,6 +381,7 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       <SceneRuntimeBoundary />
       {children}
       <ThreePreferenceToggle />
+      <SceneDebugPanel />
     </SceneRuntimeContext.Provider>
   );
 }
