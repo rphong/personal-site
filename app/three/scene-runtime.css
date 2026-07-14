@@ -236,3 +236,203 @@ body:has(.scene-capture-root:not([data-capture-controls="true"]))
   .three-preference-toggle {
   visibility: hidden;
 }
+
+.scene-debug-launcher {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(4.5rem, calc(env(safe-area-inset-bottom) + 4.5rem));
+  z-index: 1000;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 999px;
+  color: #f7f4ee;
+  background: #171717;
+  font: 700 0.75rem/1 var(--font-body), sans-serif;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 0.5rem 2rem rgb(0 0 0 / 24%);
+}
+
+.scene-debug {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 1000;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(25rem, calc(100vw - 1.5rem));
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 1rem;
+  color: #f7f4ee;
+  background: rgb(20 20 20 / 96%);
+  font: 500 0.8rem/1.35 var(--font-body), sans-serif;
+  box-shadow: 0 1.5rem 5rem rgb(0 0 0 / 35%);
+  backdrop-filter: blur(18px);
+}
+
+.scene-debug[data-side="left"] {
+  right: auto;
+  left: 0.75rem;
+}
+
+.scene-debug button,
+.scene-debug input,
+.scene-debug select {
+  font: inherit;
+}
+
+.scene-debug button,
+.scene-debug select,
+.scene-debug input[type="number"] {
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 0.45rem;
+  color: inherit;
+  background: rgb(255 255 255 / 7%);
+}
+
+.scene-debug button {
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+}
+
+.scene-debug button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.scene-debug__header,
+.scene-debug__footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  border-color: rgb(255 255 255 / 10%);
+}
+
+.scene-debug__header {
+  justify-content: space-between;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+}
+
+.scene-debug__header > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.scene-debug__header > .scene-debug__header-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.4rem;
+}
+
+.scene-debug__eyebrow {
+  color: #a9e6d5;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.scene-debug__select {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.scene-debug__select select {
+  min-width: 0;
+  padding: 0.5rem;
+}
+
+.scene-debug__scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.2rem 0.85rem 1rem;
+}
+
+.scene-debug details {
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.scene-debug summary {
+  padding-block: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.scene-debug summary small {
+  color: rgb(255 255 255 / 55%);
+  font-weight: 500;
+}
+
+.scene-debug__fieldset {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  border: 0;
+}
+
+.scene-debug__fieldset legend {
+  margin-bottom: 0.3rem;
+  color: rgb(255 255 255 / 62%);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scene-debug__control {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 1fr) minmax(5rem, 1.25fr) 4.25rem;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2rem;
+}
+
+.scene-debug__control input[type="range"] {
+  width: 100%;
+  accent-color: #a9e6d5;
+}
+
+.scene-debug__control input[type="number"] {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.scene-debug__footer {
+  flex-wrap: wrap;
+  border-top-style: solid;
+  border-top-width: 1px;
+}
+
+.scene-debug__footer > span {
+  flex-basis: 100%;
+  color: rgb(255 255 255 / 58%);
+  font-size: 0.68rem;
+}
+
+@media (max-width: 520px) {
+  .scene-debug__side-toggle {
+    display: none;
+  }
+
+  .scene-debug {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .scene-debug[data-side="left"] {
+    left: 0;
+  }
+}
