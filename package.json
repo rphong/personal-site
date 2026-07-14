@@ -9,6 +9,7 @@
     "dev": "node scripts/run-vinext.mjs dev",
     "build": "node scripts/assets/validate.mjs && node scripts/run-vinext.mjs build",
     "start": "node scripts/run-vinext.mjs start",
+    "deploy:cloudflare": "wrangler deploy --config dist/server/wrangler.json",
     "test": "npm run test:unit && npm run test:html",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp",
     "test:unit": "vitest run",
