@@ -333,6 +333,7 @@ export function SceneDebugPanel() {
     if (process.env.NODE_ENV === "production") return;
     const keydown = (event: KeyboardEvent) => {
       if (!(event.altKey && event.key.toLowerCase() === "d")) return;
+      if (document.querySelector("[data-initial-loading-screen]")) return;
       event.preventDefault();
       setDebugQuery(!queryRequestsDebug());
     };

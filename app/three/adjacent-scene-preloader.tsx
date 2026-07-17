@@ -25,15 +25,22 @@ const LIVE_SCENE_MODEL_URLS = [
   ...new Set(LIVE_SCENES.map((scene) => scene.modelUrl)),
 ];
 
+async function preloadAndPrepareSceneModel(url: string) {
+  const gltf = await preloadSceneModel(url);
+  for (const scene of LIVE_SCENES) {
+    if (scene.modelUrl === url) prepareSceneModel(scene, gltf);
+  }
+}
+
+export async function warmLiveSceneModels(): Promise<void> {
+  await Promise.allSettled(
+    LIVE_SCENE_MODEL_URLS.map(preloadAndPrepareSceneModel),
+  );
+}
+
 const browserModelCache: ModelCachePort = {
   preload: (url) => {
-    void preloadSceneModel(url)
-      .then((gltf) => {
-        for (const scene of LIVE_SCENES) {
-          if (scene.modelUrl === url) prepareSceneModel(scene, gltf);
-        }
-      })
-      .catch(() => undefined);
+    void preloadAndPrepareSceneModel(url).catch(() => undefined);
   },
   clear: clearSceneModel,
 };

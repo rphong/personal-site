@@ -74,4 +74,50 @@ describe("SceneModel", () => {
     expect(sourceDispose).not.toHaveBeenCalled();
     geometryDispose.mockRestore();
   });
+
+  it("keeps simultaneous residents attached to distinct runtime roots", async () => {
+    clearPreparedSceneModels();
+    const source = new Group();
+    source.name = "cached-source";
+    source.add(new Mesh(new BoxGeometry(), new MeshStandardMaterial()));
+    vi.mocked(useSceneGltf).mockReturnValue({ scene: source } as never);
+    const scene = getSceneDefinition("home-hero");
+
+    const renderer = await ReactThreeTestRenderer.create(
+      <>
+        <SceneModel
+          attemptKey="home-hero:resident-one"
+          scene={scene}
+          rotation={scene.rotation.default}
+        />
+        <SceneModel
+          attemptKey="home-hero:resident-two"
+          scene={scene}
+          rotation={scene.rotation.default}
+        />
+      </>,
+    );
+    await Promise.resolve();
+
+    const residentInstances = renderer.scene.findAllByProps({
+      name: "scene-instance:home-hero",
+    });
+    expect(residentInstances).toHaveLength(2);
+    const [firstParent, secondParent] = residentInstances.map(
+      (resident) => resident.instance as Group,
+    );
+    const firstRuntimeScene = firstParent.children[0] as Group;
+    const secondRuntimeScene = secondParent.children[0] as Group;
+
+    expect(firstRuntimeScene).toBeDefined();
+    expect(secondRuntimeScene).toBeDefined();
+    expect(firstRuntimeScene).not.toBe(secondRuntimeScene);
+    expect(firstRuntimeScene.parent).toBe(firstParent);
+    expect(secondRuntimeScene.parent).toBe(secondParent);
+    expect(firstRuntimeScene.children).not.toHaveLength(0);
+    expect(secondRuntimeScene.children).not.toHaveLength(0);
+
+    await renderer.unmount();
+    clearPreparedSceneModels();
+  });
 });

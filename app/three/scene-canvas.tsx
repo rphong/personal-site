@@ -42,6 +42,7 @@ export interface SceneCanvasPortProps {
   readonly scene: SceneDefinition;
   readonly rotation: SceneRotation;
   readonly activationVersion: number;
+  readonly adoptionVersion?: number;
   readonly renderVersion: number;
   readonly loadEnabled: boolean;
   readonly preloadReady: boolean;
@@ -206,6 +207,8 @@ function SceneRendererSettings({
   const invalidate = useThree((state) => state.invalidate);
 
   useLayoutEffect(() => {
+    // Three.js renderers are mutable imperative objects by design.
+    // eslint-disable-next-line react-hooks/immutability
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.toneMapping = ACESFilmicToneMapping;
     renderer.toneMappingExposure = scene.lighting.exposure;
@@ -345,6 +348,7 @@ export function sceneModelIsAttached(
 }
 
 function DemandRenderer({
+  adoptionVersion = 0,
   debugActive = true,
   health,
   sceneId,
@@ -352,7 +356,7 @@ function DemandRenderer({
   onFailure,
 }: Pick<
   SceneCanvasPortProps,
-  "debugActive" | "onFirstFrame" | "onFailure"
+  "adoptionVersion" | "debugActive" | "onFirstFrame" | "onFailure"
 > & {
   readonly health: ContextHealth;
   readonly sceneId: SceneDefinition["id"];
@@ -421,16 +425,7 @@ function DemandRenderer({
         }
         if (!reported.current) {
           reported.current = true;
-          let transitionFrame: string | undefined;
-          if (gl.domElement.isConnected) {
-            try {
-              const snapshot = gl.domElement.toDataURL("image/webp", 0.86);
-              if (snapshot !== "data:,") transitionFrame = snapshot;
-            } catch {
-              // A transition frame is an optional visual bridge, not a load failure.
-            }
-          }
-          onFirstFrame(transitionFrame);
+          onFirstFrame();
         }
       } catch {
         failed.current = true;
@@ -442,10 +437,10 @@ function DemandRenderer({
 
   useLayoutEffect(() => {
     // The model's preceding layout effect has already cloned and sampled its
-    // static pose. Render that frame before the browser can paint the route's
-    // loading poster, then let the status update reveal the posed canvas.
+    // static pose. Render that frame before the browser can paint, and repeat
+    // once whenever a pooled canvas is adopted into a route section.
     renderFrame(renderer, renderedScene, camera);
-  }, [camera, renderFrame, renderedScene, renderer]);
+  }, [adoptionVersion, camera, renderFrame, renderedScene, renderer]);
 
   useFrame(({ gl, scene, camera }) => {
     renderFrame(gl as WebGLRenderer, scene, camera);
@@ -476,6 +471,7 @@ function ModelLayer({
         <ContactBlobShadow definition={props.scene.contactShadow} />
       ) : null}
       <DemandRenderer
+        adoptionVersion={props.adoptionVersion}
         debugActive={props.debugActive}
         health={health}
         sceneId={props.scene.id}

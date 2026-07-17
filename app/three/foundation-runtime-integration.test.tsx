@@ -190,7 +190,10 @@ describe("foundation to runtime integration", () => {
       /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?>\s*\.scene-stage--resident\s+\.scene-runtime\[data-poster-ready="true"\][\s\S]*?\)[\s\S]*?>\s*\.scene-section__poster[\s\S]*?\{[\s\S]*?visibility:\s*hidden/,
     );
     expect(runtimeCss).toMatch(
-      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime:not\(\[data-three-status="ready"\]\)[\s\S]*?\)[\s\S]*?>\s*\.scene-section__poster[\s\S]*?\{[\s\S]*?visibility:\s*visible/,
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime:not\(\[data-three-status="ready"\]\):not\([\s\S]*?\[data-three-status="loading"\][\s\S]*?\)[\s\S]*?\)[\s\S]*?>\s*\.scene-section__poster[\s\S]*?\{[\s\S]*?visibility:\s*visible/,
+    );
+    expect(runtimeCss).toMatch(
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime\[data-three-status="loading"\][\s\S]*?\)[\s\S]*?>\s*\.scene-section__poster[\s\S]*?\{[\s\S]*?visibility:\s*hidden/,
     );
   });
 });

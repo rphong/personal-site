@@ -25,10 +25,8 @@ import type {
   LiveSceneId,
   SceneDefinition,
   SceneFailureReason,
-  SceneFrameSnapshot,
   SceneId,
   SceneRotation,
-  SiteRoute,
   ThreeStatus,
 } from "./types";
 
@@ -76,10 +74,9 @@ export interface SceneRuntimeHostViewProps {
   readonly canvasEnabled: boolean;
   readonly rotation: SceneRotation;
   readonly activationVersion: number;
+  readonly adoptionVersion?: number;
   readonly active?: boolean;
   readonly showPoster?: boolean;
-  readonly transitionFrame?: SceneFrameSnapshot | null;
-  readonly onFrameProven?: (frame: SceneFrameSnapshot) => void;
   readonly onStatusChange: (status: ThreeStatus) => void;
   readonly onRotate: (
     deltaX: number,
@@ -95,17 +92,14 @@ export function SceneRuntimeHostView({
   canvasEnabled,
   rotation,
   activationVersion,
+  adoptionVersion = 0,
   active = true,
   showPoster = true,
-  transitionFrame: suppliedTransitionFrame = null,
-  onFrameProven,
   onStatusChange,
   onRotate,
   CanvasComponent,
 }: SceneRuntimeHostViewProps) {
   const [renderVersion, setRenderVersion] = useState(0);
-  const [capturedFrame, setCapturedFrame] =
-    useState<SceneFrameSnapshot | null>(null);
   const activationToken = `${scene.id}:${activationVersion}`;
   const [posterReadyToken, setPosterReadyToken] = useState<string | null>(null);
   const posterReady = posterReadyToken === activationToken;
@@ -236,41 +230,25 @@ export function SceneRuntimeHostView({
     [descriptor, failAttempt, renderVersion],
   );
 
-  const firstFrame = useCallback(
-    (snapshot?: string) => {
-      const cycle = getCurrentAttempt(descriptor, renderVersion);
-      if (!cycle || cycle.terminalFailure) return;
+  const firstFrame = useCallback(() => {
+    const cycle = getCurrentAttempt(descriptor, renderVersion);
+    if (!cycle || cycle.terminalFailure || cycle.phase !== "loading") return;
 
-      if (typeof snapshot === "string" && scene.requiredLive) {
-        const frame: SceneFrameSnapshot = {
-          dataUrl: snapshot,
-          route: scene.route,
-          sceneId: scene.id,
-        };
-        setCapturedFrame(frame);
-        onFrameProven?.(frame);
-      }
-      if (cycle.phase !== "loading") return;
-
-      cycle.phase = "ready";
-      onStatusChange("ready");
-      if (cycle.readyEventSent) return;
-      cycle.readyEventSent = true;
-      emitSceneRuntimeEvent({
-        status: "ready",
-        sceneId: descriptor.sceneId,
-        durationMs: activationDuration(cycle),
-      });
-    },
-    [
-      descriptor,
-      getCurrentAttempt,
-      onFrameProven,
-      onStatusChange,
-      renderVersion,
-      scene,
-    ],
-  );
+    cycle.phase = "ready";
+    onStatusChange("ready");
+    if (cycle.readyEventSent) return;
+    cycle.readyEventSent = true;
+    emitSceneRuntimeEvent({
+      status: "ready",
+      sceneId: descriptor.sceneId,
+      durationMs: activationDuration(cycle),
+    });
+  }, [
+    descriptor,
+    getCurrentAttempt,
+    onStatusChange,
+    renderVersion,
+  ]);
 
   const contextLost = useCallback(() => {
     const cycle = getCurrentAttempt(descriptor, renderVersion);
@@ -355,12 +333,6 @@ export function SceneRuntimeHostView({
     });
   }, [descriptor, getCurrentAttempt, renderVersion, status]);
 
-  const transitionFrame = suppliedTransitionFrame ?? capturedFrame;
-  const visibleTransitionFrame =
-    status === "loading" && transitionFrame?.route !== scene.route
-      ? transitionFrame
-      : null;
-  const suppressTransitionPoster = Boolean(visibleTransitionFrame);
   const canvasClassName = active
     ? "scene-runtime__canvas"
     : "scene-runtime__resident-canvas";
@@ -376,8 +348,8 @@ export function SceneRuntimeHostView({
       data-scene-active={active ? "true" : "false"}
       data-scene-for={scene.id}
       data-poster-ready={posterReady ? "true" : "false"}
-      data-transition-frame={transitionFrame ? "available" : "none"}
-      data-transition-poster={suppressTransitionPoster ? "suppressed" : "visible"}
+      data-transition-frame="none"
+      data-transition-poster="retired"
       style={{ "--scene-background": scene.background } as CSSProperties}
     >
       {showPoster ? (
@@ -387,18 +359,6 @@ export function SceneRuntimeHostView({
           className="scene-runtime__poster"
           onLoad={posterLoaded}
           priority
-        />
-      ) : null}
-      {visibleTransitionFrame ? (
-        <div
-          className="scene-runtime__transition-frame"
-          data-scene-occupant="stand-in"
-          data-scene-for={scene.id}
-          data-scene-frame-for={visibleTransitionFrame.sceneId}
-          data-scene-frame-state="ready"
-          style={{
-            backgroundImage: `url("${visibleTransitionFrame.dataUrl}")`,
-          }}
         />
       ) : null}
       {canvasEnabled ? (
@@ -413,6 +373,7 @@ export function SceneRuntimeHostView({
             scene={scene}
             rotation={rotation}
             activationVersion={activationVersion}
+            adoptionVersion={adoptionVersion}
             renderVersion={renderVersion}
             loadEnabled={status !== "error"}
             preloadReady={status === "ready"}
@@ -435,18 +396,16 @@ export function SceneRuntimeHostView({
   );
 }
 
-const MAX_LIVE_SCENE_OCCUPANTS = 4;
+export const MAX_CONNECTED_LIVE_SCENES = 8;
 
 interface ResidentStage {
   readonly activationVersion: number;
+  adoptionVersion: number;
   readonly key: string;
+  lastSeen: number;
   readonly scene: LiveSceneDefinition;
-  readonly section: HTMLElement;
+  section: HTMLElement | null;
   readonly stage: HTMLElement;
-}
-
-interface RouteBridge extends SceneFrameSnapshot {
-  readonly destinationRoute: SiteRoute;
 }
 
 function residentStageListsMatch(
@@ -458,6 +417,7 @@ function residentStageListsMatch(
     left.every(
       (entry, index) =>
         entry.activationVersion === right[index]?.activationVersion &&
+        entry.adoptionVersion === right[index]?.adoptionVersion &&
         entry.key === right[index]?.key &&
         entry.scene.id === right[index]?.scene.id &&
         entry.section === right[index]?.section &&
@@ -466,77 +426,161 @@ function residentStageListsMatch(
   );
 }
 
-function useResidentStages(pathname: string) {
+function useResidentStages(
+  pathname: string,
+  activeSceneId: SceneId,
+  poolElement: HTMLDivElement | null,
+) {
   const [stages, setStages] = useState<readonly ResidentStage[]>([]);
-  const ownedStages = useRef(new Map<HTMLElement, HTMLElement>());
-  const stageIdentities = useRef(
-    new WeakMap<HTMLElement, { activationVersion: number; key: string }>(),
-  );
+  const residents = useRef<ResidentStage[]>([]);
   const nextStageIdentity = useRef(0);
+  const lastSeenClock = useRef(0);
+  const pathnameRef = useRef(pathname);
+  const activeSceneIdRef = useRef(activeSceneId);
+  const lastActiveSceneId = useRef<SceneId | null>(null);
+  const syncStagesRef = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
+    if (!poolElement) return;
+
+    const park = (resident: ResidentStage) => {
+      resident.section = null;
+      resident.stage.dataset.scenePoolState = "pooled";
+      poolElement.append(resident.stage);
+    };
+
+    const touch = (resident: ResidentStage) => {
+      lastSeenClock.current += 1;
+      resident.lastSeen = lastSeenClock.current;
+      resident.stage.dataset.scenePoolLastSeen = String(resident.lastSeen);
+    };
+
+    const createResident = (scene: LiveSceneDefinition) => {
+      while (residents.current.length >= MAX_CONNECTED_LIVE_SCENES) {
+        const eviction = residents.current
+          .filter((candidate) => candidate.section === null)
+          .sort((left, right) => left.lastSeen - right.lastSeen)[0];
+        if (!eviction) return null;
+        residents.current = residents.current.filter(
+          (candidate) => candidate !== eviction,
+        );
+        eviction.stage.dataset.scenePoolState = "evicted";
+        eviction.stage.remove();
+      }
+
+      const activationVersion = nextStageIdentity.current;
+      nextStageIdentity.current += 1;
+      const stage = document.createElement("div");
+      stage.className = "scene-stage scene-stage--resident";
+      stage.setAttribute("aria-hidden", "true");
+      stage.dataset.sceneResidentStage = "true";
+      stage.dataset.sceneOwnerId = scene.id;
+      stage.dataset.sceneFor = scene.id;
+      stage.dataset.scenePoolKey = `resident-stage-${activationVersion}`;
+      stage.dataset.scenePoolState = "pooled";
+      const resident: ResidentStage = {
+        activationVersion,
+        adoptionVersion: 0,
+        key: `resident-stage-${activationVersion}`,
+        lastSeen: 0,
+        scene,
+        section: null,
+        stage,
+      };
+      residents.current.push(resident);
+      poolElement.append(stage);
+      return resident;
+    };
+
     const syncStages = () => {
+      const currentPathname = pathnameRef.current;
       const sections = Array.from(
         document.querySelectorAll<HTMLElement>(
           'section.scene-section[data-required-live="true"]',
         ),
+      ).filter((section) => {
+        const sceneId = section.dataset.sceneId;
+        if (!sceneId || !isSceneId(sceneId)) return false;
+        const scene = getSceneDefinition(sceneId);
+        return (
+          scene.requiredLive &&
+          (currentPathname === "/scene-capture" ||
+            scene.route === currentPathname)
+        );
+      });
+      const eligibleSections = new Set(
+        sections.slice(0, MAX_CONNECTED_LIVE_SCENES),
       );
-      const next: ResidentStage[] = [];
 
-      for (const section of sections) {
+      for (const resident of residents.current) {
+        if (
+          resident.section &&
+          (!eligibleSections.has(resident.section) ||
+            resident.section.dataset.sceneId !== resident.scene.id)
+        ) {
+          park(resident);
+        }
+      }
+
+      const assigned = new Set<ResidentStage>();
+      for (const section of eligibleSections) {
         const sceneId = section.dataset.sceneId;
         if (!sceneId || !isSceneId(sceneId)) continue;
         const scene = getSceneDefinition(sceneId);
         if (!scene.requiredLive) continue;
-        if (pathname !== "/scene-capture" && scene.route !== pathname) continue;
-        if (next.length >= MAX_LIVE_SCENE_OCCUPANTS) break;
+        let resident = residents.current.find(
+          (candidate) =>
+            candidate.section === section && candidate.scene.id === scene.id,
+        );
+        if (!resident) {
+          resident = residents.current
+            .filter(
+              (candidate) =>
+                candidate.section === null &&
+                candidate.scene.id === scene.id &&
+                !assigned.has(candidate),
+            )
+            .sort((left, right) => right.lastSeen - left.lastSeen)[0];
+        }
+        resident ??= createResident(scene) ?? undefined;
+        if (!resident) continue;
 
-        let stage = ownedStages.current.get(section);
+        if (resident.section !== section) {
+          resident.section = section;
+          resident.adoptionVersion += 1;
+          touch(resident);
+        }
+        resident.stage.dataset.scenePoolState = "assigned";
+        resident.stage.dataset.scenePoolLastSeen = String(resident.lastSeen);
+        const content = section.querySelector(":scope > .scene-section__content");
         if (
-          stage &&
-          stage.isConnected &&
-          stage.dataset.sceneOwnerId !== scene.id
+          resident.stage.parentElement !== section ||
+          resident.stage.nextSibling !== content
         ) {
-          stage.remove();
-          ownedStages.current.delete(section);
-          stage = undefined;
+          section.insertBefore(resident.stage, content);
         }
-        if (!stage || !stage.isConnected) {
-          stage = document.createElement("div");
-          stage.className = "scene-stage scene-stage--resident";
-          stage.setAttribute("aria-hidden", "true");
-          stage.dataset.sceneResidentStage = "true";
-          stage.dataset.sceneOwnerId = scene.id;
-          stage.dataset.sceneFor = scene.id;
-          const content = section.querySelector(":scope > .scene-section__content");
-          section.insertBefore(stage, content);
-          ownedStages.current.set(section, stage);
-        }
-        let identity = stageIdentities.current.get(stage);
-        if (!identity) {
-          const activationVersion = nextStageIdentity.current;
-          nextStageIdentity.current += 1;
-          identity = {
-            activationVersion,
-            key: `resident-stage-${activationVersion}`,
-          };
-          stageIdentities.current.set(stage, identity);
-        }
-        next.push({ ...identity, scene, section, stage });
+        assigned.add(resident);
       }
 
-      const retainedSections = new Set(next.map(({ section }) => section));
-      for (const [section, stage] of ownedStages.current) {
-        if (retainedSections.has(section)) continue;
-        stage.remove();
-        ownedStages.current.delete(section);
+      const currentActiveSceneId = activeSceneIdRef.current;
+      if (lastActiveSceneId.current !== currentActiveSceneId) {
+        lastActiveSceneId.current = currentActiveSceneId;
+        for (const resident of assigned) {
+          if (resident.scene.id === currentActiveSceneId) touch(resident);
+        }
       }
 
+      for (const resident of residents.current) {
+        if (resident.section && !assigned.has(resident)) park(resident);
+      }
+
+      const next = residents.current.map((resident) => ({ ...resident }));
       setStages((current) =>
         residentStageListsMatch(current, next) ? current : next,
       );
     };
 
+    syncStagesRef.current = syncStages;
     syncStages();
     const observer = new MutationObserver(syncStages);
     observer.observe(document.body, {
@@ -546,11 +590,18 @@ function useResidentStages(pathname: string) {
       subtree: true,
     });
     return () => {
+      syncStagesRef.current = null;
       observer.disconnect();
-      for (const stage of ownedStages.current.values()) stage.remove();
-      ownedStages.current.clear();
+      for (const resident of residents.current) resident.stage.remove();
+      residents.current = [];
     };
-  }, [pathname]);
+  }, [poolElement]);
+
+  useLayoutEffect(() => {
+    pathnameRef.current = pathname;
+    activeSceneIdRef.current = activeSceneId;
+    syncStagesRef.current?.();
+  }, [activeSceneId, pathname, poolElement]);
 
   return stages;
 }
@@ -573,24 +624,22 @@ function statusForRuntime({
 function SceneResidentSlot({
   scene,
   active,
-  bridge,
+  adoptionVersion,
   canvasEnabled,
   initialActivationVersion,
   preferredStatus,
   activeRotation,
   onActiveStatus,
-  onFrameProven,
   onRotate,
 }: {
   readonly scene: LiveSceneDefinition;
   readonly active: boolean;
-  readonly bridge: SceneFrameSnapshot | null;
+  readonly adoptionVersion: number;
   readonly canvasEnabled: boolean;
   readonly initialActivationVersion: number;
   readonly preferredStatus: ThreeStatus;
   readonly activeRotation: SceneRotation;
   readonly onActiveStatus: (sceneId: LiveSceneId, status: ThreeStatus) => void;
-  readonly onFrameProven: (frame: SceneFrameSnapshot) => void;
   readonly onRotate: SceneRuntimeHostViewProps["onRotate"];
 }) {
   const [status, setStatus] = useState<ThreeStatus>(preferredStatus);
@@ -639,10 +688,9 @@ function SceneResidentSlot({
       canvasEnabled={canvasEnabled}
       rotation={rotation}
       activationVersion={activationVersion}
+      adoptionVersion={adoptionVersion}
       active={active}
       showPoster
-      transitionFrame={active ? bridge : null}
-      onFrameProven={onFrameProven}
       onStatusChange={setStatus}
       onRotate={onRotate}
       CanvasComponent={SceneCanvasBoundary}
@@ -653,14 +701,8 @@ function SceneResidentSlot({
 export function SceneRuntimeHost() {
   const runtime = useSceneRuntime();
   const pathname = usePathname();
-  const stages = useResidentStages(pathname);
-  const provenFrames = useRef(new Map<LiveSceneId, SceneFrameSnapshot>());
-  const lastActiveFrame = useRef<SceneFrameSnapshot | null>(null);
-  const previousActivation = useRef({
-    route: runtime.activeScene.route,
-    sceneId: runtime.activeSceneId,
-  });
-  const [routeBridge, setRouteBridge] = useState<RouteBridge | null>(null);
+  const [poolElement, setPoolElement] = useState<HTMLDivElement | null>(null);
+  const stages = useResidentStages(pathname, runtime.activeSceneId, poolElement);
   const preferredStatus = statusForRuntime({
     initialized: runtime.threeInitialized,
     enabled: runtime.threeEnabled,
@@ -669,78 +711,52 @@ export function SceneRuntimeHost() {
   const canvasEnabled =
     runtime.sceneActivationAllowed && preferredStatus === "loading";
 
-  useLayoutEffect(() => {
-    const previous = previousActivation.current;
-    const nextRoute = runtime.activeScene.route;
-    if (previous.route !== nextRoute) {
-      const frame =
-        provenFrames.current.get(previous.sceneId as LiveSceneId) ??
-        lastActiveFrame.current;
-      setRouteBridge(
-        frame ? { ...frame, destinationRoute: nextRoute } : null,
-      );
-    }
-    const currentFrame = provenFrames.current.get(
-      runtime.activeSceneId as LiveSceneId,
-    );
-    if (currentFrame) lastActiveFrame.current = currentFrame;
-    previousActivation.current = {
-      route: nextRoute,
-      sceneId: runtime.activeSceneId,
-    };
-  }, [runtime.activeScene.route, runtime.activeSceneId]);
-
-  const frameProven = useCallback(
-    (frame: SceneFrameSnapshot) => {
-      provenFrames.current.set(frame.sceneId, frame);
-      if (frame.sceneId === runtime.activeSceneId) {
-        lastActiveFrame.current = frame;
-      }
-    },
-    [runtime.activeSceneId],
-  );
-
   const activeStatusChanged = useCallback(
     (sceneId: LiveSceneId, status: ThreeStatus) => {
       if (sceneId !== runtime.activeSceneId) return;
       runtime.setStatus(status);
-      if (
-        status === "ready" &&
-        routeBridge?.destinationRoute === runtime.activeScene.route
-      ) {
-        setRouteBridge(null);
-      }
     },
-    [routeBridge, runtime],
+    [runtime],
   );
 
   return (
     <>
+      <div
+        aria-hidden="true"
+        className="scene-resident-pool"
+        data-scene-resident-pool
+        data-scene-context-cap={MAX_CONNECTED_LIVE_SCENES}
+        ref={setPoolElement}
+      />
       <AdjacentScenePreloader
         activeSceneId={runtime.activeSceneId}
         enabled={canvasEnabled}
         ready={runtime.status === "ready"}
       />
-      {stages.map(({ activationVersion, key, scene, stage }) =>
-        createPortal(
-          <SceneResidentSlot
-            key={key}
-            scene={scene}
-            active={runtime.activeSceneId === scene.id}
-            bridge={
-              routeBridge?.destinationRoute === scene.route ? routeBridge : null
-            }
-            canvasEnabled={canvasEnabled}
-            initialActivationVersion={activationVersion}
-            preferredStatus={preferredStatus}
-            activeRotation={runtime.rotation}
-            onActiveStatus={activeStatusChanged}
-            onFrameProven={frameProven}
-            onRotate={runtime.rotateBy}
-          />,
-          stage,
+      {stages.map(
+        ({
+          activationVersion,
+          adoptionVersion,
           key,
-        ),
+          scene,
+          stage,
+        }) =>
+          createPortal(
+            <SceneResidentSlot
+              key={key}
+              scene={scene}
+              active={runtime.activeSceneId === scene.id}
+              adoptionVersion={adoptionVersion}
+              canvasEnabled={canvasEnabled}
+              initialActivationVersion={activationVersion}
+              preferredStatus={preferredStatus}
+              activeRotation={runtime.rotation}
+              onActiveStatus={activeStatusChanged}
+              onRotate={runtime.rotateBy}
+            />,
+            stage,
+            key,
+          ),
       )}
     </>
   );

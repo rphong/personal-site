@@ -12,7 +12,6 @@
 
 .scene-runtime__poster,
 .scene-runtime__poster img,
-.scene-runtime__transition-frame,
 .scene-runtime__canvas,
 .scene-runtime__resident-canvas {
   position: absolute;
@@ -29,7 +28,7 @@
 .scene-section[data-required-live="true"]
   > .scene-stage--resident
   .scene-runtime:not([data-three-status="ready"]):not(
-    [data-transition-poster="suppressed"]
+    [data-three-status="loading"]
   )
   .scene-runtime__poster {
   visibility: visible;
@@ -40,21 +39,13 @@
   object-fit: cover;
 }
 
-.scene-runtime__transition-frame {
-  visibility: hidden;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-}
-
 .scene-runtime__canvas,
 .scene-runtime__resident-canvas {
   visibility: hidden;
 }
 
-.scene-runtime[data-three-status="loading"][data-transition-poster="suppressed"][data-transition-frame="available"]
-  .scene-runtime__transition-frame {
-  visibility: visible;
+.scene-runtime[data-three-status="loading"] .scene-runtime__poster {
+  visibility: hidden;
 }
 
 .scene-runtime[data-three-status="ready"] .scene-runtime__poster {
@@ -66,15 +57,6 @@
   visibility: visible;
 }
 
-.scene-runtime[data-transition-poster="suppressed"] .scene-runtime__poster {
-  visibility: hidden;
-}
-
-.scene-section[data-required-live="true"]:has(
-    > .scene-stage--resident
-      .scene-runtime[data-transition-poster="suppressed"]
-  )
-  > .scene-section__poster,
 .scene-section[data-required-live="true"]:has(
     > .scene-stage--resident .scene-runtime[data-poster-ready="true"]
   )
@@ -89,7 +71,7 @@
 .scene-section[data-required-live="true"]:has(
     > .scene-stage--resident
       .scene-runtime:not([data-three-status="ready"]):not(
-        [data-transition-poster="suppressed"]
+        [data-three-status="loading"]
       ):not([data-poster-ready="true"])
   )
   > .scene-section__poster {
@@ -97,10 +79,23 @@
 }
 
 .page-hero.scene-section[data-required-live="true"]:not(
-    :has(> .scene-stage--resident .scene-runtime[data-three-status="ready"])
+    :has(
+      > .scene-stage--resident
+        .scene-runtime:is(
+          [data-three-status="ready"],
+          [data-three-status="loading"]
+        )
+    )
   )
   > .scene-section__poster {
   visibility: visible;
+}
+
+.scene-section[data-required-live="true"]:has(
+    > .scene-stage--resident .scene-runtime[data-three-status="loading"]
+  )
+  > .scene-section__poster {
+  visibility: hidden;
 }
 
 .scene-runtime__rotation-area {
@@ -117,6 +112,18 @@
 
 .scene-runtime__rotation-area:active {
   cursor: grabbing;
+}
+
+.scene-resident-pool {
+  position: fixed;
+  top: 0;
+  left: -200vw;
+  width: 100vw;
+  height: 100svh;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  contain: strict;
 }
 
 .scene-section {

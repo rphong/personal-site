@@ -196,7 +196,7 @@ describe("SceneRuntimeHostView", () => {
     });
     expect(host).toHaveAttribute("data-three-status", "loading");
     expect(host).toHaveAttribute("data-poster-ready", "false");
-    expect(host).toHaveAttribute("data-transition-poster", "visible");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
     expect(host.querySelector("img")).toHaveAttribute(
       "src",
       "/posters/home-hero-desktop.webp",
@@ -383,15 +383,18 @@ describe("SceneRuntimeHostView", () => {
     expect(canvas).toHaveAttribute("data-scene-id", "projects-hero");
   });
 
-  it("commits readiness and its proven snapshot atomically", () => {
+  it("commits readiness without retaining a transition snapshot", () => {
     render(<HostHarness />);
     const host = screen.getByTestId("scene-runtime-host");
 
     fireEvent.click(screen.getByTestId("transition-frame"));
 
     expect(host).toHaveAttribute("data-three-status", "ready");
-    expect(host).toHaveAttribute("data-transition-frame", "available");
-    expect(host).toHaveAttribute("data-transition-poster", "visible");
+    expect(host).toHaveAttribute("data-transition-frame", "none");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
+    expect(
+      document.querySelector(".scene-runtime__transition-frame"),
+    ).not.toBeInTheDocument();
     expect(emitSceneRuntimeEvent).toHaveBeenCalledOnce();
   });
 
@@ -405,36 +408,33 @@ describe("SceneRuntimeHostView", () => {
 
     expect(host).toHaveAttribute("data-active-scene-id", "experience-intro");
     expect(host).toHaveAttribute("data-three-status", "loading");
-    expect(host).toHaveAttribute("data-transition-poster", "visible");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
     expect(
       document.querySelector(".scene-runtime__transition-frame"),
     ).not.toBeInTheDocument();
   });
 
-  it("suppresses stale transition posters only across routes after a live frame has been presented", () => {
+  it("never renders a stale transition frame across routes", () => {
     render(<PersistenceHarness />);
     const host = screen.getByTestId("scene-runtime-host");
 
-    expect(host).toHaveAttribute("data-transition-poster", "visible");
-    fireEvent.click(screen.getByTestId("first-frame"));
-    expect(host).toHaveAttribute("data-three-status", "ready");
-    expect(host).toHaveAttribute("data-transition-poster", "visible");
     fireEvent.click(screen.getByTestId("transition-frame"));
-    expect(host).toHaveAttribute("data-transition-frame", "available");
-    expect(emitSceneRuntimeEvent).toHaveBeenCalledOnce();
+    expect(host).toHaveAttribute("data-three-status", "ready");
+    expect(host).toHaveAttribute("data-transition-frame", "none");
 
     fireEvent.click(screen.getByRole("button", { name: "show projects" }));
     expect(host).toHaveAttribute("data-three-status", "loading");
-    expect(host).toHaveAttribute("data-transition-poster", "suppressed");
-    expect(document.querySelector(".scene-runtime__transition-frame")).toBeInTheDocument();
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
+    expect(
+      document.querySelector(".scene-runtime__transition-frame"),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("first-frame"));
     expect(host).toHaveAttribute("data-three-status", "ready");
-    expect(host).toHaveAttribute("data-transition-poster", "visible");
 
     fireEvent.click(screen.getByRole("button", { name: "show EOG" }));
     expect(host).toHaveAttribute("data-three-status", "poster");
-    expect(host).toHaveAttribute("data-transition-poster", "visible");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
   });
 
   it("reveals the poster during context loss and requests a fresh live frame", () => {

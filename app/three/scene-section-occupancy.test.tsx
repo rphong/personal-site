@@ -24,22 +24,17 @@ vi.mock("./adjacent-scene-preloader", () => ({
 
 vi.mock("./scene-canvas-boundary", () => ({
   SceneCanvasBoundary: (props: SceneCanvasPortProps) => {
-    canvasPorts.set(props.scene.id, props);
+    const { activationVersion, onFailure, onFirstFrame, renderVersion, scene } =
+      props;
+    canvasPorts.set(scene.id, props);
     useEffect(() => {
       if (!completeCanvases) return;
-      props.onFirstFrame(
-        `data:image/webp;base64,${props.scene.id}:${props.renderVersion}`,
-      );
-    }, [
-      props.activationVersion,
-      props.onFirstFrame,
-      props.renderVersion,
-      props.scene.id,
-    ]);
+      onFirstFrame();
+    }, [activationVersion, onFirstFrame, renderVersion, scene.id]);
     return (
       <canvas
-        data-fake-scene-canvas={props.scene.id}
-        onClick={() => props.onFailure("decode")}
+        data-fake-scene-canvas={scene.id}
+        onClick={() => onFailure("decode")}
       />
     );
   },
@@ -191,31 +186,143 @@ describe("section-owned live scene occupants", () => {
     ).toHaveLength(1);
   });
 
-  it("caps connected live residents at four sections", async () => {
+  it("fits all seven live scenes below the eight-context ceiling and caps a ninth resident", async () => {
     pathname = "/scene-capture";
     const view = render(
       <Harness activeSceneId="experience-hero">
-        <Section sceneId="experience-hero" />
-        <Section sceneId="experience-intro" />
-        <Section sceneId="nasa-rocket" />
-        <Section sceneId="projects-hero" />
-        <Section sceneId="league-ban" />
+        <Section marker="one" sceneId="experience-hero" />
+        <Section marker="two" sceneId="experience-intro" />
+        <Section marker="three" sceneId="nasa-rocket" />
+        <Section marker="four" sceneId="projects-hero" />
+        <Section marker="five" sceneId="league-ban" />
+        <Section marker="six" sceneId="froggie-adventures" />
+        <Section marker="seven" sceneId="home-hero" />
+        <Section marker="eight" sceneId="experience-hero" />
+        <Section marker="nine" sceneId="experience-intro" />
       </Harness>,
     );
 
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(4),
+      ).toHaveLength(8),
     );
     expect(
       view.container.querySelector(
-        'section[data-scene-id="league-ban"] > .scene-stage--resident',
+        'section[data-test-marker="nine"] > .scene-stage--resident',
       ),
     ).not.toBeInTheDocument();
     expect(
       view.container.querySelectorAll(".scene-stage--resident canvas"),
-    ).toHaveLength(4);
+    ).toHaveLength(8);
+    expect(
+      view.container.querySelector("[data-scene-resident-pool]"),
+    ).toHaveAttribute("data-scene-context-cap", "8");
+  });
+
+  it("evicts the least-recently-seen pooled resident before exceeding eight contexts", async () => {
+    pathname = "/scene-capture";
+    const view = render(
+      <Harness activeSceneId="experience-hero">
+        {Array.from({ length: 8 }, (_, index) => (
+          <Section
+            key={index}
+            marker={`resident-${index}`}
+            sceneId="experience-hero"
+          />
+        ))}
+      </Harness>,
+    );
+    await waitFor(() =>
+      expect(
+        view.container.querySelectorAll(".scene-stage--resident"),
+      ).toHaveLength(8),
+    );
+    const originalStages = Array.from(
+      view.container.querySelectorAll<HTMLElement>(".scene-stage--resident"),
+    ).sort(
+      (left, right) =>
+        Number(left.dataset.scenePoolLastSeen) -
+        Number(right.dataset.scenePoolLastSeen),
+    );
+
+    view.rerender(
+      <Harness activeSceneId="projects-hero">
+        <Section sceneId="projects-hero" />
+      </Harness>,
+    );
+
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(
+          'section[data-scene-id="projects-hero"] > .scene-stage--resident',
+        ),
+      ).toBeInTheDocument(),
+    );
+    expect(originalStages[0].isConnected).toBe(false);
+    expect(
+      originalStages.slice(1).every((stage) => stage.isConnected),
+    ).toBe(true);
+    expect(
+      view.container.querySelectorAll(".scene-stage--resident"),
+    ).toHaveLength(8);
+  });
+
+  it("evicts by recent activation rather than original adoption order", async () => {
+    pathname = "/scene-capture";
+    const initialScenes = [
+      ["home", "home-hero"],
+      ["projects-old", "projects-hero"],
+      ["league", "league-ban"],
+      ["froggie", "froggie-adventures"],
+      ["experience", "experience-hero"],
+      ["intro", "experience-intro"],
+      ["nasa", "nasa-rocket"],
+      ["projects-new", "projects-hero"],
+    ] as const;
+    const sections = initialScenes.map(([marker, sceneId]) => (
+      <Section key={marker} marker={marker} sceneId={sceneId} />
+    ));
+    const view = render(
+      <Harness activeSceneId="experience-hero">{sections}</Harness>,
+    );
+    const stageFor = (marker: string) =>
+      view.container.querySelector<HTMLElement>(
+        `section[data-test-marker="${marker}"] > .scene-stage--resident`,
+      );
+
+    await waitFor(() =>
+      expect(
+        view.container.querySelectorAll(".scene-stage--resident"),
+      ).toHaveLength(8),
+    );
+    const homeStage = stageFor("home")!;
+    const oldestProjectStage = stageFor("projects-old")!;
+    const originalHomeLastSeen = Number(homeStage.dataset.scenePoolLastSeen);
+
+    view.rerender(<Harness activeSceneId="home-hero">{sections}</Harness>);
+    await waitFor(() =>
+      expect(Number(homeStage.dataset.scenePoolLastSeen)).toBeGreaterThan(
+        originalHomeLastSeen,
+      ),
+    );
+
+    view.rerender(
+      <Harness activeSceneId="nasa-rocket">
+        <Section key="nasa-one" marker="nasa-one" sceneId="nasa-rocket" />
+        <Section key="nasa-two" marker="nasa-two" sceneId="nasa-rocket" />
+      </Harness>,
+    );
+
+    await waitFor(() => {
+      expect(stageFor("nasa-one")).toBeInTheDocument();
+      expect(stageFor("nasa-two")).toBeInTheDocument();
+      expect(
+        view.container.querySelectorAll(".scene-stage--resident"),
+      ).toHaveLength(8);
+    });
+    expect(oldestProjectStage.isConnected).toBe(false);
+    expect(homeStage.isConnected).toBe(true);
   });
 
   it("keeps duplicate-scene sections on independent stable residents", async () => {
@@ -407,7 +514,7 @@ describe("section-owned live scene occupants", () => {
     );
   });
 
-  it("recreates a capture resident with a fresh activation identity", async () => {
+  it("parks and readopts a capture resident with the same activation identity", async () => {
     pathname = "/scene-capture";
     const view = render(
       <Harness activeSceneId="nasa-rocket">
@@ -419,13 +526,15 @@ describe("section-owned live scene occupants", () => {
         view.container.querySelector(
           '.scene-stage--resident[data-scene-owner-id="nasa-rocket"]',
         ),
-      ).toBeInTheDocument(),
+      ).toHaveAttribute("data-scene-pool-state", "assigned"),
     );
     const originalStage = view.container.querySelector(
       '.scene-stage--resident[data-scene-owner-id="nasa-rocket"]',
     );
     const originalActivationVersion =
       canvasPorts.get("nasa-rocket")?.activationVersion;
+    const originalAdoptionVersion =
+      canvasPorts.get("nasa-rocket")?.adoptionVersion;
 
     view.rerender(
       <Harness activeSceneId="eog-poster">
@@ -433,9 +542,12 @@ describe("section-owned live scene occupants", () => {
       </Harness>,
     );
     await waitFor(() =>
-      expect(view.container.querySelector(".scene-stage--resident")).toBeNull(),
+      expect(originalStage).toHaveAttribute("data-scene-pool-state", "pooled"),
     );
-    expect(originalStage?.isConnected).toBe(false);
+    expect(originalStage?.isConnected).toBe(true);
+    expect(originalStage?.parentElement).toHaveAttribute(
+      "data-scene-resident-pool",
+    );
 
     view.rerender(
       <Harness activeSceneId="nasa-rocket">
@@ -443,18 +555,72 @@ describe("section-owned live scene occupants", () => {
       </Harness>,
     );
     await waitFor(() => {
-      expect(
-        view.container.querySelector(
-          '.scene-stage--resident[data-scene-owner-id="nasa-rocket"]',
-        ),
-      ).toBeInTheDocument();
-      expect(
-        view.container.querySelector(
-          '.scene-stage--resident[data-scene-owner-id="nasa-rocket"]',
-        ),
-      ).not.toBe(originalStage);
-      expect(canvasPorts.get("nasa-rocket")?.activationVersion).not.toBe(
+      const adoptedStage = view.container.querySelector(
+        'section[data-scene-id="nasa-rocket"] > .scene-stage--resident',
+      );
+      expect(adoptedStage).toBe(originalStage);
+      expect(adoptedStage).toHaveAttribute("data-scene-pool-state", "assigned");
+      expect(canvasPorts.get("nasa-rocket")?.activationVersion).toBe(
         originalActivationVersion,
+      );
+      expect(canvasPorts.get("nasa-rocket")?.adoptionVersion).toBe(
+        (originalAdoptionVersion ?? 0) + 1,
+      );
+    });
+  });
+
+  it("keeps a scene-keyed canvas mounted while its stage is pooled and readopted across routes", async () => {
+    pathname = "/";
+    const view = render(
+      <Harness activeSceneId="home-hero">
+        <Section sceneId="home-hero" />
+      </Harness>,
+    );
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(
+          'section[data-scene-id="home-hero"] > .scene-stage--resident',
+        ),
+      ).toHaveAttribute("data-scene-pool-state", "assigned"),
+    );
+    const homeStage = view.container.querySelector(
+      '.scene-stage--resident[data-scene-owner-id="home-hero"]',
+    );
+    const homeCanvas = homeStage?.querySelector("canvas");
+    const activationVersion = canvasPorts.get("home-hero")?.activationVersion;
+    const adoptionVersion = canvasPorts.get("home-hero")?.adoptionVersion;
+
+    pathname = "/experience";
+    view.rerender(
+      <Harness activeSceneId="experience-hero">
+        <Section sceneId="experience-hero" />
+        <Section sceneId="experience-intro" />
+        <Section sceneId="nasa-rocket" />
+      </Harness>,
+    );
+    await waitFor(() =>
+      expect(homeStage).toHaveAttribute("data-scene-pool-state", "pooled"),
+    );
+    expect(homeStage?.isConnected).toBe(true);
+    expect(homeStage?.querySelector("canvas")).toBe(homeCanvas);
+
+    pathname = "/";
+    view.rerender(
+      <Harness activeSceneId="home-hero">
+        <Section sceneId="home-hero" />
+      </Harness>,
+    );
+    await waitFor(() => {
+      const adopted = view.container.querySelector(
+        'section[data-scene-id="home-hero"] > .scene-stage--resident',
+      );
+      expect(adopted).toBe(homeStage);
+      expect(adopted?.querySelector("canvas")).toBe(homeCanvas);
+      expect(canvasPorts.get("home-hero")?.activationVersion).toBe(
+        activationVersion,
+      );
+      expect(canvasPorts.get("home-hero")?.adoptionVersion).toBe(
+        (adoptionVersion ?? 0) + 1,
       );
     });
   });

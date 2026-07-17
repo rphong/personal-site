@@ -26,6 +26,11 @@ interface PreparedSceneModel {
   readonly mixer: AnimationMixer | null;
 }
 
+interface RuntimeSceneAttachment {
+  readonly runtimeScene: Group;
+  readonly temporary: boolean;
+}
+
 const preparedSceneModels = new Map<SceneId, PreparedSceneModel>();
 
 export function applyStaticScenePose(
@@ -115,6 +120,18 @@ export function clearPreparedSceneModels() {
   preparedSceneModels.clear();
 }
 
+function createRuntimeSceneAttachment(
+  preparedRuntimeScene: Group,
+): RuntimeSceneAttachment {
+  if (!preparedRuntimeScene.parent) {
+    return { runtimeScene: preparedRuntimeScene, temporary: false };
+  }
+  return {
+    runtimeScene: cloneRuntimeScene(preparedRuntimeScene),
+    temporary: true,
+  };
+}
+
 export function SceneModel({
   attemptKey,
   scene,
@@ -131,11 +148,14 @@ export function SceneModel({
   useLayoutEffect(() => {
     const parent = attachment.current;
     if (!parent) return;
-    const runtimeScene = prepareSceneModel(scene, gltf);
+    const preparedRuntimeScene = prepareSceneModel(scene, gltf);
+    const { runtimeScene, temporary } =
+      createRuntimeSceneAttachment(preparedRuntimeScene);
     parent.add(runtimeScene);
     invalidate();
     return () => {
       parent.remove(runtimeScene);
+      if (temporary) disposeRuntimeScene(runtimeScene);
       invalidate();
     };
   }, [gltf, invalidate, scene]);
