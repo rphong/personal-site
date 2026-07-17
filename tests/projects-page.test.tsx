@@ -43,6 +43,16 @@ describe("projects page", () => {
     );
 
     expect(chapters).toHaveLength(2);
+    expect(container.querySelector(".projects-intro")).toBeNull();
+    expect(
+      chapters.every(
+        (chapter) =>
+          chapter.classList.contains("project-chapter") &&
+          chapter.querySelector(".chapter-layout--project") !== null &&
+          chapter.querySelector(".chapter-model-space") !== null &&
+          chapter.querySelector(".chapter-copy") !== null,
+      ),
+    ).toBe(true);
     expect(chapters.map((chapter) => chapter.id)).toEqual([
       "league-ban-site",
       "froggie-adventures",

@@ -17,20 +17,19 @@ export default function ExperiencePage() {
         sceneId={route.heroSceneId}
         title={route.title}
       />
-      <article className="content-surface" id="page-content">
+      <article className="content-surface experience-chapters" id="page-content">
         <SceneSection
-          className="chapter chapter--intro"
+          className="chapter experience-chapter experience-chapter--intro"
           sceneId="experience-intro"
         >
-          <div className="chapter-layout">
-            <div aria-hidden="true" className="chapter-model-space" />
+          <div className="chapter-layout chapter-layout--experience">
             <div className="chapter-copy">
               <div className="chapter-copy__inner">
                 <p className="section-kicker">The through line</p>
-                <h2 className="section-heading">
-                  Learning by building what matters.
+                <h2 className="section-heading experience-intro__heading">
+                  Who let the intern out.
                 </h2>
-                <div className="prose">
+                <div className="prose experience-intro__prose">
                   <p>
                     I think about my experience as a set of company chapters
                     rather than a list of disconnected tasks. Each one changed
@@ -43,46 +42,54 @@ export default function ExperiencePage() {
                 </div>
               </div>
             </div>
+            <div aria-hidden="true" className="chapter-model-space" />
           </div>
         </SceneSection>
         <div className="chapter-list">
-          {experience.map((chapter) => (
-            <SceneSection
-              className="chapter"
-              id={chapter.id}
-              key={chapter.id}
-              sceneId={chapter.sceneId}
-            >
-              <div className="chapter-layout">
-                <div aria-hidden="true" className="chapter-model-space" />
-                <div className="chapter-copy">
-                  <div className="chapter-copy__inner">
-                    <p className="section-kicker">Company chapter</p>
-                    <h2 className="chapter-heading">{chapter.company}</h2>
-                    <ul
-                      className="role-list"
-                      aria-label={`${chapter.company} roles`}
-                    >
-                      {chapter.roles.map((role) => (
-                        <li
-                          className="role-entry"
-                          key={`${role.title}-${role.dates}`}
-                        >
-                          <strong>{role.title}</strong>
-                          <span>{role.dates}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="prose">
-                      {chapter.narrative.map((paragraph) => (
-                        <p key={paragraph}>{paragraph}</p>
-                      ))}
+          {experience.map((chapter) => {
+            const posterOnly = chapter.sceneId.endsWith("-poster");
+
+            return (
+              <SceneSection
+                className={`chapter experience-chapter${
+                  posterOnly ? " experience-chapter--poster" : ""
+                }`}
+                id={chapter.id}
+                key={chapter.id}
+                posterClassName={posterOnly ? "experience-chapter__poster" : ""}
+                sceneId={chapter.sceneId}
+              >
+                <div className="chapter-layout chapter-layout--experience">
+                  <div className="chapter-copy">
+                    <div className="chapter-copy__inner">
+                      <p className="section-kicker">Company chapter</p>
+                      <h2 className="chapter-heading">{chapter.company}</h2>
+                      <ul
+                        className="role-list"
+                        aria-label={`${chapter.company} roles`}
+                      >
+                        {chapter.roles.map((role) => (
+                          <li
+                            className="role-entry"
+                            key={`${role.title}-${role.dates}`}
+                          >
+                            <strong>{role.title}</strong>
+                            <span>{role.dates}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="prose">
+                        {chapter.narrative.map((paragraph) => (
+                          <p key={paragraph}>{paragraph}</p>
+                        ))}
+                      </div>
                     </div>
                   </div>
+                  <div aria-hidden="true" className="chapter-model-space" />
                 </div>
-              </div>
-            </SceneSection>
-          ))}
+              </SceneSection>
+            );
+          })}
         </div>
       </article>
     </main>

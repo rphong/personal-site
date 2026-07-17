@@ -17,34 +17,16 @@ export default function ProjectsPage() {
         sceneId={route.heroSceneId}
         title={route.title}
       />
-      <article className="content-surface" id="page-content">
-        <header className="model-free-surface projects-intro">
-          <div className="content-inner content-grid">
-            <div>
-              <p className="section-kicker">Formative favorites</p>
-              <h2 className="section-heading">
-                Projects with a point of view.
-              </h2>
-            </div>
-            <div className="prose">
-              <p>
-                These are not meant to be polished flagship case studies. I
-                keep them here because they show the moments when software
-                connected with something I already cared about, or became more
-                meaningful through the people building it with me.
-              </p>
-            </div>
-          </div>
-        </header>
-        <div className="chapter-list">
+      <article className="content-surface projects-surface" id="page-content">
+        <div className="chapter-list project-chapter-list">
           {projects.map((project) => (
             <SceneSection
-              className="chapter"
+              className={`chapter project-chapter project-chapter--${project.sceneId}`}
               id={project.id}
               key={project.id}
               sceneId={project.sceneId}
             >
-              <div className="chapter-layout">
+              <div className="chapter-layout chapter-layout--project">
                 <div aria-hidden="true" className="chapter-model-space" />
                 <div className="chapter-copy">
                   <div className="chapter-copy__inner">
