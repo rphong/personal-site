@@ -336,6 +336,14 @@ img {
   top: 64.5%;
 }
 
+/* Live models sit in front of the giant word (per mock); every non-ready
+   fallback keeps the word above the poster layers. */
+.page-hero--layered > .scene-stage--resident:has(
+    .scene-runtime[data-three-status="ready"]
+  ) {
+  z-index: 2;
+}
+
 .page-hero--layered.page-hero--editorial h1 {
   font-family: var(--font-display), Georgia, serif;
   font-size: clamp(5.5rem, 13.333vw, 16rem);
