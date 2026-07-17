@@ -1,5 +1,11 @@
 import { act, render } from "@testing-library/react";
-import { PerspectiveCamera, Vector3, type WebGLRenderer } from "three";
+import {
+  ACESFilmicToneMapping,
+  PerspectiveCamera,
+  SRGBColorSpace,
+  Vector3,
+  type WebGLRenderer,
+} from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getSceneDefinition } from "./scene-registry";
 import {
@@ -162,6 +168,9 @@ describe("SceneCanvas shell", () => {
         stencil: false,
       }),
     );
+    expect(successfulRenderer.outputColorSpace).toBe(SRGBColorSpace);
+    expect(successfulRenderer.toneMapping).toBe(ACESFilmicToneMapping);
+    expect(successfulRenderer.toneMappingExposure).toBe(1);
     expect(successCanvas.addEventListener).toBe(successAdd);
 
     const canvas = document.createElement("canvas");

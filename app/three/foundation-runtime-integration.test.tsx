@@ -144,7 +144,7 @@ describe("foundation to runtime integration", () => {
     }
   });
 
-  it("uses full visual stages, opaque copy blocks, and one 767px breakpoint", async () => {
+  it("uses integrated chapter grids, project arches, and one 767px breakpoint", async () => {
     const [globalCss, runtimeCss] = await Promise.all([
       readFile("app/globals.css", "utf8"),
       readFile("app/three/scene-runtime.css", "utf8"),
@@ -153,14 +153,44 @@ describe("foundation to runtime integration", () => {
     expect(globalCss).toContain("@media (max-width: 767px)");
     expect(globalCss).not.toContain("@media (max-width: 720px)");
     expect(globalCss).toMatch(
-      /\.chapter-model-space\s*\{[\s\S]*?min-height:\s*calc\(100svh - var\(--nav-height\)\)/,
+      /\.chapter-layout--experience\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(19rem, 0\.42fr\) minmax\(0, 0\.58fr\)/,
     );
     expect(globalCss).toMatch(
-      /\.chapter-copy\s*\{[\s\S]*?background:\s*var\(--surface\)/,
+      /\.chapter-layout--project\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-rows:/,
+    );
+    expect(globalCss).toMatch(
+      /\.project-chapter::before\s*\{[\s\S]*?border-radius:\s*50% 50% 0 0 \/ var\(--project-arch-rise\)[\s\S]*?background:\s*var\(--surface\)/,
+    );
+    expect(globalCss).toMatch(
+      /\.project-chapter > \.scene-stage\s*\{[\s\S]*?width:\s*100%;[\s\S]*?border-radius:\s*0/,
+    );
+    expect(globalCss).toMatch(
+      /\.experience-chapter--poster > \.scene-stage\s*\{[\s\S]*?display:\s*none/,
+    );
+    expect(globalCss).toMatch(
+      /section\.experience-chapter--poster\[data-scene-active="true"\][\s\S]*?> \.scene-section__poster[\s\S]*?visibility:\s*visible/,
+    );
+    expect(globalCss).toMatch(
+      /\.experience-chapter:not\(\.experience-chapter--poster\)[\s\S]*?> \.scene-section__poster,[\s\S]*?\.project-chapter > \.scene-section__poster\s*\{[\s\S]*?visibility:\s*hidden/,
+    );
+    expect(globalCss).toMatch(
+      /\.project-chapter > \.scene-stage \.scene-runtime__poster,[\s\S]*?visibility:\s*hidden/,
+    );
+    expect(globalCss).toMatch(
+      /data-three-status="disabled"[\s\S]*?section\.chapter\[data-scene-active="true"\][\s\S]*?visibility:\s*visible/,
     );
     expect(globalCss).not.toMatch(/\.chapter:nth-child\(even\)/);
     expect(runtimeCss).toMatch(
-      /\.scene-runtime\[data-poster-ready="true"\][\s\S]*?\.scene-section\[data-scene-active="true"\][\s\S]*?>\s*\.scene-section__poster\s*\{[\s\S]*?visibility:\s*hidden/,
+      /\.scene-runtime\s*\{[\s\S]*?height:\s*100%;[\s\S]*?background:\s*var\(--scene-background\)/,
+    );
+    expect(runtimeCss).toMatch(
+      /body:has\(\.chapter\[data-scene-active="true"\]\) \.scene-runtime,[\s\S]*?\.chapter > \.scene-stage \.scene-runtime\s*\{[\s\S]*?background:\s*transparent/,
+    );
+    expect(runtimeCss).toMatch(
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?>\s*\.scene-stage--resident\s+\.scene-runtime\[data-poster-ready="true"\][\s\S]*?\)[\s\S]*?>\s*\.scene-section__poster[\s\S]*?\{[\s\S]*?visibility:\s*hidden/,
+    );
+    expect(runtimeCss).toMatch(
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime:not\(\[data-three-status="ready"\]\)[\s\S]*?\)[\s\S]*?>\s*\.scene-section__poster[\s\S]*?\{[\s\S]*?visibility:\s*visible/,
     );
   });
 });

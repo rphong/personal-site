@@ -37,7 +37,20 @@ describe("persistent runtime shell", () => {
     expect(canvasBoundary).toContain("<Suspense fallback={null}>");
     expect(host).toContain("SceneCanvasBoundary");
     expect(host).toContain("createPortal(");
-    expect(host).toContain("runtime.activeSectionElement");
+    expect(host).toContain("scene-stage--resident");
+    expect(host).toContain("MAX_LIVE_SCENE_OCCUPANTS = 4");
+    expect(host).toContain('attributeFilter: ["data-required-live", "data-scene-id"]');
+    expect(host).toContain("stage.dataset.sceneOwnerId !== scene.id");
+    expect(host).toContain("const stageIdentities = useRef(");
+    expect(host).toContain(
+      "new WeakMap<HTMLElement, { activationVersion: number; key: string }>()",
+    );
+    expect(host).toContain("next.push({ ...identity, scene, section, stage })");
+    expect(host).toContain("const becameActive = active && !wasActive.current");
+    expect(host).toMatch(
+      /createPortal\([\s\S]*?key=\{key\}[\s\S]*?stage,\s*key,\s*\)/,
+    );
+    expect(host).not.toContain("runtime.activeSectionElement");
     expect(host).not.toMatch(/import\s*\{[^}]*SceneCanvas[,}]/);
   });
 
@@ -72,7 +85,7 @@ describe("persistent runtime shell", () => {
     expect(host).not.toMatch(/position:\s*fixed/);
     expect(host).toMatch(/inset:\s*0/);
     expect(host).toMatch(/width:\s*100%/);
-    expect(host).toMatch(/height:\s*100svh/);
+    expect(host).toMatch(/height:\s*100%/);
     expect(host).toMatch(/overflow:\s*hidden/);
     expect(host).toMatch(/pointer-events:\s*none/);
     expect(host).toMatch(/z-index:\s*1/);
@@ -81,8 +94,17 @@ describe("persistent runtime shell", () => {
     expect(cssRule(css, ".scene-runtime__poster")).toMatch(
       /visibility:\s*visible/,
     );
-    expect(cssRule(css, ".scene-runtime__canvas", true)).toMatch(
+    expect(css).toMatch(
+      /\.scene-section\[data-required-live="true"\][\s\S]*?> \.scene-stage--resident[\s\S]*?\.scene-runtime:not\(\[data-three-status="ready"\]\):not\([\s\S]*?\[data-transition-poster="suppressed"\][\s\S]*?\)[\s\S]*?\.scene-runtime__poster\s*\{[^}]*visibility:\s*visible/,
+    );
+    expect(css).toMatch(
+      /\.scene-runtime__canvas,\s*\.scene-runtime__resident-canvas\s*\{[^}]*visibility:\s*hidden/,
+    );
+    expect(cssRule(css, ".scene-runtime__transition-frame")).toMatch(
       /visibility:\s*hidden/,
+    );
+    expect(css).toMatch(
+      /data-three-status="loading"[^\{]*data-transition-poster="suppressed"[^\{]*data-transition-frame="available"[^\{]*\.scene-runtime__transition-frame\s*\{[^}]*visibility:\s*visible/,
     );
     expect(
       cssRule(
@@ -90,12 +112,27 @@ describe("persistent runtime shell", () => {
         '.scene-runtime[data-three-status="ready"] .scene-runtime__poster',
       ),
     ).toMatch(/visibility:\s*hidden/);
+    expect(css).toMatch(
+      /\.scene-runtime\[data-three-status="ready"\] \.scene-runtime__canvas,\s*\.scene-runtime\[data-three-status="ready"\] \.scene-runtime__resident-canvas\s*\{[^}]*visibility:\s*visible/,
+    );
     expect(
       cssRule(
         css,
-        '.scene-runtime[data-three-status="ready"] .scene-runtime__canvas',
+        '.scene-runtime[data-transition-poster="suppressed"] .scene-runtime__poster',
       ),
-    ).toMatch(/visibility:\s*visible/);
+    ).toMatch(/visibility:\s*hidden/);
+    expect(css).toMatch(
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?> \.scene-stage--resident \.scene-runtime\[data-three-status="ready"\][\s\S]*?> \.scene-section__poster\s*\{[^}]*visibility:\s*hidden/,
+    );
+    expect(css).toMatch(
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime\[data-poster-ready="true"\][\s\S]*?> \.scene-section__poster/,
+    );
+    expect(css).not.toMatch(
+      /body:has\(\.scene-runtime\[data-poster-ready="true"\]\)/,
+    );
+    expect(css).toMatch(
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime:not\(\[data-three-status="ready"\]\):not\([\s\S]*?\[data-transition-poster="suppressed"\][\s\S]*?\):not\(\[data-poster-ready="true"\]\)[\s\S]*?> \.scene-section__poster\s*\{[^}]*visibility:\s*visible/,
+    );
 
     const rotation = cssRule(css, ".scene-runtime__rotation-area");
     expect(rotation).toMatch(/position:\s*absolute/);
@@ -122,7 +159,7 @@ describe("persistent runtime shell", () => {
       /\.page-hero--layered\s+\.page-hero__copy\s*\{[^}]*z-index:\s*0/,
     );
     expect(css).toMatch(
-      /body:has\(\.page-hero--layered\[data-scene-active="true"\]\)\s+\.scene-runtime\s*\{[^}]*background:\s*transparent/,
+      /body:has\(\.page-hero--layered\[data-scene-active="true"\]\) \.scene-runtime,[\s\S]*?\.chapter > \.scene-stage \.scene-runtime\s*\{[^}]*background:\s*transparent/,
     );
     expect(cssRule(css, ".model-free-surface")).toMatch(
       /background:\s*var\(--surface\)/,
@@ -147,10 +184,18 @@ describe("persistent runtime shell", () => {
     expect(css).not.toMatch(/animation\s*:/);
   });
 
-  it("keeps the canvas mounted on runtime errors and forwards inner-root policy", async () => {
-    const host = await source("app/three/scene-runtime-host.tsx");
+  it("keeps resident canvases mounted on errors and centralizes eager preload ownership", async () => {
+    const [host, canvas] = await Promise.all([
+      source("app/three/scene-runtime-host.tsx"),
+      source("app/three/scene-canvas.tsx"),
+    ]);
     expect(host).toContain("loadEnabled={status !== \"error\"}");
     expect(host).toContain("preloadReady={status === \"ready\"}");
-    expect(host).not.toContain("AdjacentScenePreloader");
+    expect(host).toMatch(
+      /<SceneRuntimeHostView[\s\S]*?active=\{active\}[\s\S]*?showPoster/,
+    );
+    expect(host).toContain("clearSceneModel(scene.modelUrl)");
+    expect(host).toContain("<AdjacentScenePreloader");
+    expect(canvas).not.toContain("AdjacentScenePreloader");
   });
 });

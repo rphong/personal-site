@@ -109,6 +109,31 @@ describe("SceneResourceCache", () => {
     expect(loader.load).toHaveBeenCalledTimes(3);
   });
 
+  it("keeps rejected activation ownership independent for concurrent URLs", async () => {
+    const failures = new Map([
+      ["a", new Error("a failed")],
+      ["b", new Error("b failed")],
+    ]);
+    const loader: SceneResourceLoader<{ id: string }> = {
+      load: vi.fn((url) => Promise.reject(failures.get(url))),
+      dispose: vi.fn(),
+    };
+    const cache = new SceneResourceCache(loader);
+
+    const a = cache.activate("a", "scene-a:1");
+    const b = cache.activate("b", "scene-b:1");
+    await expect(a).rejects.toBe(failures.get("a"));
+    await expect(b).rejects.toBe(failures.get("b"));
+    expect(cache.size).toBe(2);
+    expect(cache.activate("a", "scene-a:1")).toBe(a);
+    expect(cache.activate("b", "scene-b:1")).toBe(b);
+
+    const retryA = cache.activate("a", "scene-a:2");
+    await expect(retryA).rejects.toBe(failures.get("a"));
+    expect(loader.load).toHaveBeenCalledTimes(3);
+    expect(cache.activate("b", "scene-b:1")).toBe(b);
+  });
+
   it("clears every pending entry and ignores later completions", async () => {
     const a = deferred<{ id: string }>();
     const b = deferred<{ id: string }>();
@@ -133,7 +158,7 @@ describe("SceneResourceCache", () => {
     expect(cache.size).toBe(0);
   });
 
-  it("promotes one speculative URL and never owns more than current plus next", () => {
+  it("retains every warmed URL until the current host lease is released", () => {
     const signals = new Map<string, AbortSignal>();
     const loader: SceneResourceLoader<{ id: string }> = {
       load: vi.fn((url, signal) => {
@@ -147,36 +172,27 @@ describe("SceneResourceCache", () => {
     const firstHostLease = cache.acquireHostLease();
 
     const currentA = cache.activate("a", "scene-a");
-    const nextB = cache.preload("b");
-    expect(cache.size).toBe(2);
+    const warmedB = cache.preload("b");
+    const warmedC = cache.preload("c");
+    expect(cache.size).toBe(3);
+
     const replacementHostLease = cache.acquireHostLease();
     expect(cache.releaseHostLease(firstHostLease)).toBe(false);
-    expect(cache.size).toBe(2);
+    expect(cache.activate("b", "scene-b")).toBe(warmedB);
+    expect(cache.activate("a", "scene-a-again")).toBe(currentA);
+    expect(cache.size).toBe(3);
     expect(signals.get("a")?.aborted).toBe(false);
     expect(signals.get("b")?.aborted).toBe(false);
-
-    expect(cache.activate("b", "scene-b")).toBe(nextB);
-    expect(cache.size).toBe(1);
-    expect(signals.get("a")?.aborted).toBe(true);
-    expect(signals.get("b")?.aborted).toBe(false);
-    expect(loader.load).toHaveBeenCalledTimes(2);
-
-    const nextC = cache.preload("c");
-    expect(cache.size).toBe(2);
-    expect(cache.activate("b", "scene-b-shared-url")).toBe(nextB);
-    expect(cache.size).toBe(1);
-    expect(signals.get("c")?.aborted).toBe(true);
+    expect(signals.get("c")?.aborted).toBe(false);
     expect(loader.load).toHaveBeenCalledTimes(3);
 
-    const retryC = cache.preload("c");
-    expect(cache.size).toBe(2);
     expect(cache.releaseHostLease(replacementHostLease)).toBe(true);
     expect(cache.size).toBe(0);
+    expect(signals.get("a")?.aborted).toBe(true);
     expect(signals.get("b")?.aborted).toBe(true);
     expect(signals.get("c")?.aborted).toBe(true);
     void currentA.catch(() => undefined);
-    void nextB.catch(() => undefined);
-    void nextC.catch(() => undefined);
-    void retryC.catch(() => undefined);
+    void warmedB.catch(() => undefined);
+    void warmedC.catch(() => undefined);
   });
 });

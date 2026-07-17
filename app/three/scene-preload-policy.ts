@@ -1,7 +1,4 @@
-import {
-  getSceneDefinition,
-  getScenePreloadUrls,
-} from "./scene-registry";
+import { getSceneDefinition } from "./scene-registry";
 import type { SceneId } from "./types";
 
 export interface ModelCachePort {
@@ -13,25 +10,20 @@ export function reconcileScenePreloads(
   activeSceneId: SceneId | null,
   previous: ReadonlySet<string>,
   cache: ModelCachePort,
-  preloadNext: boolean,
+  preloadUrls: readonly string[],
 ): Set<string> {
-  const currentUrl = activeSceneId
-    ? getSceneDefinition(activeSceneId).modelUrl
-    : null;
-  const desired = new Set<string>(currentUrl ? [currentUrl] : []);
-
-  if (activeSceneId && currentUrl && preloadNext) {
-    const nextUrl = getScenePreloadUrls(activeSceneId).find(
-      (url) => url !== currentUrl,
-    );
-    if (nextUrl) desired.add(nextUrl);
+  if (!activeSceneId) {
+    for (const url of previous) cache.clear(url);
+    return new Set();
   }
 
-  for (const url of desired) {
-    if (url !== currentUrl && !previous.has(url)) cache.preload(url);
-  }
-  for (const url of previous) {
-    if (!desired.has(url)) cache.clear(url);
+  const currentUrl = getSceneDefinition(activeSceneId).modelUrl;
+  const desired = new Set(previous);
+  if (currentUrl) desired.add(currentUrl);
+
+  for (const url of preloadUrls) {
+    desired.add(url);
+    if (!previous.has(url)) cache.preload(url);
   }
   return desired;
 }

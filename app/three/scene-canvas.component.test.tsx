@@ -1,10 +1,20 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
-import { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
+import {
+  ACESFilmicToneMapping,
+  DirectionalLight,
+  Group,
+  HemisphereLight,
+  PerspectiveCamera,
+  Scene,
+  SRGBColorSpace,
+  Vector3,
+  WebGLRenderer,
+} from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SCENE_RUNTIME_EVENT_NAME } from "./runtime-events";
 import { getSceneDefinition } from "./scene-registry";
 import type { SceneCanvasPortProps } from "./scene-canvas";
-import { SceneCanvasContents } from "./scene-canvas";
+import { SceneCanvasContents, sceneModelIsAttached } from "./scene-canvas";
 
 const lifecycle = vi.hoisted(() => ({
   events: [] as string[],
@@ -22,21 +32,13 @@ vi.mock("./scene-model", async () => {
         },
         [],
       );
-      return React.createElement("group", {
-        name: `mock-model:${scene.id}`,
-      });
-    },
-  };
-});
-
-vi.mock("./adjacent-scene-preloader", async () => {
-  const React = await import("react");
-  return {
-    AdjacentScenePreloader: ({ enabled }: { readonly enabled: boolean }) => {
-      React.useEffect(() => {
-        if (!enabled) lifecycle.events.push("cache-cleared");
-      }, [enabled]);
-      return null;
+      return React.createElement(
+        "group",
+        { name: `scene-instance:${scene.id}` },
+        React.createElement("group", {
+          name: `mock-model:${scene.id}`,
+        }),
+      );
     },
   };
 });
@@ -62,6 +64,7 @@ function ports(
 async function renderContents(
   props: SceneCanvasPortProps,
   width = 1280,
+  configureRenderer?: (renderer: WebGLRenderer) => void,
 ) {
   const camera = new PerspectiveCamera();
   const projection = vi.spyOn(camera, "updateProjectionMatrix");
@@ -78,6 +81,7 @@ async function renderContents(
       },
       gl: (defaults) => {
         gl = new WebGLRenderer(defaults);
+        configureRenderer?.(gl);
         return gl;
       },
     },
@@ -117,7 +121,60 @@ describe("SceneCanvasContents", () => {
     await renderer.unmount();
   });
 
-  it("detaches the model before the same-root preloader clears ownership", async () => {
+  it("renders the exact shadowless three-point rig and applies scene exposure", async () => {
+    const initial = ports();
+    const { renderer, gl } = await renderContents(initial);
+    const hemispheres = renderer.scene.findAll(
+      (node) => node.instance.type === "HemisphereLight",
+    );
+    const directionals = renderer.scene.findAll(
+      (node) => node.instance.type === "DirectionalLight",
+    );
+
+    expect(hemispheres).toHaveLength(1);
+    const hemisphere = hemispheres[0].instance as HemisphereLight;
+    expect(`#${hemisphere.color.getHexString()}`).toBe(
+      initial.scene.lighting.hemisphere.skyColor,
+    );
+    expect(`#${hemisphere.groundColor.getHexString()}`).toBe(
+      initial.scene.lighting.hemisphere.groundColor,
+    );
+    expect(hemisphere.intensity).toBe(
+      initial.scene.lighting.hemisphere.intensity,
+    );
+
+    expect(directionals).toHaveLength(3);
+    for (const [node, definition] of directionals.map((node, index) => [
+      node,
+      [
+        initial.scene.lighting.key,
+        initial.scene.lighting.fill,
+        initial.scene.lighting.rim,
+      ][index],
+    ] as const)) {
+      const light = node.instance as DirectionalLight;
+      expect(`#${light.color.getHexString()}`).toBe(definition.color);
+      expect(light.intensity).toBe(definition.intensity);
+      expect(light.position.toArray()).toEqual([...definition.position]);
+      expect(light.castShadow).toBe(false);
+    }
+    expect(gl.outputColorSpace).toBe(SRGBColorSpace);
+    expect(gl.toneMapping).toBe(ACESFilmicToneMapping);
+    expect(gl.toneMappingExposure).toBe(initial.scene.lighting.exposure);
+
+    const rocket = getSceneDefinition("nasa-rocket");
+    await renderer.update(
+      <SceneCanvasContents
+        {...initial}
+        scene={rocket}
+        activationVersion={2}
+      />,
+    );
+    expect(gl.toneMappingExposure).toBe(rocket.lighting.exposure);
+    await renderer.unmount();
+  });
+
+  it("detaches the model when a resident canvas releases loading", async () => {
     const initial = ports();
     const { renderer, gl } = await renderContents(initial);
     expect(
@@ -142,7 +199,7 @@ describe("SceneCanvasContents", () => {
     expect(
       renderer.scene.findAllByProps({ name: "contact-blob-shadow" }),
     ).toHaveLength(0);
-    expect(lifecycle.events).toEqual(["model-detached", "cache-cleared"]);
+    expect(lifecycle.events).toEqual(["model-detached"]);
 
     const render = vi.spyOn(gl, "render");
     await renderer.update(
@@ -163,36 +220,55 @@ describe("SceneCanvasContents", () => {
     await renderer.unmount();
   });
 
-  it("reports first frame after a real render and reports render failure once", async () => {
+  it("does not consider an empty scene instance ready to present", () => {
+    const scene = new Scene();
+    const instance = new Group();
+    instance.name = "scene-instance:home-hero";
+    scene.add(instance);
+
+    expect(sceneModelIsAttached(scene, "home-hero")).toBe(false);
+    instance.add(new Group());
+    expect(sceneModelIsAttached(scene, "home-hero")).toBe(true);
+  });
+
+  it("reports the first attached-model frame during layout and render failure once", async () => {
     const onFirstFrame = vi.fn();
     const onFailure = vi.fn();
     const initial = ports({ onFirstFrame, onFailure });
     const { renderer, gl } = await renderContents(initial);
-    const render = vi.spyOn(gl, "render");
 
+    expect(
+      renderer.scene.findAllByProps({ name: "mock-model:home-hero" }),
+    ).toHaveLength(1);
+    expect(gl.info.render.frame).toBeGreaterThan(0);
+    expect(onFirstFrame).toHaveBeenCalledOnce();
+    expect(onFailure).not.toHaveBeenCalled();
+
+    const render = vi.spyOn(gl, "render");
     await renderer.advanceFrames(3, 1 / 60);
     expect(render).toHaveBeenCalledTimes(3);
     expect(onFirstFrame).toHaveBeenCalledOnce();
-    expect(onFailure).not.toHaveBeenCalled();
 
     await renderer.update(
       <SceneCanvasContents {...initial} renderVersion={1} />,
     );
     await renderer.advanceFrames(1, 1 / 60);
-    expect(render).toHaveBeenCalledTimes(4);
+    expect(render).toHaveBeenCalledTimes(5);
     expect(onFirstFrame).toHaveBeenCalledTimes(2);
     await renderer.unmount();
 
     const failedFirstFrame = vi.fn();
     const failed = vi.fn();
+    let failedRender!: ReturnType<typeof vi.spyOn>;
     const failedTree = await renderContents(
       ports({ onFirstFrame: failedFirstFrame, onFailure: failed }),
+      1280,
+      (gl) => {
+        failedRender = vi.spyOn(gl, "render").mockImplementation(() => {
+          throw new Error("GPU render failed");
+        });
+      },
     );
-    const failedRender = vi
-      .spyOn(failedTree.gl, "render")
-      .mockImplementation(() => {
-        throw new Error("GPU render failed");
-      });
     await failedTree.renderer.advanceFrames(3, 1 / 60);
     expect(failedRender).toHaveBeenCalledOnce();
     expect(failedFirstFrame).not.toHaveBeenCalled();
@@ -205,8 +281,11 @@ describe("SceneCanvasContents", () => {
     const noFrameReady = vi.fn();
     const noFrame = await renderContents(
       ports({ onFirstFrame: noFrameReady }),
+      1280,
+      (gl) => {
+        vi.spyOn(gl, "render").mockImplementation(() => undefined);
+      },
     );
-    vi.spyOn(noFrame.gl, "render").mockImplementation(() => undefined);
     await noFrame.renderer.advanceFrames(1, 1 / 60);
     expect(noFrameReady).not.toHaveBeenCalled();
     await noFrame.renderer.unmount();
@@ -214,12 +293,14 @@ describe("SceneCanvasContents", () => {
     const lostDuringRenderReady = vi.fn();
     const lostDuringRender = await renderContents(
       ports({ onFirstFrame: lostDuringRenderReady }),
+      1280,
+      (gl) => {
+        vi.spyOn(gl.getContext(), "isContextLost")
+          .mockReturnValueOnce(false)
+          .mockReturnValueOnce(true)
+          .mockReturnValue(false);
+      },
     );
-    vi.spyOn(lostDuringRender.gl.getContext(), "isContextLost")
-      .mockReturnValueOnce(false)
-      .mockReturnValueOnce(true)
-      .mockReturnValue(false);
-    await lostDuringRender.renderer.advanceFrames(1, 1 / 60);
     expect(lostDuringRender.gl.info.render.frame).toBeGreaterThan(0);
     expect(lostDuringRenderReady).not.toHaveBeenCalled();
     await lostDuringRender.renderer.unmount();
@@ -236,7 +317,7 @@ describe("SceneCanvasContents", () => {
     const { renderer, canvas } = await renderContents(
       initial,
     );
-    const onFirstFrame = initial.onFirstFrame;
+    const onFirstFrame = vi.mocked(initial.onFirstFrame);
     const onContextLost = vi.fn();
     const onContextRestored = vi.fn();
     const add = vi.spyOn(canvas, "addEventListener");
@@ -250,6 +331,7 @@ describe("SceneCanvasContents", () => {
       />,
     );
     expect(add).not.toHaveBeenCalled();
+    onFirstFrame.mockClear();
     const lost = new Event("webglcontextlost", { cancelable: true });
     canvas.dispatchEvent(lost);
 
@@ -262,7 +344,14 @@ describe("SceneCanvasContents", () => {
     canvas.dispatchEvent(new Event("webglcontextrestored"));
     expect(onContextRestored).toHaveBeenCalledOnce();
     expect(originalRestored).not.toHaveBeenCalled();
-    await renderer.advanceFrames(1, 1 / 60);
+    await renderer.update(
+      <SceneCanvasContents
+        {...initial}
+        renderVersion={1}
+        onContextLost={onContextLost}
+        onContextRestored={onContextRestored}
+      />,
+    );
     expect(onFirstFrame).toHaveBeenCalledOnce();
 
     await renderer.unmount();

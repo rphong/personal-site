@@ -4,14 +4,18 @@ import { BoxGeometry, Group, Mesh, MeshStandardMaterial } from "three";
 import { describe, expect, it, vi } from "vitest";
 import { getSceneDefinition } from "./scene-registry";
 import { useSceneGltf } from "./scene-loader";
-import { SceneModel } from "./scene-model";
+import {
+  clearPreparedSceneModels,
+  SceneModel,
+} from "./scene-model";
 
 vi.mock("./scene-loader", () => ({
   useSceneGltf: vi.fn(),
 }));
 
 describe("SceneModel", () => {
-  it("survives StrictMode replay and disposes only after final detachment", async () => {
+  it("survives StrictMode replay and retains the prepared clone until cache release", async () => {
+    clearPreparedSceneModels();
     const sourceGeometry = new BoxGeometry();
     const source = new Group();
     source.name = "cached-source";
@@ -47,10 +51,26 @@ describe("SceneModel", () => {
 
     await renderer.unmount();
     await Promise.resolve();
-    expect(attachedDispose).toHaveBeenCalledOnce();
-    expect(geometryDispose.mock.calls.length).toBeGreaterThan(
-      replayDisposals,
+    expect(attachedDispose).not.toHaveBeenCalled();
+    expect(geometryDispose.mock.calls.length).toBe(replayDisposals);
+
+    const secondRenderer = await ReactThreeTestRenderer.create(
+      <SceneModel
+        attemptKey="home-hero:2:0"
+        scene={getSceneDefinition("home-hero")}
+        rotation={{ yaw: 0, pitch: 0 }}
+      />,
     );
+    const secondRoot = secondRenderer.scene.findByProps({
+      name: "scene-root:home-hero",
+    }).instance as Group;
+    const secondSource = secondRoot.getObjectByName("cached-source") as Group;
+    expect((secondSource.children[0] as Mesh).geometry).toBe(attachedGeometry);
+    await secondRenderer.unmount();
+
+    clearPreparedSceneModels();
+    expect(attachedDispose).toHaveBeenCalledOnce();
+    expect(geometryDispose.mock.calls.length).toBeGreaterThan(replayDisposals);
     expect(sourceDispose).not.toHaveBeenCalled();
     geometryDispose.mockRestore();
   });

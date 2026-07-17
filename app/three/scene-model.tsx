@@ -12,7 +12,21 @@ import {
 import { NormalizedSceneRoot } from "./normalized-scene-root";
 import { useSceneGltf } from "./scene-loader";
 import { cloneRuntimeScene, disposeRuntimeScene } from "./scene-resources";
-import type { LiveSceneDefinition, SceneRotation } from "./types";
+import type { LiveSceneDefinition, SceneId, SceneRotation } from "./types";
+
+interface SceneGltfSource {
+  readonly scene: Group;
+  readonly animations: readonly AnimationClip[];
+}
+
+interface PreparedSceneModel {
+  readonly definition: LiveSceneDefinition;
+  readonly source: Group;
+  readonly runtimeScene: Group;
+  readonly mixer: AnimationMixer | null;
+}
+
+const preparedSceneModels = new Map<SceneId, PreparedSceneModel>();
 
 export function applyStaticScenePose(
   root: Object3D,
@@ -58,6 +72,49 @@ export function applyStaticScenePose(
   return mixer;
 }
 
+function disposePreparedSceneModel(prepared: PreparedSceneModel) {
+  prepared.mixer?.stopAllAction();
+  prepared.mixer?.uncacheRoot(prepared.runtimeScene);
+  disposeRuntimeScene(prepared.runtimeScene);
+}
+
+export function prepareSceneModel(
+  definition: LiveSceneDefinition,
+  gltf: SceneGltfSource,
+): Group {
+  const existing = preparedSceneModels.get(definition.id);
+  if (
+    existing?.definition === definition &&
+    existing.source === gltf.scene
+  ) {
+    return existing.runtimeScene;
+  }
+  if (existing) disposePreparedSceneModel(existing);
+
+  const runtimeScene = cloneRuntimeScene(gltf.scene);
+  const mixer = definition.staticPose
+    ? applyStaticScenePose(
+        runtimeScene,
+        gltf.animations,
+        definition.staticPose,
+      )
+    : null;
+  preparedSceneModels.set(definition.id, {
+    definition,
+    source: gltf.scene,
+    runtimeScene,
+    mixer,
+  });
+  return runtimeScene;
+}
+
+export function clearPreparedSceneModels() {
+  for (const prepared of preparedSceneModels.values()) {
+    disposePreparedSceneModel(prepared);
+  }
+  preparedSceneModels.clear();
+}
+
 export function SceneModel({
   attemptKey,
   scene,
@@ -74,20 +131,14 @@ export function SceneModel({
   useLayoutEffect(() => {
     const parent = attachment.current;
     if (!parent) return;
-    const runtimeScene = cloneRuntimeScene(gltf.scene);
-    const mixer = scene.staticPose
-      ? applyStaticScenePose(runtimeScene, gltf.animations, scene.staticPose)
-      : null;
+    const runtimeScene = prepareSceneModel(scene, gltf);
     parent.add(runtimeScene);
     invalidate();
     return () => {
       parent.remove(runtimeScene);
-      mixer?.stopAllAction();
-      mixer?.uncacheRoot(runtimeScene);
-      disposeRuntimeScene(runtimeScene);
       invalidate();
     };
-  }, [gltf.animations, gltf.scene, invalidate, scene.staticPose]);
+  }, [gltf, invalidate, scene]);
 
   return (
     <NormalizedSceneRoot

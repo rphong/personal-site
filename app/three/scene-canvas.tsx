@@ -15,12 +15,14 @@ import {
   useState,
 } from "react";
 import {
+  ACESFilmicToneMapping,
   PerspectiveCamera,
+  SRGBColorSpace,
   WebGLRenderer,
   type Camera,
+  type Scene,
   type WebGLRendererParameters,
 } from "three";
-import { AdjacentScenePreloader } from "./adjacent-scene-preloader";
 import { ContactBlobShadow } from "./contact-blob-shadow";
 import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneErrorBoundary } from "./scene-error-boundary";
@@ -43,7 +45,8 @@ export interface SceneCanvasPortProps {
   readonly renderVersion: number;
   readonly loadEnabled: boolean;
   readonly preloadReady: boolean;
-  readonly onFirstFrame: () => void;
+  readonly debugActive?: boolean;
+  readonly onFirstFrame: (transitionFrame?: string) => void;
   readonly onFailure: (reason: SceneFailureReason) => void;
   readonly onContextLost: () => void;
   readonly onContextRestored: () => void;
@@ -104,11 +107,15 @@ export function createWebGL2Renderer(
   try {
     canvas.addEventListener = intercept;
     interceptionInstalled = true;
-    return construct({
+    const renderer = construct({
       ...defaults,
       ...WEBGL2_ATTRIBUTES,
       context,
     });
+    renderer.outputColorSpace = SRGBColorSpace;
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1;
+    return renderer;
   } catch (error) {
     for (const { type, listener, options } of listeners) {
       removeEventListener.call(canvas, type, listener, options);
@@ -190,18 +197,49 @@ function applyCameraFrame(
   }
 }
 
+function SceneRendererSettings({
+  scene,
+}: {
+  readonly scene: SceneDefinition;
+}) {
+  const renderer = useThree((state) => state.gl) as WebGLRenderer;
+  const invalidate = useThree((state) => state.invalidate);
+
+  useLayoutEffect(() => {
+    renderer.outputColorSpace = SRGBColorSpace;
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = scene.lighting.exposure;
+    invalidate();
+  }, [invalidate, renderer, scene.lighting.exposure]);
+
+  return null;
+}
+
 function SceneLights({ scene }: { readonly scene: SceneDefinition }) {
   return (
     <>
-      <ambientLight
-        color={scene.lighting.ambient.color}
-        intensity={scene.lighting.ambient.intensity}
+      <hemisphereLight
+        color={scene.lighting.hemisphere.skyColor}
+        groundColor={scene.lighting.hemisphere.groundColor}
+        intensity={scene.lighting.hemisphere.intensity}
       />
       <directionalLight
         color={scene.lighting.key.color}
         intensity={scene.lighting.key.intensity}
         position={scene.lighting.key.position}
-        castShadow={false}
+        castShadow={scene.lighting.key.castShadow}
+      />
+      <directionalLight
+        color={scene.lighting.fill.color}
+        intensity={scene.lighting.fill.intensity}
+        position={scene.lighting.fill.position}
+        castShadow={scene.lighting.fill.castShadow}
+      />
+      <directionalLight
+        color={scene.lighting.rim.color}
+        intensity={scene.lighting.rim.intensity}
+        position={scene.lighting.rim.position}
+        castShadow={scene.lighting.rim.castShadow}
       />
     </>
   );
@@ -298,12 +336,24 @@ function rendererContextIsLost(gl: WebGLRenderer): boolean {
   }
 }
 
+export function sceneModelIsAttached(
+  scene: Scene,
+  sceneId: SceneDefinition["id"],
+): boolean {
+  const instance = scene.getObjectByName(`scene-instance:${sceneId}`);
+  return Boolean(instance?.children.length);
+}
+
 function DemandRenderer({
+  debugActive = true,
   health,
   sceneId,
   onFirstFrame,
   onFailure,
-}: Pick<SceneCanvasPortProps, "onFirstFrame" | "onFailure"> & {
+}: Pick<
+  SceneCanvasPortProps,
+  "debugActive" | "onFirstFrame" | "onFailure"
+> & {
   readonly health: ContextHealth;
   readonly sceneId: SceneDefinition["id"];
 }) {
@@ -316,6 +366,7 @@ function DemandRenderer({
   const invalidate = useThree((state) => state.invalidate);
 
   useLayoutEffect(() => {
+    if (!debugActive) return;
     connectSceneRuntimeDebug(
       renderer,
       renderedScene,
@@ -324,57 +375,80 @@ function DemandRenderer({
       sceneId,
     );
     return () => disconnectSceneRuntimeDebug(invalidate, sceneId);
-  }, [camera, invalidate, renderedScene, renderer, sceneId]);
+  }, [camera, debugActive, invalidate, renderedScene, renderer, sceneId]);
 
-  useFrame(({ gl, scene, camera }) => {
-    if (
-      failed.current ||
-      health.isLost() ||
-      rendererContextIsLost(gl as WebGLRenderer)
-    ) {
-      return;
-    }
-
-    const renderer = gl as WebGLRenderer;
-    const generation = health.getGeneration();
-    const frameBefore = renderer.info.render.frame;
-    try {
-      gl.render(scene, camera);
+  const renderFrame = useCallback(
+    (gl: WebGLRenderer, scene: typeof renderedScene, activeCamera: Camera) => {
       if (
+        failed.current ||
+        !sceneModelIsAttached(scene, sceneId) ||
         health.isLost() ||
-        health.getGeneration() !== generation ||
-        rendererContextIsLost(renderer) ||
-        renderer.info.render.frame <= frameBefore
+        rendererContextIsLost(gl)
       ) {
         return;
       }
 
-      recordSceneRuntimeDebugFrame(renderer, scene, sceneId);
+      const generation = health.getGeneration();
+      const frameBefore = gl.info.render.frame;
+      try {
+        gl.render(scene, activeCamera);
+        if (
+          health.isLost() ||
+          health.getGeneration() !== generation ||
+          rendererContextIsLost(gl) ||
+          gl.info.render.frame <= frameBefore
+        ) {
+          return;
+        }
 
-      const now = performance.now();
-      const previous = frameTimes.current.at(-1);
-      if (previous !== undefined && now - previous > 250) {
-        frameTimes.current = [];
+        recordSceneRuntimeDebugFrame(gl, scene, sceneId);
+
+        const now = performance.now();
+        const previous = frameTimes.current.at(-1);
+        if (previous !== undefined && now - previous > 250) {
+          frameTimes.current = [];
+        }
+        frameTimes.current.push(now);
+        if (frameTimes.current.length >= 12) {
+          const first = frameTimes.current[0];
+          const last = frameTimes.current.at(-1) ?? first;
+          const fps = Math.round(
+            ((frameTimes.current.length - 1) * 1_000) /
+              Math.max(1, last - first),
+          );
+          emitSceneRuntimeEvent({ status: "rotation-health", sceneId, fps });
+          frameTimes.current = [];
+        }
+        if (!reported.current) {
+          reported.current = true;
+          let transitionFrame: string | undefined;
+          if (gl.domElement.isConnected) {
+            try {
+              const snapshot = gl.domElement.toDataURL("image/webp", 0.86);
+              if (snapshot !== "data:,") transitionFrame = snapshot;
+            } catch {
+              // A transition frame is an optional visual bridge, not a load failure.
+            }
+          }
+          onFirstFrame(transitionFrame);
+        }
+      } catch {
+        failed.current = true;
+        onFailure("unknown");
       }
-      frameTimes.current.push(now);
-      if (frameTimes.current.length >= 12) {
-        const first = frameTimes.current[0];
-        const last = frameTimes.current.at(-1) ?? first;
-        const fps = Math.round(
-          ((frameTimes.current.length - 1) * 1_000) /
-            Math.max(1, last - first),
-        );
-        emitSceneRuntimeEvent({ status: "rotation-health", sceneId, fps });
-        frameTimes.current = [];
-      }
-      if (!reported.current) {
-        reported.current = true;
-        onFirstFrame();
-      }
-    } catch {
-      failed.current = true;
-      onFailure("unknown");
-    }
+    },
+    [health, onFailure, onFirstFrame, sceneId],
+  );
+
+  useLayoutEffect(() => {
+    // The model's preceding layout effect has already cloned and sampled its
+    // static pose. Render that frame before the browser can paint the route's
+    // loading poster, then let the status update reveal the posed canvas.
+    renderFrame(renderer, renderedScene, camera);
+  }, [camera, renderFrame, renderedScene, renderer]);
+
+  useFrame(({ gl, scene, camera }) => {
+    renderFrame(gl as WebGLRenderer, scene, camera);
   }, 1);
 
   return null;
@@ -402,6 +476,7 @@ function ModelLayer({
         <ContactBlobShadow definition={props.scene.contactShadow} />
       ) : null}
       <DemandRenderer
+        debugActive={props.debugActive}
         health={health}
         sceneId={props.scene.id}
         onFirstFrame={props.onFirstFrame}
@@ -418,16 +493,12 @@ export function SceneCanvasContents(props: SceneCanvasPortProps) {
   return (
     <>
       <ResponsiveCamera scene={props.scene} />
+      <SceneRendererSettings scene={props.scene} />
       <SceneLights scene={props.scene} />
       <ContextLifecycle
         health={health}
         onContextLost={props.onContextLost}
         onContextRestored={props.onContextRestored}
-      />
-      <AdjacentScenePreloader
-        activeSceneId={props.scene.id}
-        enabled={props.loadEnabled}
-        ready={props.preloadReady}
       />
       <SceneErrorBoundary resetKey={resetKey} onError={props.onFailure}>
         <ModelLayer
@@ -538,6 +609,7 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
       aria-hidden="true"
       frameloop="demand"
       dpr={[1, 1.5]}
+      resize={{ scroll: false }}
       shadows={false}
       camera={{
         position: [...props.scene.desktop.cameraPosition],
