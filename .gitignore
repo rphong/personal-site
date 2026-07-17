@@ -61,6 +61,8 @@ next-env.d.ts
 /.tools/
 /.tmp/assets/
 /.tmp/posters/
+# agent working evidence/scratch (prompts, probes, capture artifacts)
+/.tmp/claudex/
 /assets/blender/**/*.blend1
 /assets/blender/**/*.blend@
 /assets/blender/**/quit.blend
