@@ -13,7 +13,6 @@ import { fileURLToPath } from "node:url";
 import { runPreflight } from "./preflight.mjs";
 import { runBlenderScript } from "./lib/blender.mjs";
 import { sha256File, stringifyStable } from "./lib/manifest.mjs";
-import { stageSourceTextures } from "./render-source-textures.mjs";
 
 const ROCKET_SMOKE_BAKE = {
   frame: 60,
@@ -476,7 +475,7 @@ export async function prepareAll({
   replaceAllFromOrigin = false,
 } = {}, {
   preflight = runPreflight,
-  stageTextures = stageSourceTextures,
+  stageTextures = null,
   blenderRunner = runBlenderScript,
   promoteArtifacts = promoteCandidateArtifacts,
   provenanceWriter = writeSourceProvenance,
@@ -509,7 +508,9 @@ export async function prepareAll({
   const candidates = [];
   let stagedTextures = null;
   try {
-    stagedTextures = await stageTextures({ root });
+    const textureStager = stageTextures ??
+      (await import("./render-source-textures.mjs")).stageSourceTextures;
+    stagedTextures = await textureStager({ root });
     const current = await readSourceProvenance(root);
     await assertFirstCurationSourcesMatchOrigin({
       root,

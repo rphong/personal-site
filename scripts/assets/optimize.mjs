@@ -19,7 +19,6 @@ import {
   weld,
 } from "@gltf-transform/functions";
 import { MeshoptDecoder, MeshoptEncoder } from "meshoptimizer";
-import sharp from "sharp";
 
 import {
   readGlbImagePayloads,
@@ -50,6 +49,70 @@ const FORBIDDEN_EXTENSIONS = [
   "KHR_texture_basisu",
 ];
 const WEBP_MAX_DIMENSION = 1024;
+let sharpPromise = null;
+
+async function loadSharp() {
+  sharpPromise ??= import("sharp")
+    .then((module) => module.default)
+    .catch(() => null);
+  return sharpPromise;
+}
+
+function readImageDimensions(buffer) {
+  if (
+    buffer.length >= 24 &&
+    buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+  ) {
+    return {
+      format: "png",
+      height: buffer.readUInt32BE(20),
+      width: buffer.readUInt32BE(16),
+    };
+  }
+  if (
+    buffer.length >= 30 &&
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    const chunk = buffer.toString("ascii", 12, 16);
+    if (chunk === "VP8X") {
+      return {
+        format: "webp",
+        height: 1 + buffer.readUIntLE(27, 3),
+        width: 1 + buffer.readUIntLE(24, 3),
+      };
+    }
+    if (chunk === "VP8L" && buffer[20] === 0x2f) {
+      return {
+        format: "webp",
+        height:
+          1 +
+          ((buffer[22] >> 6) | (buffer[23] << 2) | ((buffer[24] & 0x0f) << 10)),
+        width: 1 + buffer[21] + ((buffer[22] & 0x3f) << 8),
+      };
+    }
+    const signature = buffer.indexOf(Buffer.from([0x9d, 0x01, 0x2a]), 20);
+    if (signature >= 0 && signature + 7 <= buffer.length) {
+      return {
+        format: "webp",
+        height: buffer.readUInt16LE(signature + 5) & 0x3fff,
+        width: buffer.readUInt16LE(signature + 3) & 0x3fff,
+      };
+    }
+  }
+  throw new Error("Unsupported image format for dimension inspection");
+}
+
+async function imageMetadata(input) {
+  const sharp = await loadSharp();
+  if (sharp) return sharp(input).metadata();
+  const buffer = Buffer.isBuffer(input)
+    ? input
+    : typeof input === "string"
+      ? await readFile(input)
+      : Buffer.from(input);
+  return readImageDimensions(buffer);
+}
 
 function createIo() {
   return new NodeIO()
@@ -216,7 +279,7 @@ function assertEmbeddedResources(json, model) {
 async function expectedTextureDimensions(root, model) {
   const dimensions = {};
   for (const texture of model.ownedTextures ?? []) {
-    const metadata = await sharp(path.join(root, texture.source)).metadata();
+    const metadata = await imageMetadata(path.join(root, texture.source));
     if (!metadata.width || !metadata.height) {
       throw new Error(`${model.key}: could not inspect ${texture.name}`);
     }
@@ -289,7 +352,7 @@ async function assertOptimizedDocument({
       if (payload.mimeType !== "image/webp") {
         throw new Error(`${model.key}: ${payload.name} is not WebP`);
       }
-      const metadata = await sharp(payload.payload).metadata();
+      const metadata = await imageMetadata(payload.payload);
       const expected = dimensions[payload.name];
       if (
         !expected ||
@@ -396,11 +459,10 @@ export async function optimizeOne({ inputBytes, model }) {
     resample({ cleanup: false, tolerance: 0 }),
   );
   if (model.textureMode === "webp") {
+    const sharp = await loadSharp();
     await document.transform(
       textureCompress({
-        effort: 100,
-        encoder: sharp,
-        quality: 88,
+        ...(sharp ? { effort: 100, encoder: sharp, quality: 88 } : {}),
         resize: [WEBP_MAX_DIMENSION, WEBP_MAX_DIMENSION],
         resizeFilter: "lanczos3",
         targetFormat: "webp",

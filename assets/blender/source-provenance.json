@@ -15,7 +15,7 @@
       "source": "assets/blender/Crane.blend"
     },
     "crane-making-table": {
-      "canonicalSha256": "dc937e9233e1a8925d95ea03a1ef564640472569249b1e9a9a7edb4e0d97760d",
+      "canonicalSha256": "076e8913f4ba7d7205fb7fd38c7e208fb938860836f3476cf15514cd58a707bf",
       "generatorInputs": {
         "staticCranePose": {
           "frame": 2,
@@ -34,7 +34,7 @@
       "source": "assets/blender/CraneMakingTable.blend"
     },
     "crane-on-league": {
-      "canonicalSha256": "361849ef8ff6b80692bda475d7edbc0393817bfd3cc62ad376e2aa59efde1d7c",
+      "canonicalSha256": "302044506d49d097ff386fb0fcabdcb1932b86a47f59457679f5ea14cae1e021",
       "generatorInputs": {
         "ownedTextures": {
           "LeagueBanDashboard": {
@@ -65,7 +65,7 @@
       "source": "assets/blender/CraneOnLeague.blend"
     },
     "crane-throwing-plane": {
-      "canonicalSha256": "62f4dd4810bdf41b4f42364f70d31fccad22890804f6b4b8c7090eb109907ff8",
+      "canonicalSha256": "b8ad587f032cd379ec2f0e71439b574ce50e6ea252eb46605f95c2540b118076",
       "generatorInputs": {
         "staticCranePose": {
           "frame": 19,
@@ -139,7 +139,7 @@
       "source": "assets/blender/FroggieDisplay.blend"
     },
     "rocket": {
-      "canonicalSha256": "15858eb87ba0ab8dfdd2c69041474bdf7de455fbea003f03cbdbec272994a1ac",
+      "canonicalSha256": "37e433e4f0e420c4e6ea393911f3f5968364f76f777b6d9315412dcd1cf1ff49",
       "generatorInputs": {
         "rocketSmokeBake": {
           "frame": 60,

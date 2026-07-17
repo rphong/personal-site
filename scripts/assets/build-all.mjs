@@ -13,7 +13,6 @@ import {
   promoteCandidateArtifacts,
 } from "./prepare-all.mjs";
 import { runPreflight } from "./preflight.mjs";
-import { stageSourceTextures } from "./render-source-textures.mjs";
 import { validateAll } from "./validate.mjs";
 
 const PUBLICATION_MANIFEST = "assets-manifest.json";
@@ -88,6 +87,7 @@ export async function acquireAssetPipelineLock({ root }) {
 }
 
 export async function verifySourceTextures({ root }) {
+  const { stageSourceTextures } = await import("./render-source-textures.mjs");
   const staged = await stageSourceTextures({ root });
   let verificationError;
   try {
