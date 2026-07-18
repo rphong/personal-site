@@ -313,17 +313,17 @@ img {
 }
 
 .site-shell[data-route="experience"] .page-hero--layered .page-hero__copy {
-  top: 20%;
+  top: 36.5%;
 }
 
 .site-shell[data-route="projects"] .page-hero--layered .page-hero__copy {
-  top: 18.5%;
+  top: 35%;
 }
 
 .site-shell[data-route="experience"]
   .page-hero--layered:not(.page-hero--editorial)
   h1 {
-  font-size: clamp(4.5rem, 21.5vw, 27rem);
+  font-size: clamp(4.5rem, 18.4vw, 23rem);
 }
 
 .site-shell[data-route="projects"]
