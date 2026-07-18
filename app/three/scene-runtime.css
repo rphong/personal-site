@@ -118,7 +118,9 @@
   position: fixed;
   top: 0;
   left: -200vw;
-  width: 100vw;
+  /* 100% (not 100vw) so parked stages keep the scrollbar-adjusted layout
+     width; with 100vw every adopted canvas repainted ~15px wider for a frame. */
+  width: 100%;
   height: 100svh;
   overflow: hidden;
   visibility: hidden;
