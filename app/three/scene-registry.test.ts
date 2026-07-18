@@ -127,13 +127,13 @@ describe("scene registry", () => {
       "experience-hero": {
         exposure: 1.09,
         hemisphere: {
-          skyColor: "#f0f4f2",
-          groundColor: "#69716f",
-          intensity: 0.62,
+          skyColor: "#f4f0ee",
+          groundColor: "#949791",
+          intensity: 1.08,
         },
-        key: directional("#e8f4f2", 2.65, [-5, 9, 3.5]),
-        fill: directional("#d9e9ed", 0.72, [5, 3, 4]),
-        rim: directional("#ffffff", 0.98, [2, 7, -6]),
+        key: directional("#e8f4f2", 1.72, [-5, 9, 3.5]),
+        fill: directional("#d9e9ed", 0.56, [5, 3, 4]),
+        rim: directional("#ffffff", 0.72, [2, 7, -6]),
       },
       "experience-intro": {
         exposure: 1.08,
@@ -160,13 +160,13 @@ describe("scene registry", () => {
       "projects-hero": {
         exposure: 1.1,
         hemisphere: {
-          skyColor: "#eef4f3",
-          groundColor: "#687172",
-          intensity: 0.62,
+          skyColor: "#eef2f1",
+          groundColor: "#949a99",
+          intensity: 1.05,
         },
-        key: directional("#e8f4f2", 2.6, [-5, 9, 3.5]),
-        fill: directional("#d8e9ed", 0.7, [6, 3, 4]),
-        rim: directional("#ffffff", 0.96, [2, 7, -6]),
+        key: directional("#e8f4f2", 1.7, [-5, 9, 3.5]),
+        fill: directional("#d8e9ed", 0.55, [6, 3, 4]),
+        rim: directional("#ffffff", 0.7, [2, 7, -6]),
       },
       "league-ban": {
         exposure: 1.08,
@@ -227,9 +227,9 @@ describe("scene registry", () => {
         textureSize: 64,
       },
       "experience-hero": {
-        opacity: 0.62,
+        opacity: 0.44,
         position: [0.1, -0.01, 0.45],
-        scale: [2.6, 1.2],
+        scale: [3.4, 1.55],
         textureSize: 64,
       },
       "experience-intro": {
@@ -245,9 +245,9 @@ describe("scene registry", () => {
         textureSize: 64,
       },
       "projects-hero": {
-        opacity: 0.58,
-        position: [0.1, -0.18, 0.8],
-        scale: [3.1, 1.6],
+        opacity: 0.4,
+        position: [-0.6, -0.01, 1],
+        scale: [4.3, 1.85],
         textureSize: 64,
       },
       "league-ban": {

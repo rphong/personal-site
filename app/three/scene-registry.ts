@@ -105,13 +105,13 @@ const HOME_LIGHTING: SceneLighting = {
 const EXPERIENCE_HERO_LIGHTING: SceneLighting = {
   exposure: 1.09,
   hemisphere: {
-    skyColor: "#f0f4f2",
-    groundColor: "#69716f",
-    intensity: 0.62,
+    skyColor: "#f4f0ee",
+    groundColor: "#949791",
+    intensity: 1.08,
   },
-  key: directionalLight("#e8f4f2", 2.65, [-5, 9, 3.5]),
-  fill: directionalLight("#d9e9ed", 0.72, [5, 3, 4]),
-  rim: directionalLight("#ffffff", 0.98, [2, 7, -6]),
+  key: directionalLight("#e8f4f2", 1.72, [-5, 9, 3.5]),
+  fill: directionalLight("#d9e9ed", 0.56, [5, 3, 4]),
+  rim: directionalLight("#ffffff", 0.72, [2, 7, -6]),
 };
 
 const EXPERIENCE_INTRO_LIGHTING: SceneLighting = {
@@ -153,13 +153,13 @@ const PINK_POSTER_LIGHTING: SceneLighting = {
 const PROJECTS_HERO_LIGHTING: SceneLighting = {
   exposure: 1.1,
   hemisphere: {
-    skyColor: "#eef4f3",
-    groundColor: "#687172",
-    intensity: 0.62,
+    skyColor: "#eef2f1",
+    groundColor: "#949a99",
+    intensity: 1.05,
   },
-  key: directionalLight("#e8f4f2", 2.6, [-5, 9, 3.5]),
-  fill: directionalLight("#d8e9ed", 0.7, [6, 3, 4]),
-  rim: directionalLight("#ffffff", 0.96, [2, 7, -6]),
+  key: directionalLight("#e8f4f2", 1.7, [-5, 9, 3.5]),
+  fill: directionalLight("#d8e9ed", 0.55, [6, 3, 4]),
+  rim: directionalLight("#ffffff", 0.7, [2, 7, -6]),
 };
 
 const LEAGUE_BAN_LIGHTING: SceneLighting = {
@@ -241,9 +241,9 @@ export const SCENE_DEFINITIONS = {
     mobile: frame([5.2, 4.1, 9.6], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
     lighting: EXPERIENCE_HERO_LIGHTING,
     contactShadow: {
-      opacity: 0.62,
+      opacity: 0.44,
       position: [0.1, -0.01, 0.45],
-      scale: [2.6, 1.2],
+      scale: [3.4, 1.55],
       textureSize: 64,
     },
     staticPose: {
@@ -390,9 +390,9 @@ export const SCENE_DEFINITIONS = {
     mobile: frame([5.5, 4.4, 10.8], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
     lighting: PROJECTS_HERO_LIGHTING,
     contactShadow: {
-      opacity: 0.58,
-      position: [0.1, -0.18, 0.8],
-      scale: [3.1, 1.6],
+      opacity: 0.4,
+      position: [-0.6, -0.01, 1],
+      scale: [4.3, 1.85],
       textureSize: 64,
     },
     rotation: DEFAULT_ROTATION,
