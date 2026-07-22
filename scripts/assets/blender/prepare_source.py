@@ -41,7 +41,7 @@ ROCKET_SMOKE_SPECS = {
     },
     "Smoke Emitter Outward": {
         "baked_name": "RocketSmokeGroundBaked",
-        "color": (0.709794, 0.081306, 0.058134, 1.0),
+        "color": (0.62, 0.64, 0.67, 1.0),
         "emitter": "Ground Smoke",
         "expected_particles": 400,
         "instance": "Smoke Particle Gray",

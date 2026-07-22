@@ -18,6 +18,21 @@ const HOME_MODEL = "/models/crane.glb";
 const EXPERIENCE_MODEL = "/models/crane-workout.glb";
 const INTRO_MODEL = "/models/crane-throwing-plane.glb";
 const LEAGUE_MODEL = "/models/crane-on-league.glb";
+const ALL_LIVE_MODELS = [
+  HOME_MODEL,
+  EXPERIENCE_MODEL,
+  INTRO_MODEL,
+  "/models/rocket.glb",
+  "/models/crane-making-table.glb",
+  LEAGUE_MODEL,
+  "/models/froggie-display.glb",
+] as const;
+const RESIDENT_SCENES_BY_ROUTE = {
+  "/": ["home-hero"],
+  "/contact": ["contact-hero"],
+  "/experience": ["experience-hero", "experience-intro", "nasa-rocket"],
+  "/projects": ["projects-hero", "league-ban", "froggie-adventures"],
+} as const;
 
 type ProbeMode = "normal" | "unsupported" | "renderer-throws";
 
@@ -38,6 +53,7 @@ interface ContextCallRecord {
 
 interface RuntimeAcceptanceProbe {
   readonly calls: ContextCallRecord[];
+  readonly contextsByCanvas: Map<HTMLCanvasElement, WebGL2RenderingContext>;
   readonly events: RuntimeEventRecord[];
   readonly uncaughtErrors: string[];
   readonly unhandledRejections: string[];
@@ -66,7 +82,17 @@ declare global {
     __task14GotCapture?: boolean;
     __task14LostCapture?: boolean;
     __task14TouchCancels?: boolean[];
-    __issue4Canvas?: HTMLCanvasElement | null;
+    __residentIdentitySets?: Record<
+      string,
+      Record<
+        string,
+        {
+          readonly canvas: HTMLCanvasElement;
+          readonly context: WebGL2RenderingContext;
+          readonly stage: HTMLElement;
+        }
+      >
+    >;
   }
 }
 
@@ -78,6 +104,7 @@ async function installRuntimeProbe(
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
     const probe: RuntimeAcceptanceProbe = {
       calls: [],
+      contextsByCanvas: new Map(),
       events: [],
       uncaughtErrors: [],
       unhandledRejections: [],
@@ -127,6 +154,7 @@ async function installRuntimeProbe(
         }
         probe.connectedCanvas = this;
         probe.connectedContext = webgl2;
+        probe.contextsByCanvas.set(this, webgl2);
       }
       return context;
     } as typeof originalGetContext;
@@ -202,6 +230,158 @@ async function expectRuntimeIdentity(page: Page): Promise<void> {
   ).toBe(true);
 }
 
+function residentHost(page: Page, sceneId: string) {
+  return page.locator(
+    `.scene-stage--resident[data-scene-owner-id="${sceneId}"] [data-scene-runtime-host]`,
+  );
+}
+
+async function expectReadyResidentSet(
+  page: Page,
+  sceneIds: readonly string[],
+): Promise<void> {
+  const assignedStages = page.locator(
+    '.scene-stage--resident[data-scene-pool-state="assigned"]',
+  );
+  await expect(assignedStages).toHaveCount(sceneIds.length);
+  await expect(page.locator("[data-scene-resident-pool]")).toHaveAttribute(
+    "data-scene-context-cap",
+    "8",
+  );
+  expect(sceneIds.length).toBeLessThanOrEqual(8);
+  for (const sceneId of sceneIds) {
+    const stage = page.locator(
+      `[data-scene-id="${sceneId}"] > .scene-stage--resident[data-scene-owner-id="${sceneId}"][data-scene-pool-state="assigned"]`,
+    );
+    const host = residentHost(page, sceneId);
+    await expect(stage).toHaveCount(1);
+    await expect(host).toHaveAttribute("data-scene-for", sceneId);
+    await expect(host).toHaveAttribute("data-three-status", "ready");
+    await expect(host.locator("picture.scene-runtime__poster")).toHaveCount(1);
+    await expect(host.locator("picture.scene-runtime__poster")).toBeHidden();
+    await expect(host.locator("canvas")).toHaveCount(1);
+    await expect(host.locator("canvas")).toBeVisible();
+  }
+  await expect(assignedStages.locator("canvas")).toHaveCount(sceneIds.length);
+  expect(await page.locator(".scene-stage--resident").count()).toBeLessThanOrEqual(
+    8,
+  );
+  expect(
+    await page.locator(".scene-stage--resident canvas").count(),
+  ).toBeLessThanOrEqual(8);
+}
+
+async function rememberResidentIdentitySet(
+  page: Page,
+  key: string,
+): Promise<void> {
+  await page.evaluate((identityKey) => {
+    const probe = window.__runtimeAcceptanceProbe;
+    if (!probe) throw new Error("Runtime acceptance probe is unavailable");
+    const identities: Record<
+      string,
+      {
+        readonly canvas: HTMLCanvasElement;
+        readonly context: WebGL2RenderingContext;
+        readonly stage: HTMLElement;
+      }
+    > = {};
+    for (const stage of document.querySelectorAll<HTMLElement>(
+      '.scene-stage--resident[data-scene-owner-id][data-scene-pool-state="assigned"]',
+    )) {
+      const sceneId = stage.dataset.sceneOwnerId;
+      const canvas = stage.querySelector("canvas");
+      const context = canvas ? probe.contextsByCanvas.get(canvas) : undefined;
+      if (!sceneId || !canvas || !context) {
+        throw new Error("A resident identity is incomplete");
+      }
+      identities[sceneId] = { canvas, context, stage };
+    }
+    window.__residentIdentitySets ??= {};
+    window.__residentIdentitySets[identityKey] = identities;
+  }, key);
+}
+
+async function expectResidentIdentitySetStable(
+  page: Page,
+  key: string,
+): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate((identityKey) => {
+        const identities = window.__residentIdentitySets?.[identityKey];
+        const probe = window.__runtimeAcceptanceProbe;
+        if (!identities || !probe) return false;
+        return Object.values(identities).every((identity) => {
+          const canvas = identity.stage.querySelector("canvas");
+          return (
+            canvas === identity.canvas &&
+            probe.contextsByCanvas.get(identity.canvas) === identity.context &&
+            identity.stage.isConnected &&
+            identity.canvas.isConnected &&
+            !identity.context.isContextLost()
+          );
+        });
+      }, key),
+    )
+    .toBe(true);
+}
+
+async function expectResidentIdentitySetState(
+  page: Page,
+  key: string,
+  state: "assigned" | "pooled",
+): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        ({ identityKey, wantedState }) => {
+          const identities = window.__residentIdentitySets?.[identityKey];
+          if (!identities) return false;
+          return Object.entries(identities).every(([sceneId, identity]) => {
+            const parent = identity.stage.parentElement;
+            return (
+              identity.stage.dataset.scenePoolState === wantedState &&
+              (wantedState === "pooled"
+                ? parent?.hasAttribute("data-scene-resident-pool") === true
+                : parent?.getAttribute("data-scene-id") === sceneId)
+            );
+          });
+        },
+        { identityKey: key, wantedState: state },
+      ),
+    )
+    .toBe(true);
+  await expectResidentIdentitySetStable(page, key);
+}
+
+async function expectResidentIdentitySetEvicted(
+  page: Page,
+  key: string,
+): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate((identityKey) => {
+        const identities = window.__residentIdentitySets?.[identityKey];
+        if (!identities) return false;
+        return Object.values(identities).every(
+          ({ canvas, context, stage }) =>
+            !stage.isConnected && !canvas.isConnected && context.isContextLost(),
+        );
+      }, key),
+    )
+    .toBe(true);
+}
+
+function connectedContextCallCount(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      window.__runtimeAcceptanceProbe?.calls.filter(
+        ({ connected, kind }) => connected && kind === "webgl2",
+      ).length ?? -1,
+  );
+}
+
 async function expectSingleReadyMark(page: Page, sceneId: string): Promise<void> {
   await expect
     .poll(() =>
@@ -244,7 +424,7 @@ async function disposeFixture(
   }
 }
 
-test("anchors active scene visuals to their sections while desktop and mobile vertical scrolling stays untrapped", async ({
+test("anchors resident scene visuals to their sections while desktop and mobile vertical scrolling stays untrapped", async ({
   browser,
 }, testInfo) => {
   for (const viewport of [
@@ -257,34 +437,31 @@ test("anchors active scene visuals to their sections while desktop and mobile ve
       hasTouch: viewport.isMobile,
     });
     const page = await context.newPage();
+    await installRuntimeProbe(page);
     await fulfillPosters(page);
     const models = await fulfillModels(page);
 
     try {
       await page.goto("/experience");
+      await expectReadyResidentSet(
+        page,
+        RESIDENT_SCENES_BY_ROUTE["/experience"],
+      );
       const host = page.getByTestId("scene-runtime-host");
       await expect(host).toHaveAttribute(
         "data-active-scene-id",
         "experience-hero",
       );
-      await expect(host).toHaveAttribute("data-three-status", "ready");
+      await rememberResidentIdentitySet(page, `experience-${viewport.name}`);
 
-      const activateAndAssertOwner = async (
-        route: string,
-        sceneId: string,
-        expectedStatus: "ready" | "poster",
-      ) => {
-        if (new URL(page.url()).pathname !== route) await page.goto(route);
+      const activateLiveScene = async (sceneId: string) => {
         const owner = page.locator(`[data-scene-id="${sceneId}"]`);
         await owner.evaluate((element) => {
           const top = element.getBoundingClientRect().top + window.scrollY;
           window.scrollTo(0, top - window.innerHeight * 0.08);
         });
         await expect(host).toHaveAttribute("data-active-scene-id", sceneId);
-        await expect(host).toHaveAttribute(
-          "data-three-status",
-          expectedStatus,
-        );
+        await expect(host).toHaveAttribute("data-three-status", "ready");
         expect(
           await host.evaluate(
             (element, activeSceneId) =>
@@ -295,29 +472,15 @@ test("anchors active scene visuals to their sections while desktop and mobile ve
               ) === activeSceneId,
             sceneId,
           ),
-          `${viewport.name} ${sceneId} runtime stage should track its section owner`,
+          `${viewport.name} ${sceneId} runtime stage should remain with its section owner`,
         ).toBe(true);
       };
 
-      await activateAndAssertOwner(
-        "/experience",
-        "experience-hero",
-        "ready",
+      await activateLiveScene("experience-intro");
+      await expectResidentIdentitySetStable(
+        page,
+        `experience-${viewport.name}`,
       );
-      await page.evaluate(() => {
-        window.__issue4Canvas = document.querySelector("canvas");
-      });
-      await activateAndAssertOwner(
-        "/experience",
-        "experience-intro",
-        "ready",
-      );
-      expect(
-        await page.evaluate(
-          () => document.querySelector("canvas") === window.__issue4Canvas,
-        ),
-        `${viewport.name} section activation should retain the Canvas node`,
-      ).toBe(true);
       const before = await page.evaluate(() => {
         const sectionElement = document.querySelector(
           '[data-scene-id="experience-intro"]',
@@ -357,40 +520,60 @@ test("anchors active scene visuals to their sections while desktop and mobile ve
         };
       });
       expect(after).not.toBeNull();
-
       const sectionDelta =
         (after?.sectionTop ?? 0) - (before?.sectionTop ?? 0);
       const hostDelta = (after?.hostTop ?? 0) - (before?.hostTop ?? 0);
       expect(Math.abs(sectionDelta)).toBeGreaterThan(1);
       expect(hostDelta).toBeCloseTo(sectionDelta, 1);
+      await expectResidentIdentitySetStable(
+        page,
+        `experience-${viewport.name}`,
+      );
 
       await page.getByRole("button", { name: "3D on" }).click();
-      await expect(host).toHaveAttribute("data-three-status", "disabled");
-      await expect(host.locator("picture")).toBeVisible();
-      expect(
-        await host.evaluate(
-          (element) =>
-            element.parentElement?.parentElement?.getAttribute(
-              "data-scene-id",
-            ) === "experience-intro",
-        ),
-        `${viewport.name} poster fallback should remain with its section owner`,
-      ).toBe(true);
-      await page.getByRole("button", { name: "3D off" }).click();
-      await expect(host).toHaveAttribute("data-three-status", "ready");
-
-      for (const [route, sceneId, status] of [
-        ["/experience", "nasa-rocket", "ready"],
-        ["/experience", "eog-poster", "poster"],
-        ["/experience", "paycom-poster", "poster"],
-        ["/projects", "projects-hero", "ready"],
-        ["/projects", "league-ban", "ready"],
-        ["/projects", "froggie-adventures", "ready"],
-        ["/contact", "contact-hero", "ready"],
-        ["/", "home-hero", "ready"],
-      ] as const) {
-        await activateAndAssertOwner(route, sceneId, status);
+      await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(0);
+      for (const sceneId of RESIDENT_SCENES_BY_ROUTE["/experience"]) {
+        const resident = residentHost(page, sceneId);
+        await expect(resident).toHaveAttribute("data-three-status", "disabled");
+        await expect(resident.locator("picture.scene-runtime__poster")).toHaveCount(
+          1,
+        );
+        await expect(resident.locator("picture.scene-runtime__poster")).toBeVisible();
       }
+      await page.getByRole("button", { name: "3D off" }).click();
+      await expectReadyResidentSet(
+        page,
+        RESIDENT_SCENES_BY_ROUTE["/experience"],
+      );
+
+      await activateLiveScene("nasa-rocket");
+      for (const sceneId of ["eog-poster", "paycom-poster"] as const) {
+        const section = page.locator(`[data-scene-id="${sceneId}"]`);
+        await section.evaluate((element) => {
+          const top = element.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo(0, top - window.innerHeight * 0.08);
+        });
+        await expect(section).toHaveAttribute("data-scene-active", "true");
+        await expect(
+          section.locator(":scope > .scene-stage--resident"),
+        ).toHaveCount(0);
+        await expect(
+          section.locator(":scope > .scene-section__poster"),
+        ).toBeVisible();
+        await expect(page.getByTestId("scene-runtime-host")).toHaveCount(0);
+        await expect(page.getByTestId("scene-rotation-area")).toHaveCount(0);
+        await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(3);
+      }
+
+      await page.goto("/projects");
+      await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/projects"]);
+      for (const sceneId of RESIDENT_SCENES_BY_ROUTE["/projects"]) {
+        await activateLiveScene(sceneId);
+      }
+      await page.goto("/contact");
+      await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/contact"]);
+      await page.goto("/");
+      await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
     } finally {
       await disposeFixture(models);
       await context.close();
@@ -475,7 +658,7 @@ test("decodes a committed meshopt GLB on alpha WebGL2 and swaps on the first rea
   }
 });
 
-test("hands the decoded host poster to the Canvas without a blank ownership state", async ({
+test("shows only the flat route background until the first real Canvas frame", async ({
   page,
 }) => {
   await installRuntimeProbe(page);
@@ -489,13 +672,20 @@ test("hands the decoded host poster to the Canvas without a blank ownership stat
     await models.waitForRequest(HOME_MODEL);
     await expect(host).toHaveAttribute("data-three-status", "loading");
     await expect(host).toHaveAttribute("data-poster-ready", "true");
-    await expect(host.locator("picture")).toBeVisible();
+    await expect(host).toHaveAttribute("data-transition-frame", "none");
+    await expect(host.locator("picture")).toBeHidden();
     await expect(host.locator(".scene-runtime__canvas")).toBeHidden();
     await expect(
       page.locator(
         '[data-scene-id="home-hero"] > .scene-section__poster',
       ),
     ).toBeHidden();
+    await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
+    expect(
+      await host.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      ),
+    ).not.toBe("rgba(0, 0, 0, 0)");
 
     expect(models.release(HOME_MODEL)).toBe(1);
     await expect(host).toHaveAttribute("data-three-status", "ready");
@@ -507,7 +697,7 @@ test("hands the decoded host poster to the Canvas without a blank ownership stat
   }
 });
 
-test("keeps the exact Canvas, renderer, and WebGL2 context across real App Router navigation", async ({
+test("pools previous-route residents and re-adopts their exact live canvases across App Router navigation", async ({
   page,
 }) => {
   const assets: string[] = [];
@@ -519,43 +709,103 @@ test("keeps the exact Canvas, renderer, and WebGL2 context across real App Route
   });
   await installRuntimeProbe(page);
   await fulfillPosters(page);
-  const models = await fulfillModels(page);
+  const models = await fulfillModels(page, [], {
+    plans: { [HOME_MODEL]: { hold: true } },
+  });
 
   try {
     await page.goto("/");
-    const host = page.getByTestId("scene-runtime-host");
-    await expect(host).toHaveAttribute("data-active-scene-id", "home-hero");
-    await expect(host).toHaveAttribute("data-three-status", "ready");
+    await models.waitForRequest(HOME_MODEL);
+    const loadingScreen = page.locator("[data-initial-loading-screen]");
+    await expect(loadingScreen).toBeVisible();
+    await expect(loadingScreen).toHaveAttribute("role", "status");
+    await expect(loadingScreen).toContainText("Richard Phong");
+    await expect(page.locator(".site-shell")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect(
+      await page
+        .locator(".site-shell")
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(true);
+    expect(
+      await page
+        .locator(".three-preference-toggle")
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(true);
+    expect(
+      await page
+        .locator(".scene-debug-launcher")
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(true);
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { altKey: true, key: "d" }),
+      );
+    });
+    await expect(page.locator(".scene-debug")).toHaveCount(0);
+    await expect(page.locator(".scene-debug-launcher")).toHaveCount(1);
+    expect(
+      await loadingScreen.getByText("Richard Phong").evaluate(
+        (element) => getComputedStyle(element).fontFamily,
+      ),
+    ).toContain("Fraunces");
+    expect(
+      await loadingScreen.locator("span").last().evaluate(
+        (element) => getComputedStyle(element).fontFamily,
+      ),
+    ).toContain("Fredoka");
+    expect(
+      await loadingScreen.evaluate((element) => ({
+        background: getComputedStyle(element).backgroundColor,
+        routeBackground: element.style.getPropertyValue("--loading-background"),
+      })),
+    ).toMatchObject({
+      background: expect.not.stringMatching(/^rgba?\(0, 0, 0(?:, 0)?\)$/),
+      routeBackground: expect.stringMatching(/\S/),
+    });
+
+    expect(models.release(HOME_MODEL)).toBe(1);
+    await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
+    await expect(loadingScreen).toHaveCount(0, { timeout: 5_000 });
+    await expect(page.locator(".site-shell")).not.toHaveAttribute("aria-busy");
+    expect(
+      await page
+        .locator(".site-shell")
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(false);
+    expect(
+      await page
+        .locator(".three-preference-toggle")
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(false);
+    expect(
+      await page
+        .locator(".scene-debug-launcher")
+        .evaluate((element) => (element as HTMLElement).inert),
+    ).toBe(false);
     await expect(
       page.locator(
         '[data-scene-id="home-hero"] > .scene-section__poster img',
       ),
     ).toHaveAttribute("fetchpriority", "high");
     expect(assets[0]).toBe("/posters/home-hero-desktop.webp");
-    await rememberRuntimeIdentity(page);
-    const connectedCallsBefore = await page.evaluate(
-      () =>
-        window.__runtimeAcceptanceProbe?.calls.filter((call) => call.connected)
-          .length ?? -1,
-    );
+    await rememberResidentIdentitySet(page, "navigation-home");
+    const connectedCallsBefore = await connectedContextCallCount(page);
 
     await page.getByRole("link", { name: "Experience", exact: true }).click();
     await expect(page).toHaveURL(/\/experience$/);
-    await expect(host).toHaveAttribute(
-      "data-active-scene-id",
-      "experience-hero",
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
     );
-    await expect(host).toHaveAttribute("data-three-status", "ready");
-    await expectRuntimeIdentity(page);
-    expect(
-      await page.evaluate(
-        () =>
-          window.__runtimeAcceptanceProbe?.calls.filter(
-            (call) => call.connected,
-          ).length ?? -1,
-      ),
-    ).toBe(connectedCallsBefore);
-    await expect(page.locator("canvas")).toHaveCount(1);
+    await expectResidentIdentitySetState(page, "navigation-home", "pooled");
+    expect(await connectedContextCallCount(page)).toBe(
+      connectedCallsBefore + RESIDENT_SCENES_BY_ROUTE["/experience"].length,
+    );
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(4);
+    await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
     await expect(
       page.locator(
         '[data-scene-id="experience-hero"] > .scene-section__poster img',
@@ -566,12 +816,45 @@ test("keeps the exact Canvas, renderer, and WebGL2 context across real App Route
         '[data-scene-id="nasa-rocket"] > .scene-section__poster img',
       ),
     ).toHaveAttribute("loading", "lazy");
+
+    await rememberResidentIdentitySet(page, "navigation-experience");
+    const destinationCalls = await connectedContextCallCount(page);
+    await page
+      .locator('[data-scene-id="experience-intro"]')
+      .evaluate((element) => {
+        const top = element.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo(0, top - window.innerHeight * 0.08);
+      });
+    await expect(page.getByTestId("scene-runtime-host")).toHaveAttribute(
+      "data-active-scene-id",
+      "experience-intro",
+    );
+    await expectResidentIdentitySetState(
+      page,
+      "navigation-experience",
+      "assigned",
+    );
+    expect(await connectedContextCallCount(page)).toBe(destinationCalls);
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
+    await expectResidentIdentitySetState(page, "navigation-home", "assigned");
+    await expectResidentIdentitySetState(
+      page,
+      "navigation-experience",
+      "pooled",
+    );
+    expect(await connectedContextCallCount(page)).toBe(destinationCalls);
+    expect(models.requestCount(HOME_MODEL)).toBe(1);
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(4);
+    await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
   } finally {
     await disposeFixture(models);
   }
 });
 
-test("keeps one renderer through live, poster-only, and live capture scenes", async ({
+test("keeps live capture residents pooled around poster-only scenes and evicts the least-recently-seen context at the cap", async ({
   page,
 }) => {
   await installRuntimeProbe(page);
@@ -579,35 +862,77 @@ test("keeps one renderer through live, poster-only, and live capture scenes", as
   const models = await fulfillModels(page);
 
   try {
-    const host = await openScene(page, "nasa-rocket");
-    await expect(host).toHaveAttribute("data-three-status", "ready");
-    await rememberRuntimeIdentity(page);
+    await openScene(page, "nasa-rocket");
+    await expectReadyResidentSet(page, ["nasa-rocket"]);
+    await rememberResidentIdentitySet(page, "capture-nasa");
+    const callsBeforePosterScenes = await connectedContextCallCount(page);
 
     for (const sceneId of ["eog-poster", "paycom-poster"] as const) {
       await activateNextCaptureScene(page);
-      await expect(host).toHaveAttribute("data-active-scene-id", sceneId);
-      await expect(host).toHaveAttribute("data-three-status", "poster");
-      await expect(host.locator("picture")).toBeVisible();
-      await expect(host.locator(".scene-runtime__canvas")).toBeHidden();
+      const section = page.locator(`[data-scene-id="${sceneId}"]`);
+      await expect(section).toHaveAttribute("data-scene-active", "true");
+      await expect(page.getByTestId("scene-runtime-host")).toHaveCount(0);
+      await expect(
+        page.locator(
+          '.scene-stage--resident[data-scene-pool-state="assigned"]',
+        ),
+      ).toHaveCount(0);
+      await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(1);
+      await expect(
+        section.locator(":scope > .scene-section__poster"),
+      ).toBeVisible();
       await expect(page.getByTestId("scene-rotation-area")).toHaveCount(0);
-      expect(
-        await page.evaluate(() => {
-          const identity = window.__task14Identity;
-          return Boolean(
-            identity && document.querySelector("canvas") === identity.canvas,
-          );
-        }),
-      ).toBe(true);
-      await expectRuntimeIdentity(page);
+      await expectResidentIdentitySetState(page, "capture-nasa", "pooled");
     }
+    expect(await connectedContextCallCount(page)).toBe(callsBeforePosterScenes);
 
     await activateNextCaptureScene(page);
-    await expect(host).toHaveAttribute(
-      "data-active-scene-id",
-      "projects-hero",
+    await expectReadyResidentSet(page, ["projects-hero"]);
+    await expectResidentIdentitySetState(page, "capture-nasa", "pooled");
+    expect(await connectedContextCallCount(page)).toBe(
+      callsBeforePosterScenes + 1,
     );
-    await expect(host).toHaveAttribute("data-three-status", "ready");
-    await expectRuntimeIdentity(page);
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(2);
+
+    await page.evaluate(() => {
+      for (let index = 0; index < 6; index += 1) {
+        const section = document.createElement("section");
+        section.className = "scene-section runtime-lru-probe";
+        section.dataset.requiredLive = "true";
+        section.dataset.sceneId = "home-hero";
+        const content = document.createElement("div");
+        content.className = "scene-section__content";
+        section.append(content);
+        document.body.append(section);
+      }
+    });
+    await expect(
+      page.locator(
+        '.scene-stage--resident[data-scene-pool-state="assigned"]',
+      ),
+    ).toHaveCount(7);
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(8);
+
+    await page.evaluate(() => {
+      const section = document.createElement("section");
+      section.className = "scene-section runtime-lru-probe";
+      section.dataset.requiredLive = "true";
+      section.dataset.sceneId = "experience-hero";
+      const content = document.createElement("div");
+      content.className = "scene-section__content";
+      section.append(content);
+      document.body.append(section);
+    });
+    await expect(
+      page.locator(
+        '.scene-stage--resident[data-scene-pool-state="assigned"]',
+      ),
+    ).toHaveCount(8);
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(8);
+    await expectResidentIdentitySetEvicted(page, "capture-nasa");
+    expect(await connectedContextCallCount(page)).toBe(
+      callsBeforePosterScenes + 8,
+    );
   } finally {
     await disposeFixture(models);
   }
@@ -656,7 +981,8 @@ test("turns a post-probe renderer construction failure into one coded poster fal
     await expect(host).toHaveAttribute("data-three-status", "error");
     await expect(host.locator("picture")).toBeVisible();
     await expect(page.locator("canvas")).toHaveCount(1);
-    expect(models.requested).toEqual([]);
+    await expect.poll(() => models.requested.length).toBe(ALL_LIVE_MODELS.length);
+    expect([...models.requested].sort()).toEqual([...ALL_LIVE_MODELS].sort());
     await expect(
       page.getByRole("heading", {
         name: "Origami crane home scene",
@@ -698,9 +1024,35 @@ test("defaults Save-Data to poster-only without persisting or requesting a model
   const models = await fulfillModels(page);
 
   try {
-    const host = await openScene(page, "home-hero");
-    await expect(host).toHaveAttribute("data-three-status", "disabled");
-    await expect(host.locator("picture")).toBeVisible();
+    await page.goto("/");
+    await expect(page.locator("[data-initial-loading-screen]")).toHaveCount(0);
+    await expect(
+      page.locator(
+        '.scene-stage--resident[data-scene-pool-state="assigned"]',
+      ),
+    ).toHaveCount(1);
+    await expect(residentHost(page, "home-hero")).toHaveAttribute(
+      "data-three-status",
+      "disabled",
+    );
+
+    await page.getByRole("link", { name: "Experience", exact: true }).click();
+    await expect(page).toHaveURL(/\/experience$/);
+    await expect(page.locator("[data-initial-loading-screen]")).toHaveCount(0);
+    await expect(
+      page.locator(
+        '.scene-stage--resident[data-scene-pool-state="assigned"]',
+      ),
+    ).toHaveCount(3);
+    await expect(
+      page.locator('.scene-stage--resident[data-scene-pool-state="pooled"]'),
+    ).toHaveCount(1);
+    for (const sceneId of RESIDENT_SCENES_BY_ROUTE["/experience"]) {
+      const host = residentHost(page, sceneId);
+      await expect(host).toHaveAttribute("data-three-status", "disabled");
+      await expect(host.locator("picture.scene-runtime__poster")).toHaveCount(1);
+      await expect(host.locator("picture.scene-runtime__poster")).toBeVisible();
+    }
     await expect(page.locator("canvas")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "3D off" })).toHaveAttribute(
       "aria-pressed",
@@ -725,10 +1077,15 @@ test("persists an explicit off choice in local storage and keeps the poster afte
   const models = await fulfillModels(page);
 
   try {
-    const host = await openScene(page, "home-hero");
-    await expect(host).toHaveAttribute("data-three-status", "ready");
+    await page.goto("/projects");
+    await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/projects"]);
     await page.getByRole("button", { name: "3D on" }).click();
-    await expect(host).toHaveAttribute("data-three-status", "disabled");
+    await expect(page.locator("canvas")).toHaveCount(0);
+    for (const sceneId of RESIDENT_SCENES_BY_ROUTE["/projects"]) {
+      const host = residentHost(page, sceneId);
+      await expect(host).toHaveAttribute("data-three-status", "disabled");
+      await expect(host.locator("picture.scene-runtime__poster")).toBeVisible();
+    }
     expect(
       await page.evaluate(() =>
         localStorage.getItem("personal-site:three-enabled"),
@@ -737,15 +1094,20 @@ test("persists an explicit off choice in local storage and keeps the poster afte
 
     const requestCount = models.requested.length;
     await page.reload();
-    await expect(host).toHaveAttribute("data-three-status", "disabled");
-    await expect(host.locator("picture")).toBeVisible();
+    await expect(page.locator(".scene-stage--resident")).toHaveCount(3);
+    await expect(page.locator("canvas")).toHaveCount(0);
+    for (const sceneId of RESIDENT_SCENES_BY_ROUTE["/projects"]) {
+      const host = residentHost(page, sceneId);
+      await expect(host).toHaveAttribute("data-three-status", "disabled");
+      await expect(host.locator("picture.scene-runtime__poster")).toBeVisible();
+    }
     expect(models.requested).toHaveLength(requestCount);
   } finally {
     await disposeFixture(models);
   }
 });
 
-test("keeps semantic HTML, poster, Canvas, and context through a current GLB failure and recovery", async ({
+test("keeps semantic fallback through a GLB failure while replaced capture residents stay pooled", async ({
   page,
 }) => {
   await installRuntimeProbe(page);
@@ -755,9 +1117,9 @@ test("keeps semantic HTML, poster, Canvas, and context through a current GLB fai
   });
 
   try {
-    const host = await openScene(page, "projects-hero");
-    await expect(host).toHaveAttribute("data-three-status", "ready");
-    await rememberRuntimeIdentity(page);
+    await openScene(page, "projects-hero");
+    await expectReadyResidentSet(page, ["projects-hero"]);
+    await rememberResidentIdentitySet(page, "capture-projects");
     await models.waitForRequest(LEAGUE_MODEL);
     await expect
       .poll(() =>
@@ -767,13 +1129,15 @@ test("keeps semantic HTML, poster, Canvas, and context through a current GLB fai
         )?.phase,
       )
       .toBe("request-finished");
+
     await activateNextCaptureScene(page);
+    const host = page.getByTestId("scene-runtime-host");
     await expect(host).toHaveAttribute("data-active-scene-id", "league-ban");
     await expect(host).toHaveAttribute("data-three-status", "error");
-    await expect(host.locator("picture")).toBeVisible();
-    await expect(page.locator("canvas")).toHaveCount(1);
-    // Projects first attempts League speculatively; promotion retries that
-    // failed preload as the current owner.
+    await expect(host.locator("picture.scene-runtime__poster")).toHaveCount(1);
+    await expect(host.locator("picture.scene-runtime__poster")).toBeVisible();
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(2);
+    await expectResidentIdentitySetState(page, "capture-projects", "pooled");
     expect(models.requestCount(LEAGUE_MODEL)).toBe(2);
     expect(
       (await probeEvents(page, "failure")).filter(
@@ -790,40 +1154,18 @@ test("keeps semantic HTML, poster, Canvas, and context through a current GLB fai
       "/scene-capture?scene=froggie-adventures&controls=1",
     );
 
-    const failedIdentity = await page.evaluate(() => {
-      const probe = window.__runtimeAcceptanceProbe;
-      return {
-        calls: probe?.calls.filter((call) => call.connected).length ?? -1,
-        hasCanvas: probe?.connectedCanvas === document.querySelector("canvas"),
-      };
-    });
-    expect(failedIdentity.hasCanvas).toBe(true);
-    await expectRuntimeIdentity(page);
-
+    await rememberResidentIdentitySet(page, "capture-league-error");
+    const failedCalls = await connectedContextCallCount(page);
     await activateNextCaptureScene(page);
-    await expect(host).toHaveAttribute(
-      "data-active-scene-id",
-      "froggie-adventures",
+    await expectReadyResidentSet(page, ["froggie-adventures"]);
+    await expectResidentIdentitySetState(
+      page,
+      "capture-league-error",
+      "pooled",
     );
-    await expect(host).toHaveAttribute("data-three-status", "ready");
-    await expectRuntimeIdentity(page);
-    expect(
-      await page.evaluate(() => {
-        const probe = window.__runtimeAcceptanceProbe;
-        const debug = window.__sceneRuntimeDebug;
-        return {
-          calls: probe?.calls.filter((call) => call.connected).length ?? -1,
-          sameCanvas:
-            probe?.connectedCanvas === debug?.canvas &&
-            debug?.canvas === document.querySelector("canvas"),
-          sameContext: probe?.connectedContext === debug?.context,
-        };
-      }),
-    ).toEqual({
-      calls: failedIdentity.calls,
-      sameCanvas: true,
-      sameContext: true,
-    });
+    await expectResidentIdentitySetState(page, "capture-projects", "pooled");
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(3);
+    expect(await connectedContextCallCount(page)).toBe(failedCalls + 1);
   } finally {
     await disposeFixture(models);
   }
@@ -842,7 +1184,8 @@ test("reports corrupt model bytes as one decode failure without a ready mark", a
     const host = await openScene(page, "home-hero");
     await expect(host).toHaveAttribute("data-three-status", "error");
     await expect(host.locator("picture")).toBeVisible();
-    expect(models.requestCount(HOME_MODEL)).toBe(1);
+    expect(models.requestCount(HOME_MODEL)).toBeGreaterThanOrEqual(1);
+    expect(models.requestCount(HOME_MODEL)).toBeLessThanOrEqual(2);
     expect(
       (await probeEvents(page, "failure")).filter(
         ({ sceneId }) => sceneId === "home-hero",
@@ -860,7 +1203,7 @@ test("reports corrupt model bytes as one decode failure without a ready mark", a
   }
 });
 
-test("requests only the current model until its ready frame, then one adjacent model", async ({
+test("warms each unique live model once while resident canvases keep the cache bounded", async ({
   page,
 }) => {
   await installRuntimeProbe(page);
@@ -876,30 +1219,31 @@ test("requests only the current model until its ready frame, then one adjacent m
     const host = await openScene(page, "home-hero");
     await models.waitForRequest(HOME_MODEL);
     await expect(host).toHaveAttribute("data-three-status", "loading");
-    expect(models.requested).toEqual([HOME_MODEL]);
-    expect(models.pendingCount()).toBe(1);
+    await expect.poll(() => models.requested.length).toBe(ALL_LIVE_MODELS.length);
+    expect([...models.requested].sort()).toEqual([...ALL_LIVE_MODELS].sort());
+    for (const modelUrl of ALL_LIVE_MODELS) {
+      expect(models.requestCount(modelUrl)).toBe(1);
+    }
+    expect(models.pendingCount(HOME_MODEL)).toBe(1);
+    expect(models.pendingCount(EXPERIENCE_MODEL)).toBe(1);
+    expect(
+      await page.evaluate(() => window.__sceneResourceDebug?.size ?? -1),
+    ).toBeLessThanOrEqual(ALL_LIVE_MODELS.length);
+    expect(
+      await page.evaluate(() =>
+        Math.max(
+          0,
+          ...(window.__sceneResourceDebug?.events.map(({ size }) => size) ?? []),
+        ),
+      ),
+    ).toBeLessThanOrEqual(ALL_LIVE_MODELS.length);
 
     expect(models.release(HOME_MODEL)).toBe(1);
     await expect(host).toHaveAttribute("data-three-status", "ready");
     await expectSingleReadyMark(page, "home-hero");
-    await models.waitForRequest(EXPERIENCE_MODEL);
-    expect(models.requested).toEqual([HOME_MODEL, EXPERIENCE_MODEL]);
-    await expect
-      .poll(() => models.pendingCount(EXPERIENCE_MODEL))
-      .toBe(1);
-    expect(models.requestCount(INTRO_MODEL)).toBe(0);
-    const preloadOrder = await page.evaluate((nextUrl) => {
-      const ready = window.__runtimeAcceptanceProbe?.events.find(
-        ({ sceneId, status }) =>
-          status === "ready" && sceneId === "home-hero",
-      );
-      const next = window.__sceneResourceDebug?.events.find(
-        ({ action, url }) => action === "load-start" && url === nextUrl,
-      );
-      return { nextAt: next?.at ?? -1, readyAt: ready?.at ?? -1 };
-    }, EXPERIENCE_MODEL);
-    expect(preloadOrder.readyAt).toBeGreaterThanOrEqual(0);
-    expect(preloadOrder.nextAt).toBeGreaterThanOrEqual(preloadOrder.readyAt);
+    for (const modelUrl of ALL_LIVE_MODELS) {
+      expect(models.requestCount(modelUrl)).toBe(1);
+    }
   } finally {
     await disposeFixture(models);
   }
@@ -922,7 +1266,8 @@ test("ignores a failed speculative model and retries it once when promoted", asy
   try {
     const host = await openScene(page, "home-hero");
     await expect(host).toHaveAttribute("data-three-status", "ready");
-    await rememberRuntimeIdentity(page);
+    await rememberResidentIdentitySet(page, "speculative-home");
+    const homeContextCalls = await connectedContextCallCount(page);
     await models.waitForRequest(EXPERIENCE_MODEL);
     await expect
       .poll(() =>
@@ -947,7 +1292,9 @@ test("ignores a failed speculative model and retries it once when promoted", asy
     await models.waitForRequest(EXPERIENCE_MODEL, 2);
     await expect(host).toHaveAttribute("data-three-status", "ready");
     expect(models.requestCount(EXPERIENCE_MODEL)).toBe(2);
-    await expectRuntimeIdentity(page);
+    await expectResidentIdentitySetState(page, "speculative-home", "pooled");
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(2);
+    expect(await connectedContextCallCount(page)).toBe(homeContextCalls + 1);
   } finally {
     await disposeFixture(models);
   }
@@ -980,10 +1327,14 @@ test("times out one current request, ignores its late completion, and retries on
       )
       .toBe("request-failed");
     expect(models.requestCount(HOME_MODEL)).toBe(1);
-    expect(models.requestCount(EXPERIENCE_MODEL)).toBe(0);
+    for (const modelUrl of ALL_LIVE_MODELS) {
+      expect(models.requestCount(modelUrl)).toBeLessThanOrEqual(1);
+    }
+    await expect.poll(() => models.pendingCount(HOME_MODEL)).toBe(0);
     expect(models.release(HOME_MODEL)).toBe(0);
     await page.waitForTimeout(250);
     await expect(host).toHaveAttribute("data-three-status", "error");
+    await expect(host.locator("picture.scene-runtime__poster")).toBeVisible();
     expect(
       await page.evaluate(
         () => performance.getEntriesByName("scene-ready:home-hero").length,
@@ -1003,20 +1354,23 @@ test("times out one current request, ignores its late completion, and retries on
     await models.waitForRequest(HOME_MODEL, 2);
     await expect(host).toHaveAttribute("data-three-status", "ready");
     expect(models.requestCount(HOME_MODEL)).toBe(2);
+    for (const modelUrl of ALL_LIVE_MODELS) {
+      expect(models.requestCount(modelUrl)).toBeLessThanOrEqual(2);
+    }
     await expectSingleReadyMark(page, "home-hero");
   } finally {
     await disposeFixture(models);
   }
 });
 
-test("bounds rapid A-to-B-to-C ownership, promotes shared work, and disposes a late decode", async ({
+test("bounds rapid resident ownership and disposes a late decode after cache ownership is released", async ({
   page,
 }) => {
   await installRuntimeProbe(page);
   await page.addInitScript((delayedUrl: string) => {
     window.__sceneRuntimeTestHooks = {
       afterModelDecode: (url) => {
-        if (url !== delayedUrl) return;
+        if (url !== delayedUrl || window.__lateDecodeWaiting) return;
         window.__lateDecodeWaiting = true;
         return new Promise<void>((resolve) => {
           window.__releaseLateDecode = resolve;
@@ -1051,10 +1405,27 @@ test("bounds rapid A-to-B-to-C ownership, promotes shared work, and disposes a l
       "experience-intro",
     );
     await models.waitForRequest(INTRO_MODEL);
+    await expect.poll(() => models.requested.length).toBe(ALL_LIVE_MODELS.length);
     expect(models.pendingCount()).toBeLessThanOrEqual(1);
+    for (const modelUrl of ALL_LIVE_MODELS) {
+      expect(models.requestCount(modelUrl)).toBe(1);
+    }
     expect(
       await page.evaluate(() => window.__sceneResourceDebug?.size ?? -1),
-    ).toBeLessThanOrEqual(2);
+    ).toBeLessThanOrEqual(ALL_LIVE_MODELS.length);
+    expect(
+      (await probeEvents(page, "ready")).some(
+        ({ sceneId }) => sceneId === "experience-hero",
+      ),
+    ).toBe(false);
+
+    await page.getByRole("button", { name: "3D on" }).click();
+    await expect(host).toHaveAttribute("data-three-status", "disabled");
+    await expect(host.locator("picture.scene-runtime__poster")).toBeVisible();
+    await expect(page.locator("canvas")).toHaveCount(0);
+    await expect
+      .poll(() => page.evaluate(() => window.__sceneResourceDebug?.size ?? -1))
+      .toBe(0);
 
     await page.evaluate(() => window.__releaseLateDecode?.());
     await expect
@@ -1078,17 +1449,20 @@ test("bounds rapid A-to-B-to-C ownership, promotes shared work, and disposes a l
             []),
         ),
       ),
-    ).toBeLessThanOrEqual(2);
-    expect(
-      (await probeEvents(page, "ready")).some(
-        ({ sceneId }) => sceneId === "experience-hero",
-      ),
-    ).toBe(false);
+    ).toBeLessThanOrEqual(ALL_LIVE_MODELS.length);
+    expect(models.release(INTRO_MODEL)).toBe(0);
 
-    expect(models.release(INTRO_MODEL)).toBe(1);
+    models.setPlan(INTRO_MODEL, { kind: "triangle" });
+    await page.getByRole("button", { name: "3D off" }).click();
     await expect(host).toHaveAttribute("data-three-status", "ready");
-    expect(models.requestCount(EXPERIENCE_MODEL)).toBe(1);
-    expect(models.requestCount(INTRO_MODEL)).toBe(1);
+    expect(models.requestCount(EXPERIENCE_MODEL)).toBe(2);
+    expect(models.requestCount(INTRO_MODEL)).toBe(2);
+    for (const modelUrl of ALL_LIVE_MODELS) {
+      expect(models.requestCount(modelUrl)).toBeLessThanOrEqual(2);
+    }
+    expect(
+      await page.evaluate(() => window.__sceneResourceDebug?.size ?? -1),
+    ).toBeLessThanOrEqual(ALL_LIVE_MODELS.length);
   } finally {
     await disposeFixture(models);
   }

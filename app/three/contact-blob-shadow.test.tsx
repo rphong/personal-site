@@ -23,8 +23,8 @@ describe("ContactBlobShadow", () => {
     texture.dispose();
   });
 
-  it("renders a transparent, non-shadow-map grounding mesh", async () => {
-    const definition = getSceneDefinition("home-hero").contactShadow;
+  it("reuses the 64px blob design for newly grounded scenes", async () => {
+    const definition = getSceneDefinition("nasa-rocket").contactShadow;
     const renderer = await ReactThreeTestRenderer.create(
       <ContactBlobShadow definition={definition} />,
     );
@@ -35,10 +35,17 @@ describe("ContactBlobShadow", () => {
     expect(shadow.castShadow).toBe(false);
     expect(shadow.receiveShadow).toBe(false);
     expect(shadow.position.toArray()).toEqual([...definition.position]);
+    expect(shadow.scale.toArray()).toEqual([
+      definition.scale[0],
+      definition.scale[1],
+      1,
+    ]);
     expect(material.transparent).toBe(true);
     expect(material.depthWrite).toBe(false);
     expect(material.opacity).toBe(definition.opacity);
-    expect((material.map as DataTexture).image.width).toBe(64);
+    expect((material.map as DataTexture).image.width).toBe(
+      CONTACT_SHADOW_TEXTURE_SIZE,
+    );
     await renderer.unmount();
   });
 });

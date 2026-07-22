@@ -59,6 +59,18 @@ describe("registry asset ownership", () => {
     expect(contract.scenes.map((scene) => scene.id)).toEqual(
       Object.keys(SCENE_DEFINITIONS),
     );
+    const expectedBackgrounds = {
+      "home-hero": "#9ECCC0",
+      "experience-hero": "#DFA9B5",
+      "experience-intro": "transparent",
+      "nasa-rocket": "transparent",
+      "eog-poster": "#EEEEEE",
+      "paycom-poster": "#EEEEEE",
+      "projects-hero": "#AFD4E1",
+      "league-ban": "transparent",
+      "froggie-adventures": "transparent",
+      "contact-hero": "#C9BAE4",
+    } as const;
 
     for (const contractScene of contract.scenes) {
       const scene =
@@ -66,7 +78,11 @@ describe("registry asset ownership", () => {
           contractScene.id as keyof typeof SCENE_DEFINITIONS
         ];
       expect(scene.route).toBe(contractScene.route);
-      expect(scene.background).toBe(contractScene.background);
+      expect(scene.background).toBe(
+        expectedBackgrounds[
+          contractScene.id as keyof typeof expectedBackgrounds
+        ],
+      );
       expect(scene.poster.desktop).toBe(
         publicOutputToUrl(contractScene.outputs.desktop),
       );

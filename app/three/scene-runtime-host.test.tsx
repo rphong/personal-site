@@ -7,6 +7,7 @@ import {
 } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { emitSceneRuntimeEvent } from "./runtime-events";
+import { clearSceneModel } from "./scene-loader";
 import { getSceneDefinition } from "./scene-registry";
 import type { SceneCanvasPortProps } from "./scene-canvas";
 import { SceneRuntimeHostView } from "./scene-runtime-host";
@@ -14,6 +15,13 @@ import type { SceneId, ThreeStatus } from "./types";
 
 vi.mock("./runtime-events", () => ({
   emitSceneRuntimeEvent: vi.fn(),
+}));
+
+vi.mock("./scene-loader", () => ({
+  acquireSceneModelHostLease: vi.fn(() => Symbol("host-lease")),
+  clearSceneModel: vi.fn(),
+  preloadSceneModel: vi.fn(),
+  releaseSceneModelHostLease: vi.fn(),
 }));
 
 let latestCanvasProps: SceneCanvasPortProps | null = null;
@@ -31,7 +39,16 @@ const FakeCanvas: ComponentType<SceneCanvasPortProps> = (props) => {
       data-render-version={props.renderVersion}
       data-scene-id={props.scene.id}
     >
-      <button data-testid="first-frame" onClick={props.onFirstFrame} />
+      <button
+        data-testid="first-frame"
+        onClick={() => props.onFirstFrame()}
+      />
+      <button
+        data-testid="transition-frame"
+        onClick={() =>
+          props.onFirstFrame("data:image/webp;base64,transition-frame")
+        }
+      />
       <button
         data-testid="fetch-failure"
         onClick={() => props.onFailure("fetch")}
@@ -81,6 +98,38 @@ function HostHarness({
   );
 }
 
+function SameRouteHarness() {
+  const [sceneId, setSceneId] = useState<
+    "experience-hero" | "experience-intro"
+  >("experience-hero");
+  const [activationVersion, setActivationVersion] = useState(0);
+  const [status, setStatus] = useState<ThreeStatus>("loading");
+
+  return (
+    <>
+      <SceneRuntimeHostView
+        scene={getSceneDefinition(sceneId)}
+        status={status}
+        canvasEnabled
+        rotation={{ yaw: 0, pitch: 0 }}
+        activationVersion={activationVersion}
+        onStatusChange={setStatus}
+        onRotate={vi.fn()}
+        CanvasComponent={FakeCanvas}
+      />
+      <button
+        onClick={() => {
+          setSceneId("experience-intro");
+          setActivationVersion((version) => version + 1);
+          setStatus("loading");
+        }}
+      >
+        show intro
+      </button>
+    </>
+  );
+}
+
 function PersistenceHarness() {
   const [sceneId, setSceneId] = useState<
     "home-hero" | "eog-poster" | "projects-hero"
@@ -123,6 +172,7 @@ function PersistenceHarness() {
 describe("SceneRuntimeHostView", () => {
   beforeEach(() => {
     latestCanvasProps = null;
+    vi.mocked(clearSceneModel).mockClear();
     vi.useFakeTimers();
   });
 
@@ -146,6 +196,7 @@ describe("SceneRuntimeHostView", () => {
     });
     expect(host).toHaveAttribute("data-three-status", "loading");
     expect(host).toHaveAttribute("data-poster-ready", "false");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
     expect(host.querySelector("img")).toHaveAttribute(
       "src",
       "/posters/home-hero-desktop.webp",
@@ -303,6 +354,8 @@ describe("SceneRuntimeHostView", () => {
         reason: "timeout",
       }),
     );
+    expect(clearSceneModel).toHaveBeenCalledOnce();
+    expect(clearSceneModel).toHaveBeenCalledWith("/models/crane.glb");
     expect(screen.getByRole("link", { name: "Experience" })).toHaveAttribute(
       "href",
       "/experience",
@@ -328,6 +381,60 @@ describe("SceneRuntimeHostView", () => {
     fireEvent.click(screen.getByRole("button", { name: "show projects" }));
     expect(screen.getByTestId("fake-canvas")).toBe(canvas);
     expect(canvas).toHaveAttribute("data-scene-id", "projects-hero");
+  });
+
+  it("commits readiness without retaining a transition snapshot", () => {
+    render(<HostHarness />);
+    const host = screen.getByTestId("scene-runtime-host");
+
+    fireEvent.click(screen.getByTestId("transition-frame"));
+
+    expect(host).toHaveAttribute("data-three-status", "ready");
+    expect(host).toHaveAttribute("data-transition-frame", "none");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
+    expect(
+      document.querySelector(".scene-runtime__transition-frame"),
+    ).not.toBeInTheDocument();
+    expect(emitSceneRuntimeEvent).toHaveBeenCalledOnce();
+  });
+
+  it("never presents a proven frame while switching scenes within one route", () => {
+    render(<SameRouteHarness />);
+    const host = screen.getByTestId("scene-runtime-host");
+    fireEvent.click(screen.getByTestId("transition-frame"));
+    expect(host).toHaveAttribute("data-three-status", "ready");
+
+    fireEvent.click(screen.getByRole("button", { name: "show intro" }));
+
+    expect(host).toHaveAttribute("data-active-scene-id", "experience-intro");
+    expect(host).toHaveAttribute("data-three-status", "loading");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
+    expect(
+      document.querySelector(".scene-runtime__transition-frame"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("never renders a stale transition frame across routes", () => {
+    render(<PersistenceHarness />);
+    const host = screen.getByTestId("scene-runtime-host");
+
+    fireEvent.click(screen.getByTestId("transition-frame"));
+    expect(host).toHaveAttribute("data-three-status", "ready");
+    expect(host).toHaveAttribute("data-transition-frame", "none");
+
+    fireEvent.click(screen.getByRole("button", { name: "show projects" }));
+    expect(host).toHaveAttribute("data-three-status", "loading");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
+    expect(
+      document.querySelector(".scene-runtime__transition-frame"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("first-frame"));
+    expect(host).toHaveAttribute("data-three-status", "ready");
+
+    fireEvent.click(screen.getByRole("button", { name: "show EOG" }));
+    expect(host).toHaveAttribute("data-three-status", "poster");
+    expect(host).toHaveAttribute("data-transition-poster", "retired");
   });
 
   it("reveals the poster during context loss and requests a fresh live frame", () => {

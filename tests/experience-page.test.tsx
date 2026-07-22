@@ -27,18 +27,42 @@ describe("experience page", () => {
     expect(screen.getByText("2024", { exact: true })).toBeInTheDocument();
   });
 
-  it("renders the approved narrative and live intro scene without joke copy", () => {
+  it("integrates the approved narrative and personality heading with every scene", () => {
     const { container } = render(<ExperiencePage />);
 
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "Who let the intern out.",
+      }),
+    ).toHaveClass("experience-intro__heading");
     expect(screen.getByText(/Artemis III preparation/)).toBeInTheDocument();
     expect(screen.getByText(/40–50 seconds to 1–2 seconds/)).toBeInTheDocument();
     expect(
       screen.getByText(/more than 15,000 packages each week/),
     ).toBeInTheDocument();
+
+    const chapters = Array.from(
+      container.querySelectorAll<HTMLElement>("section.experience-chapter"),
+    );
+    expect(chapters.map((chapter) => chapter.dataset.sceneId)).toEqual([
+      "experience-intro",
+      "nasa-rocket",
+      "eog-poster",
+      "paycom-poster",
+    ]);
     expect(
-      container.querySelector('[data-scene-id="experience-intro"]'),
-    ).not.toBeNull();
-    expect(container).not.toHaveTextContent(/Who let the intern out/i);
+      chapters.every(
+        (chapter) =>
+          chapter.querySelector(".chapter-copy") !== null &&
+          chapter.querySelector(".chapter-model-space") !== null,
+      ),
+    ).toBe(true);
+    expect(
+      chapters.slice(2).map((chapter) =>
+        chapter.classList.contains("experience-chapter--poster"),
+      ),
+    ).toEqual([true, true]);
   });
 
   it("offers the résumé as a native download", () => {

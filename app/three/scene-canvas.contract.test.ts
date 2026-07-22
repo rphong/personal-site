@@ -8,11 +8,19 @@ describe("persistent Canvas source contract", () => {
     expect(source.match(/<Canvas\b/g)).toHaveLength(1);
     expect(source).toContain('frameloop="demand"');
     expect(source).toContain("dpr={[1, 1.5]}");
+    expect(source).toContain("resize={{ scroll: false }}");
     expect(source).toContain('aria-hidden="true"');
     expect(source).toContain("alpha: true");
     expect(source).toContain('powerPreference: "high-performance"');
     expect(source).toContain("shadows={false}");
-    expect(source).toContain("gl.render(scene, camera)");
+    expect(source.match(/<hemisphereLight\b/g)).toHaveLength(1);
+    expect(source.match(/<directionalLight\b/g)).toHaveLength(3);
+    expect(source).not.toContain("<ambientLight");
+    expect(source).toContain("ACESFilmicToneMapping");
+    expect(source).toContain("renderer.toneMappingExposure = scene.lighting.exposure");
+    expect(source).toContain("gl.render(scene, activeCamera)");
+    expect(source).toContain("sceneModelIsAttached(scene, sceneId)");
+    expect(source).toContain("renderFrame(renderer, renderedScene, camera)");
     expect(source).toMatch(/useFrame\([\s\S]*?,\s*1\s*\)/);
     expect(source).not.toMatch(
       /OrbitControls|MapControls|PresentationControls|ContactShadows/,

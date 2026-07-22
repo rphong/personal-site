@@ -12,7 +12,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import validator from "gltf-validator";
-import sharp from "sharp";
 
 import {
   readGlbImagePayloads,
@@ -38,6 +37,56 @@ import {
 } from "../posters/lib.mjs";
 
 const HASH_PATTERN = /^[a-f0-9]{64}$/;
+let sharpPromise = null;
+
+async function loadSharp() {
+  sharpPromise ??= import("sharp")
+    .then((module) => module.default)
+    .catch(() => null);
+  return sharpPromise;
+}
+
+function readWebpDimensions(buffer) {
+  if (
+    buffer.length < 30 ||
+    buffer.toString("ascii", 0, 4) !== "RIFF" ||
+    buffer.toString("ascii", 8, 12) !== "WEBP"
+  ) {
+    throw new Error("Unsupported image format for dimension inspection");
+  }
+  const chunk = buffer.toString("ascii", 12, 16);
+  if (chunk === "VP8X") {
+    return {
+      format: "webp",
+      height: 1 + buffer.readUIntLE(27, 3),
+      width: 1 + buffer.readUIntLE(24, 3),
+    };
+  }
+  if (chunk === "VP8L" && buffer[20] === 0x2f) {
+    return {
+      format: "webp",
+      height:
+        1 +
+        ((buffer[22] >> 6) | (buffer[23] << 2) | ((buffer[24] & 0x0f) << 10)),
+      width: 1 + buffer[21] + ((buffer[22] & 0x3f) << 8),
+    };
+  }
+  const signature = buffer.indexOf(Buffer.from([0x9d, 0x01, 0x2a]), 20);
+  if (signature >= 0 && signature + 7 <= buffer.length) {
+    return {
+      format: "webp",
+      height: buffer.readUInt16LE(signature + 5) & 0x3fff,
+      width: buffer.readUInt16LE(signature + 3) & 0x3fff,
+    };
+  }
+  throw new Error("Unsupported WebP encoding for dimension inspection");
+}
+
+async function imageMetadata(buffer) {
+  const sharp = await loadSharp();
+  return sharp ? sharp(buffer).metadata() : readWebpDimensions(Buffer.from(buffer));
+}
+
 const POSTER_MANIFEST_PATH = "public/posters/poster-manifest.json";
 const POSTER_MANIFEST_KEYS = [
   "contractSha256",
@@ -700,7 +749,7 @@ export async function validatePosterManifest(
     }
     let metadata;
     try {
-      metadata = await sharp(buffer).metadata();
+      metadata = await imageMetadata(buffer);
     } catch (error) {
       throw new Error(`Required poster is not a valid WebP: ${record.path}`, {
         cause: error,
@@ -771,7 +820,7 @@ export async function validatePosterContract({
 async function serializableImageMetadata(imagePayloads) {
   return Promise.all(
     imagePayloads.map(async (payload) => {
-      const metadata = await sharp(payload.payload).metadata();
+      const metadata = await imageMetadata(payload.payload);
       return {
         bytes: payload.bytes,
         height: metadata.height,

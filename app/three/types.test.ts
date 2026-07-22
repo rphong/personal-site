@@ -29,5 +29,10 @@ describe("THREE_STATUSES", () => {
     >();
     expectTypeOf<PosterOnlySceneDefinition["modelUrl"]>().toEqualTypeOf<null>();
     expectTypeOf<SceneLighting["key"]["castShadow"]>().toEqualTypeOf<false>();
+    expectTypeOf<SceneLighting["fill"]["castShadow"]>().toEqualTypeOf<false>();
+    expectTypeOf<SceneLighting["rim"]["castShadow"]>().toEqualTypeOf<false>();
+    expectTypeOf<
+      SceneLighting["hemisphere"]["groundColor"]
+    >().toEqualTypeOf<string>();
   });
 });

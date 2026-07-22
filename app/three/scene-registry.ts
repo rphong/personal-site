@@ -3,6 +3,7 @@ import type {
   PercentInsets,
   RotationLimits,
   SceneDefinition,
+  SceneDirectionalLight,
   SceneFrame,
   SceneId,
   SceneLighting,
@@ -47,6 +48,30 @@ const MOBILE_AREA: PercentInsets = {
   bottom: 8,
   left: 8,
 };
+const EXPERIENCE_CHAPTER_DESKTOP_AREA: PercentInsets = {
+  top: 12,
+  right: 4,
+  bottom: 12,
+  left: 42,
+};
+const EXPERIENCE_CHAPTER_MOBILE_AREA: PercentInsets = {
+  top: 6,
+  right: 8,
+  bottom: 50,
+  left: 8,
+};
+const PROJECT_CHAPTER_DESKTOP_AREA: PercentInsets = {
+  top: 10,
+  right: 14,
+  bottom: 46,
+  left: 14,
+};
+const PROJECT_CHAPTER_MOBILE_AREA: PercentInsets = {
+  top: 6,
+  right: 6,
+  bottom: 50,
+  left: 6,
+};
 
 function frame(
   cameraPosition: Vector3Tuple,
@@ -57,26 +82,120 @@ function frame(
   return { cameraPosition, cameraTarget, fov, rotationArea };
 }
 
-function lighting(background: string, position: Vector3Tuple): SceneLighting {
-  return {
-    ambient: { color: "#ffffff", intensity: 1.2 },
-    key: {
-      color: background,
-      intensity: 2.4,
-      position,
-      castShadow: false,
-    },
-  };
+function directionalLight(
+  color: string,
+  intensity: number,
+  position: Vector3Tuple,
+): SceneDirectionalLight {
+  return { color, intensity, position, castShadow: false };
 }
 
 const HOME_LIGHTING: SceneLighting = {
-  ambient: { color: "#e8f3f0", intensity: 2.4 },
-  key: {
-    color: "#e8f3f0",
-    intensity: 1.4,
-    position: [-3.5, 6, 4.5],
-    castShadow: false,
+  exposure: 1.11,
+  hemisphere: {
+    skyColor: "#f0f4f2",
+    groundColor: "#69716f",
+    intensity: 0.62,
   },
+  key: directionalLight("#e8f4f2", 2.65, [-5, 9, 3]),
+  fill: directionalLight("#d9e9ed", 0.72, [5, 3, 4]),
+  rim: directionalLight("#ffffff", 0.98, [2, 7, -6]),
+};
+
+const EXPERIENCE_HERO_LIGHTING: SceneLighting = {
+  exposure: 1.09,
+  hemisphere: {
+    skyColor: "#f4f0ee",
+    groundColor: "#949791",
+    intensity: 1.08,
+  },
+  key: directionalLight("#e8f4f2", 1.72, [-5, 9, 3.5]),
+  fill: directionalLight("#d9e9ed", 0.56, [5, 3, 4]),
+  rim: directionalLight("#ffffff", 0.72, [2, 7, -6]),
+};
+
+const EXPERIENCE_INTRO_LIGHTING: SceneLighting = {
+  exposure: 1.08,
+  hemisphere: {
+    skyColor: "#f0f4f2",
+    groundColor: "#69716f",
+    intensity: 0.6,
+  },
+  key: directionalLight("#e8f4f2", 2.5, [-5, 8.5, 3]),
+  fill: directionalLight("#d9e9ed", 0.68, [5, 2.5, 3.5]),
+  rim: directionalLight("#ffffff", 0.92, [3, 7, -5]),
+};
+
+const NASA_ROCKET_LIGHTING: SceneLighting = {
+  exposure: 1,
+  hemisphere: {
+    skyColor: "#f4f5f3",
+    groundColor: "#686d6c",
+    intensity: 0.4,
+  },
+  key: directionalLight("#fffefa", 1.85, [-5, 9, 3.5]),
+  fill: directionalLight("#dce8eb", 0.48, [5, 3, 4]),
+  rim: directionalLight("#ffffff", 0.68, [2, 8, -6]),
+};
+
+const PINK_POSTER_LIGHTING: SceneLighting = {
+  exposure: 1,
+  hemisphere: {
+    skyColor: "#f2d6dc",
+    groundColor: "#f0d0c2",
+    intensity: 0.95,
+  },
+  key: directionalLight("#ffe2cf", 1.75, [-4.5, 7, 5]),
+  fill: directionalLight("#d5dff0", 0.9, [5, 3, 4]),
+  rim: directionalLight("#fff0dc", 1.1, [2, 7, -6]),
+};
+
+const PROJECTS_HERO_LIGHTING: SceneLighting = {
+  exposure: 1.1,
+  hemisphere: {
+    skyColor: "#eef2f1",
+    groundColor: "#949a99",
+    intensity: 1.05,
+  },
+  key: directionalLight("#e8f4f2", 1.7, [-5, 9, 3.5]),
+  fill: directionalLight("#d8e9ed", 0.55, [6, 3, 4]),
+  rim: directionalLight("#ffffff", 0.7, [2, 7, -6]),
+};
+
+const LEAGUE_BAN_LIGHTING: SceneLighting = {
+  exposure: 1.08,
+  hemisphere: {
+    skyColor: "#eef3f2",
+    groundColor: "#686f70",
+    intensity: 0.6,
+  },
+  key: directionalLight("#e8f4f2", 2.45, [-5, 8.5, 3.5]),
+  fill: directionalLight("#d8e8ec", 0.66, [6, 3, 4]),
+  rim: directionalLight("#ffffff", 0.9, [3, 7, -6]),
+};
+
+const FROGGIE_LIGHTING: SceneLighting = {
+  exposure: 1,
+  hemisphere: {
+    skyColor: "#f2f4f3",
+    groundColor: "#646b6c",
+    intensity: 0.4,
+  },
+  key: directionalLight("#e8f4f2", 1.65, [-4, 8.5, 3.5]),
+  fill: directionalLight("#dce8eb", 0.43, [5, 3, 4]),
+  rim: directionalLight("#ffffff", 0.62, [2, 7, -6]),
+};
+
+const CONTACT_LIGHTING: SceneLighting = {
+  exposure: 1.09,
+  hemisphere: {
+    skyColor: "#f1f3f3",
+    groundColor: "#6c7074",
+    intensity: 0.62,
+  },
+  key: directionalLight("#e8f4f2", 2.65, [-5, 9, 3.5]),
+  fill: directionalLight("#dde8ef", 0.72, [5, 3, 4]),
+  rim: directionalLight("#ffffff", 0.98, [2, 7, -6]),
 };
 
 export const SCENE_DEFINITIONS = {
@@ -93,13 +212,13 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/home-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([6.5, 2.8, 3.7], [0, 0.1, 0], 34, DESKTOP_AREA),
-    mobile: frame([8.2, 3.5, 4.7], [0, -0.2, 0], 38, MOBILE_AREA),
+    desktop: frame([6, 2.6, 3.4], [0, 0.2, 0], 34, DESKTOP_AREA),
+    mobile: frame([7.6, 3.25, 4.35], [0, -0.05, 0], 38, MOBILE_AREA),
     lighting: HOME_LIGHTING,
     contactShadow: {
-      opacity: 0.16,
-      position: [-0.25, -0.47, -0.6],
-      scale: [1.8, 0.8],
+      opacity: 0.58,
+      position: [-1.05, -0.46, -0.55],
+      scale: [1.9, 0.72],
       textureSize: 64,
     },
     rotation: DEFAULT_ROTATION,
@@ -118,14 +237,20 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/experience-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([5.8, 3.2, 7.4], [0.2, 0.8, 0.3], 36, DESKTOP_AREA),
+    desktop: frame([3.7, 2.3, 4.7], [0.2, 0.8, 0.3], 36, DESKTOP_AREA),
     mobile: frame([5.2, 4.1, 9.6], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
-    lighting: lighting("#DFA9B5", [5, 7, 4]),
+    lighting: EXPERIENCE_HERO_LIGHTING,
+    contactShadow: {
+      opacity: 0.44,
+      position: [0.1, -0.01, 0.45],
+      scale: [3.4, 1.55],
+      textureSize: 64,
+    },
     staticPose: {
       clips: [
-        { name: "Dumbell L", timeSeconds: 65 / 24 },
-        { name: "Dumbell R", timeSeconds: 65 / 24 },
-        { name: "Lifting Weights", timeSeconds: 65 / 24 },
+        { name: "Dumbell L", timeSeconds: 40 / 24 },
+        { name: "Dumbell R", timeSeconds: 40 / 24 },
+        { name: "Lifting Weights", timeSeconds: 40 / 24 },
       ],
     },
     rotation: DEFAULT_ROTATION,
@@ -135,7 +260,7 @@ export const SCENE_DEFINITIONS = {
     id: "experience-intro",
     label: "Crane throwing a paper plane",
     route: "/experience",
-    background: "#DFA9B5",
+    background: "transparent",
     requiredLive: true,
     modelUrl: "/models/crane-throwing-plane.glb",
     modelTransform: DEFAULT_MODEL_TRANSFORM,
@@ -144,12 +269,28 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/experience-intro-mobile.webp",
       alt: "",
     },
-    desktop: frame([6.4, 3.7, 9.2], [0, 1, 0], 35, DESKTOP_AREA),
-    mobile: frame([8.3, 6.3, 16.9], [0, 1.4, 0], 39, MOBILE_AREA),
-    lighting: lighting("#DFA9B5", [4, 6, 5]),
+    desktop: frame(
+      [4.4, 3.2, 7.2],
+      [0, 0.6, 0],
+      34,
+      EXPERIENCE_CHAPTER_DESKTOP_AREA,
+    ),
+    mobile: frame(
+      [4.6, 2.9, 7.2],
+      [0, 0.5, 0],
+      34,
+      EXPERIENCE_CHAPTER_MOBILE_AREA,
+    ),
+    lighting: EXPERIENCE_INTRO_LIGHTING,
+    contactShadow: {
+      opacity: 0.5,
+      position: [-0.1, -0.01, 0],
+      scale: [2.3, 0.95],
+      textureSize: 64,
+    },
     staticPose: {
       clips: [
-        { name: "EmptyAction", timeSeconds: 18 / 24 },
+        { name: "EmptyAction", timeSeconds: 1 / 24 },
         { name: "Hat propellerAction.002", timeSeconds: 2 / 24 },
       ],
     },
@@ -160,7 +301,7 @@ export const SCENE_DEFINITIONS = {
     id: "nasa-rocket",
     label: "NASA rocket scene",
     route: "/experience",
-    background: "#DFA9B5",
+    background: "transparent",
     requiredLive: true,
     modelUrl: "/models/rocket.glb",
     modelTransform: DEFAULT_MODEL_TRANSFORM,
@@ -169,9 +310,25 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/nasa-rocket-mobile.webp",
       alt: "",
     },
-    desktop: frame([5.8, 3.8, 8.2], [0, 1.5, 0], 34, DESKTOP_AREA),
-    mobile: frame([5, 4.7, 10.6], [0, 2, 0], 39, MOBILE_AREA),
-    lighting: lighting("#DFA9B5", [6, 8, 5]),
+    desktop: frame(
+      [5.7, 3.9, 8.8],
+      [0, 0.9, 0],
+      36,
+      EXPERIENCE_CHAPTER_DESKTOP_AREA,
+    ),
+    mobile: frame(
+      [3.8, 3.4, 8],
+      [0, 1, 0],
+      36,
+      EXPERIENCE_CHAPTER_MOBILE_AREA,
+    ),
+    lighting: NASA_ROCKET_LIGHTING,
+    contactShadow: {
+      opacity: 0.46,
+      position: [0, 0.01, -0.95],
+      scale: [4.3, 2.05],
+      textureSize: 64,
+    },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "eog-poster",
   },
@@ -179,7 +336,7 @@ export const SCENE_DEFINITIONS = {
     id: "eog-poster",
     label: "EOG Resources poster",
     route: "/experience",
-    background: "#DFA9B5",
+    background: "#EEEEEE",
     requiredLive: false,
     modelUrl: null,
     poster: {
@@ -189,7 +346,7 @@ export const SCENE_DEFINITIONS = {
     },
     desktop: frame([0, 0, 5], [0, 0, 0], 35, DESKTOP_AREA),
     mobile: frame([0, 0, 6], [0, 0, 0], 40, MOBILE_AREA),
-    lighting: lighting("#DFA9B5", [4, 6, 5]),
+    lighting: PINK_POSTER_LIGHTING,
     rotation: DEFAULT_ROTATION,
     nextSceneId: "paycom-poster",
   },
@@ -197,7 +354,7 @@ export const SCENE_DEFINITIONS = {
     id: "paycom-poster",
     label: "Paycom poster",
     route: "/experience",
-    background: "#DFA9B5",
+    background: "#EEEEEE",
     requiredLive: false,
     modelUrl: null,
     poster: {
@@ -207,7 +364,7 @@ export const SCENE_DEFINITIONS = {
     },
     desktop: frame([0, 0, 5], [0, 0, 0], 35, DESKTOP_AREA),
     mobile: frame([0, 0, 6], [0, 0, 0], 40, MOBILE_AREA),
-    lighting: lighting("#DFA9B5", [4, 6, 5]),
+    lighting: PINK_POSTER_LIGHTING,
     rotation: DEFAULT_ROTATION,
     nextSceneId: "projects-hero",
   },
@@ -225,13 +382,19 @@ export const SCENE_DEFINITIONS = {
       alt: "",
     },
     desktop: frame(
-      [6.2, 3.6, 8.4],
+      [4.4, 2.8, 6.1],
       [0.2, 0.8, 0.3],
       36,
       DESKTOP_AREA,
     ),
     mobile: frame([5.5, 4.4, 10.8], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
-    lighting: lighting("#AFD4E1", [5, 7, 5]),
+    lighting: PROJECTS_HERO_LIGHTING,
+    contactShadow: {
+      opacity: 0.4,
+      position: [-0.6, -0.01, 1],
+      scale: [4.3, 1.85],
+      textureSize: 64,
+    },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "league-ban",
   },
@@ -239,7 +402,7 @@ export const SCENE_DEFINITIONS = {
     id: "league-ban",
     label: "League Ban Site workstation scene",
     route: "/projects",
-    background: "#AFD4E1",
+    background: "transparent",
     requiredLive: true,
     modelUrl: "/models/crane-on-league.glb",
     modelTransform: DEFAULT_MODEL_TRANSFORM,
@@ -248,9 +411,25 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/league-ban-mobile.webp",
       alt: "",
     },
-    desktop: frame([6.6, 4, 8.8], [0, 1.1, 0], 35, DESKTOP_AREA),
-    mobile: frame([8.4, 6.3, 16.2], [0, 1.5, 0], 40, MOBILE_AREA),
-    lighting: lighting("#AFD4E1", [5, 7, 5]),
+    desktop: frame(
+      [4.5, 2.9, 6.5],
+      [0, 0, 0],
+      34,
+      PROJECT_CHAPTER_DESKTOP_AREA,
+    ),
+    mobile: frame(
+      [7.5, 5.2, 13.5],
+      [0, -0.1, 0],
+      38,
+      PROJECT_CHAPTER_MOBILE_AREA,
+    ),
+    lighting: LEAGUE_BAN_LIGHTING,
+    contactShadow: {
+      opacity: 0.52,
+      position: [0.65, -0.01, 0.2],
+      scale: [5.8, 2.7],
+      textureSize: 64,
+    },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "froggie-adventures",
   },
@@ -258,7 +437,7 @@ export const SCENE_DEFINITIONS = {
     id: "froggie-adventures",
     label: "Froggie Adventures display scene",
     route: "/projects",
-    background: "#AFD4E1",
+    background: "transparent",
     requiredLive: true,
     modelUrl: "/models/froggie-display.glb",
     modelTransform: DEFAULT_MODEL_TRANSFORM,
@@ -267,9 +446,25 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/froggie-adventures-mobile.webp",
       alt: "",
     },
-    desktop: frame([5.1, 4.3, 10.2], [0, 1.4, 0], 40, DESKTOP_AREA),
-    mobile: frame([5.1, 4.3, 10.2], [0, 1.4, 0], 40, MOBILE_AREA),
-    lighting: lighting("#AFD4E1", [5, 7, 5]),
+    desktop: frame(
+      [5.1, 4.3, 10.5],
+      [0, 2, 0],
+      37,
+      PROJECT_CHAPTER_DESKTOP_AREA,
+    ),
+    mobile: frame(
+      [6.2, 5, 12.5],
+      [0, 1.7, 0],
+      39,
+      PROJECT_CHAPTER_MOBILE_AREA,
+    ),
+    lighting: FROGGIE_LIGHTING,
+    contactShadow: {
+      opacity: 0.46,
+      position: [0, -0.01, 0],
+      scale: [2.9, 1.3],
+      textureSize: 64,
+    },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "contact-hero",
   },
@@ -286,14 +481,20 @@ export const SCENE_DEFINITIONS = {
       mobile: "/posters/contact-hero-mobile.webp",
       alt: "",
     },
-    desktop: frame([5.8, 3.2, 7.4], [0.2, 0.8, 0.3], 36, DESKTOP_AREA),
+    desktop: frame([3.7, 2.3, 4.7], [0.2, 0.8, 0.3], 36, DESKTOP_AREA),
     mobile: frame([5.2, 4.1, 9.6], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
-    lighting: lighting("#C9BAE4", [5, 7, 4]),
+    lighting: CONTACT_LIGHTING,
+    contactShadow: {
+      opacity: 0.62,
+      position: [0.1, -0.01, 0.45],
+      scale: [2.6, 1.2],
+      textureSize: 64,
+    },
     staticPose: {
       clips: [
-        { name: "Dumbell L", timeSeconds: 65 / 24 },
-        { name: "Dumbell R", timeSeconds: 65 / 24 },
-        { name: "Lifting Weights", timeSeconds: 65 / 24 },
+        { name: "Dumbell L", timeSeconds: 40 / 24 },
+        { name: "Dumbell R", timeSeconds: 40 / 24 },
+        { name: "Lifting Weights", timeSeconds: 40 / 24 },
       ],
     },
     rotation: DEFAULT_ROTATION,

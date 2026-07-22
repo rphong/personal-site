@@ -23,7 +23,7 @@ function responseFrom(bytes: Uint8Array): Response {
 describe("SceneCanvas load ordering", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("aborts only after suspended detachment and starts one fresh activation", async () => {
+  it("keeps a pending model warm across detachment and reuses it for a fresh activation", async () => {
     const bytes = new Uint8Array(await readFile("public/models/crane.glb"));
     const firstResponse = deferred<Response>();
     const signals: AbortSignal[] = [];
@@ -59,7 +59,7 @@ describe("SceneCanvas load ordering", () => {
     await renderer.update(
       <SceneCanvasContents {...initial} loadEnabled={false} />,
     );
-    expect(signals[0].aborted).toBe(true);
+    expect(signals[0].aborted).toBe(false);
     firstResponse.resolve(responseFrom(bytes));
     await Promise.resolve();
     await Promise.resolve();
@@ -80,7 +80,7 @@ describe("SceneCanvas load ordering", () => {
           name: "scene-instance:home-hero",
         }).length === 1,
     );
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenCalledOnce();
     await renderer.advanceFrames(1, 1 / 60);
     expect(onFirstFrame).toHaveBeenCalledOnce();
     expect(onFailure).not.toHaveBeenCalled();

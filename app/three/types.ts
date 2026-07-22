@@ -34,6 +34,12 @@ export interface SceneRotation {
   readonly pitch: number;
 }
 
+export interface SceneFrameSnapshot {
+  readonly dataUrl: string;
+  readonly route: SiteRoute;
+  readonly sceneId: LiveSceneId;
+}
+
 export interface RotationLimits {
   readonly yaw: readonly [min: number, max: number];
   readonly pitch: readonly [min: number, max: number];
@@ -73,17 +79,23 @@ export interface SceneTuning {
   readonly model: SceneModelTransform;
 }
 
+export interface SceneDirectionalLight {
+  readonly color: string;
+  readonly intensity: number;
+  readonly position: Vector3Tuple;
+  readonly castShadow: false;
+}
+
 export interface SceneLighting {
-  readonly ambient: {
-    readonly color: string;
+  readonly exposure: number;
+  readonly hemisphere: {
+    readonly skyColor: string;
+    readonly groundColor: string;
     readonly intensity: number;
   };
-  readonly key: {
-    readonly color: string;
-    readonly intensity: number;
-    readonly position: Vector3Tuple;
-    readonly castShadow: false;
-  };
+  readonly key: SceneDirectionalLight;
+  readonly fill: SceneDirectionalLight;
+  readonly rim: SceneDirectionalLight;
 }
 
 export interface SceneContactShadow {

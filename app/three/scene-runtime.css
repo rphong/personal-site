@@ -4,7 +4,7 @@
   inset: 0;
   z-index: 1;
   width: 100%;
-  height: 100svh;
+  height: 100%;
   overflow: hidden;
   pointer-events: none;
   background: var(--scene-background);
@@ -12,7 +12,8 @@
 
 .scene-runtime__poster,
 .scene-runtime__poster img,
-.scene-runtime__canvas {
+.scene-runtime__canvas,
+.scene-runtime__resident-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -24,12 +25,26 @@
   visibility: visible;
 }
 
+.scene-section[data-required-live="true"]
+  > .scene-stage--resident
+  .scene-runtime:not([data-three-status="ready"]):not(
+    [data-three-status="loading"]
+  )
+  .scene-runtime__poster {
+  visibility: visible;
+}
+
 .scene-runtime__poster img {
   display: block;
   object-fit: cover;
 }
 
-.scene-runtime__canvas {
+.scene-runtime__canvas,
+.scene-runtime__resident-canvas {
+  visibility: hidden;
+}
+
+.scene-runtime[data-three-status="loading"] .scene-runtime__poster {
   visibility: hidden;
 }
 
@@ -37,8 +52,50 @@
   visibility: hidden;
 }
 
-.scene-runtime[data-three-status="ready"] .scene-runtime__canvas {
+.scene-runtime[data-three-status="ready"] .scene-runtime__canvas,
+.scene-runtime[data-three-status="ready"] .scene-runtime__resident-canvas {
   visibility: visible;
+}
+
+.scene-section[data-required-live="true"]:has(
+    > .scene-stage--resident .scene-runtime[data-poster-ready="true"]
+  )
+  > .scene-section__poster,
+.scene-section[data-required-live="true"]:has(
+    > .scene-stage--resident .scene-runtime[data-three-status="ready"]
+  )
+  > .scene-section__poster {
+  visibility: hidden;
+}
+
+.scene-section[data-required-live="true"]:has(
+    > .scene-stage--resident
+      .scene-runtime:not([data-three-status="ready"]):not(
+        [data-three-status="loading"]
+      ):not([data-poster-ready="true"])
+  )
+  > .scene-section__poster {
+  visibility: visible;
+}
+
+.page-hero.scene-section[data-required-live="true"]:not(
+    :has(
+      > .scene-stage--resident
+        .scene-runtime:is(
+          [data-three-status="ready"],
+          [data-three-status="loading"]
+        )
+    )
+  )
+  > .scene-section__poster {
+  visibility: visible;
+}
+
+.scene-section[data-required-live="true"]:has(
+    > .scene-stage--resident .scene-runtime[data-three-status="loading"]
+  )
+  > .scene-section__poster {
+  visibility: hidden;
 }
 
 .scene-runtime__rotation-area {
@@ -55,6 +112,20 @@
 
 .scene-runtime__rotation-area:active {
   cursor: grabbing;
+}
+
+.scene-resident-pool {
+  position: fixed;
+  top: 0;
+  left: -200vw;
+  /* 100% (not 100vw) so parked stages keep the scrollbar-adjusted layout
+     width; with 100vw every adopted canvas repainted ~15px wider for a frame. */
+  width: 100%;
+  height: 100svh;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+  contain: strict;
 }
 
 .scene-section {
@@ -123,7 +194,9 @@
   z-index: 0;
 }
 
-body:has(.page-hero--layered[data-scene-active="true"]) .scene-runtime {
+body:has(.page-hero--layered[data-scene-active="true"]) .scene-runtime,
+body:has(.chapter[data-scene-active="true"]) .scene-runtime,
+.chapter > .scene-stage .scene-runtime {
   background: transparent;
 }
 
@@ -140,12 +213,6 @@ body:has(.page-hero--layered[data-scene-active="true"]) .scene-runtime {
 
 .chapter-model-space {
   pointer-events: none;
-}
-
-body:has(.scene-runtime[data-poster-ready="true"])
-  .scene-section[data-scene-active="true"]
-  > .scene-section__poster {
-  visibility: hidden;
 }
 
 .three-preference-toggle {

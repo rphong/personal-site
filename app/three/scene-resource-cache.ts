@@ -18,8 +18,7 @@ function abortError() {
 
 export class SceneResourceCache<T> {
   readonly #entries = new Map<string, SceneResourceEntry<T>>();
-  #activeOwner: string | null = null;
-  #activeUrl: string | null = null;
+  readonly #activeOwners = new Map<string, string>();
   #hostLease: symbol | null = null;
 
   constructor(private readonly loader: SceneResourceLoader<T>) {}
@@ -42,15 +41,11 @@ export class SceneResourceCache<T> {
   }
 
   activate(url: string, owner: string): Promise<T> {
-    if (this.#activeOwner !== owner || this.#activeUrl !== url) {
-      for (const cachedUrl of [...this.#entries.keys()]) {
-        if (cachedUrl !== url) this.clear(cachedUrl);
-      }
+    if (this.#activeOwners.get(url) !== owner) {
       if (this.#entries.get(url)?.status === "rejected") {
         this.clear(url);
       }
-      this.#activeOwner = owner;
-      this.#activeUrl = url;
+      this.#activeOwners.set(url, owner);
     }
     return this.load(url);
   }
@@ -90,7 +85,7 @@ export class SceneResourceCache<T> {
       (error: unknown) => {
         const stale =
           controller.signal.aborted || this.#entries.get(url) !== entry;
-        const active = this.#activeUrl === url;
+        const active = this.#activeOwners.has(url);
         if (this.#entries.get(url) === entry && !active) {
           this.#entries.delete(url);
         } else if (this.#entries.get(url) === entry) {
@@ -104,11 +99,6 @@ export class SceneResourceCache<T> {
   }
 
   preload(url: string): Promise<T> {
-    for (const cachedUrl of [...this.#entries.keys()]) {
-      if (cachedUrl !== this.#activeUrl && cachedUrl !== url) {
-        this.clear(cachedUrl);
-      }
-    }
     return this.load(url);
   }
 
@@ -118,10 +108,7 @@ export class SceneResourceCache<T> {
 
   clear(url: string): void {
     const entry = this.#entries.get(url);
-    if (this.#activeUrl === url) {
-      this.#activeOwner = null;
-      this.#activeUrl = null;
-    }
+    this.#activeOwners.delete(url);
     if (!entry) return;
     this.#entries.delete(url);
     entry.controller.abort();
@@ -130,8 +117,7 @@ export class SceneResourceCache<T> {
 
   clearAll(): void {
     for (const url of [...this.#entries.keys()]) this.clear(url);
-    this.#activeOwner = null;
-    this.#activeUrl = null;
+    this.#activeOwners.clear();
   }
 
   private safeDispose(value: T): void {

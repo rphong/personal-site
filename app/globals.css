@@ -1,5 +1,32 @@
+@font-face {
+  font-family: "Fraunces Local";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Fredoka Local";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/fredoka-latin-variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Nunito Sans Local";
+  font-style: normal;
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url("/fonts/nunito-sans-latin-variable.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
+  --font-body: "Nunito Sans Local";
+  --font-display: "Fraunces Local";
+  --font-rounded: "Fredoka Local";
   --nav-height: 4.75rem;
   --content-max: 76rem;
   --route-background: #9eccc0;
@@ -130,9 +157,10 @@ img {
 
 .site-nav__link {
   position: relative;
-  font-size: 0.82rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
+  font-family: var(--font-rounded), "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.065em;
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -236,8 +264,9 @@ img {
 
 .page-hero--editorial h1 {
   font-family: var(--font-display), Georgia, serif;
-  font-weight: 650;
-  letter-spacing: -0.07em;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  letter-spacing: -0.035em;
 }
 
 .page-hero--layered {
@@ -250,7 +279,7 @@ img {
 
 .page-hero--layered .page-hero__copy {
   position: absolute;
-  top: 48%;
+  top: 39.5%;
   left: 50%;
   z-index: 2;
   width: 100%;
@@ -262,25 +291,64 @@ img {
   max-width: none;
   margin-inline: auto;
   color: var(--route-pale-heading);
-  font-family: var(--font-body), "Trebuchet MS", sans-serif;
-  font-size: clamp(5.5rem, 14.5vw, 17.5rem);
-  font-weight: 850;
-  letter-spacing: -0.055em;
   line-height: 0.8;
   text-align: center;
   text-wrap: nowrap;
   white-space: nowrap;
 }
 
+.page-hero--layered:not(.page-hero--editorial) h1 {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(3rem, 17vw, 20rem);
+  font-optical-sizing: auto;
+  font-variation-settings: "opsz" 144, "SOFT" 60, "WONK" 1, "wght" 500;
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 0.78;
+}
+
+/* Route words (Experience/Projects/Contact) breathe; the home wordmark stays tight. */
+.site-shell:not([data-route="home"]) .page-hero--layered:not(.page-hero--editorial) h1 {
+  letter-spacing: 0;
+}
+
+.site-shell[data-route="experience"] .page-hero--layered .page-hero__copy {
+  top: 36.5%;
+}
+
+.site-shell[data-route="projects"] .page-hero--layered .page-hero__copy {
+  top: 35%;
+}
+
+.site-shell[data-route="experience"]
+  .page-hero--layered:not(.page-hero--editorial)
+  h1 {
+  font-size: clamp(4.5rem, 18.4vw, 23rem);
+}
+
+.site-shell[data-route="projects"]
+  .page-hero--layered:not(.page-hero--editorial)
+  h1 {
+  font-size: clamp(4.5rem, 20.5vw, 26rem);
+}
+
 .site-shell[data-route="home"] .page-hero__copy {
-  top: 61.5%;
+  top: 64.5%;
+}
+
+/* Live models sit in front of the giant word (per mock); every non-ready
+   fallback keeps the word above the poster layers. */
+.page-hero--layered > .scene-stage--resident:has(
+    .scene-runtime[data-three-status="ready"]
+  ) {
+  z-index: 2;
 }
 
 .page-hero--layered.page-hero--editorial h1 {
   font-family: var(--font-display), Georgia, serif;
   font-size: clamp(5.5rem, 13.333vw, 16rem);
-  font-weight: 650;
-  letter-spacing: -0.075em;
+  font-weight: 500;
+  letter-spacing: -0.035em;
 }
 
 .page-hero__summary {
@@ -294,12 +362,13 @@ img {
 
 .scroll-cue {
   position: absolute;
+  font-family: var(--font-rounded), "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
   bottom: 1.5rem;
   left: 50%;
   z-index: 2;
   color: var(--route-accent);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.15em;
   text-decoration: none;
   text-transform: uppercase;
@@ -327,9 +396,10 @@ img {
 
 .section-kicker {
   margin: 0 0 0.8rem;
+  font-family: var(--font-rounded), "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
   color: var(--route-accent);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -340,8 +410,9 @@ img {
   color: var(--text-strong);
   font-family: var(--font-display), Georgia, serif;
   font-size: clamp(2.4rem, 6vw, 5.8rem);
-  font-weight: 620;
-  letter-spacing: -0.055em;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  letter-spacing: -0.025em;
   line-height: 0.95;
 }
 
@@ -385,44 +456,264 @@ img {
 }
 
 .chapter {
+  position: relative;
+  min-height: calc(100svh - var(--nav-height));
   overflow: clip;
-  scroll-margin-top: calc(var(--nav-height) + 2rem);
+  scroll-margin-top: var(--nav-height);
 }
 
 .chapter-layout {
-  display: block;
+  position: relative;
+  z-index: 1;
 }
 
 .chapter > .scene-section__poster {
   top: calc(-1 * var(--nav-height));
   bottom: auto;
+  z-index: 1;
   height: 100svh;
 }
 
 .chapter-model-space {
-  min-height: calc(100svh - var(--nav-height));
+  min-width: 0;
+  min-height: 0;
 }
 
 .chapter-copy {
   position: relative;
   z-index: 2;
-  width: 100%;
-  background: var(--surface);
+  min-width: 0;
 }
 
 .chapter-copy__inner {
-  width: min(100%, calc(var(--content-max) + 2 * var(--page-gutter)));
+  min-width: 0;
+}
+
+.experience-chapters {
+  background: var(--surface);
+}
+
+.experience-chapter {
+  background: var(--surface);
+}
+
+.chapter-layout--experience {
+  display: grid;
+  grid-template-columns: minmax(19rem, 0.42fr) minmax(0, 0.58fr);
+  gap: clamp(2.5rem, 5vw, 6.5rem);
+  align-items: center;
+  width: min(100%, calc(88rem + 2 * var(--page-gutter)));
+  min-height: calc(100svh - var(--nav-height));
   margin-inline: auto;
-  padding: clamp(4.5rem, 9vw, 8.5rem) var(--page-gutter);
+  padding: clamp(4.5rem, 8vh, 7rem) var(--page-gutter);
 }
 
-.chapter-copy__inner > :where(.section-heading, .chapter-heading, .prose) {
-  max-width: 45rem;
+.chapter-layout--experience .chapter-copy__inner {
+  max-width: 35rem;
 }
 
-.chapter + .chapter,
-.projects-intro + .chapter-list {
+.chapter-layout--experience .chapter-model-space {
+  min-height: min(72svh, 48rem);
+}
+
+.experience-intro__heading {
+  color: #d8758e;
+  font-family: var(--font-rounded), "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  font-size: clamp(3.4rem, 6.4vw, 7rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+}
+
+.experience-intro__prose {
+  max-width: 31rem;
+  margin-top: 2rem;
+  font-size: clamp(1rem, 1.25vw, 1.13rem);
+}
+
+.experience-chapter:not(.experience-chapter--poster) > .scene-stage,
+.experience-chapter:not(.experience-chapter--poster)
+  > .scene-section__poster {
+  top: 0;
+  right: max(var(--page-gutter), calc((100vw - 88rem) / 2));
+  bottom: auto;
+  left: auto;
+  width: min(52vw, 48rem);
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.experience-chapter--poster > .scene-stage {
+  display: none;
+}
+
+.experience-chapter--poster > .scene-section__poster {
+  top: 50%;
+  right: max(var(--page-gutter), calc((100vw - 88rem) / 2));
+  bottom: auto;
+  left: auto;
+  width: min(50vw, 45rem);
+  height: min(62svh, 38rem);
+  overflow: hidden;
+  border-radius: 50% 50% 1.25rem 1.25rem / 12% 12% 1.25rem 1.25rem;
+  background: var(--route-background);
+  box-shadow: 0 1.75rem 4rem rgb(40 40 40 / 0.13);
+  transform: translateY(-50%);
+}
+
+.experience-chapter--poster > .scene-section__poster img {
+  object-fit: cover;
+}
+
+.experience-chapter:not(.experience-chapter--poster)
+  > .scene-section__poster,
+.project-chapter > .scene-section__poster {
+  visibility: hidden;
+}
+
+body:has(.scene-runtime[data-poster-ready="true"])
+  section.experience-chapter--poster[data-scene-active="true"]
+  > .scene-section__poster,
+body:has(.scene-runtime[data-three-status="ready"])
+  section.experience-chapter--poster[data-scene-active="true"]
+  > .scene-section__poster,
+body:has(.scene-runtime[data-transition-poster="suppressed"])
+  section.experience-chapter--poster[data-scene-active="true"]
+  > .scene-section__poster {
+  visibility: visible;
+}
+
+body:has(.scene-runtime[data-three-status="disabled"])
+  section.chapter[data-scene-active="true"]
+  > .scene-section__poster,
+body:has(.scene-runtime[data-three-status="unsupported"])
+  section.chapter[data-scene-active="true"]
+  > .scene-section__poster,
+body:has(.scene-runtime[data-three-status="error"])
+  section.chapter[data-scene-active="true"]
+  > .scene-section__poster {
+  visibility: visible;
+}
+
+.experience-chapter:not(.experience-chapter--poster)
+  > .scene-stage
+  .scene-runtime__poster,
+.project-chapter > .scene-stage .scene-runtime__poster,
+.experience-chapter:not(.experience-chapter--poster)[data-scene-active="true"][data-scene-status="loading"]
+  > .scene-section__poster,
+.project-chapter[data-scene-active="true"][data-scene-status="loading"]
+  > .scene-section__poster {
+  visibility: hidden;
+}
+
+.experience-chapter + .experience-chapter {
   border-top: 1px solid var(--hairline);
+}
+
+.projects-surface,
+.project-chapter-list {
+  background: var(--route-background);
+}
+
+.project-chapter {
+  --project-arch-top: clamp(3.5rem, 7vh, 5rem);
+  --project-arch-rise: clamp(24rem, 38vw, 42rem);
+  min-height: max(calc(100svh - var(--nav-height)), 56rem);
+  background: var(--route-background);
+}
+
+.project-chapter::before {
+  position: absolute;
+  top: var(--project-arch-top);
+  right: -12%;
+  bottom: 0;
+  left: -12%;
+  z-index: 0;
+  border-radius: 50% 50% 0 0 / var(--project-arch-rise)
+    var(--project-arch-rise) 0 0;
+  background: var(--surface);
+  content: "";
+}
+
+.project-chapter > .scene-stage {
+  top: var(--project-arch-top);
+  right: 0;
+  bottom: auto;
+  left: 0;
+  width: 100%;
+  height: min(50svh, 34rem);
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.project-chapter--league-ban > .scene-stage {
+  top: calc(var(--project-arch-top) + 3rem);
+}
+
+.project-chapter--froggie-adventures > .scene-stage {
+  top: calc(var(--project-arch-top) + 3.5rem);
+  height: calc(min(50svh, 34rem) - 3.5rem);
+}
+
+.project-chapter > .scene-section__poster {
+  top: var(--project-arch-top);
+  right: -12%;
+  bottom: auto;
+  left: -12%;
+  width: 124%;
+  height: min(50svh, 34rem);
+  overflow: hidden;
+  border-radius: 50% 50% 0 0 / var(--project-arch-rise)
+    var(--project-arch-rise) 0 0;
+}
+
+.chapter-layout--project {
+  display: grid;
+  grid-template-rows: minmax(24rem, 48svh) auto;
+  justify-items: center;
+  width: min(100%, calc(72rem + 2 * var(--page-gutter)));
+  min-height: max(calc(100svh - var(--nav-height)), 56rem);
+  margin-inline: auto;
+  padding: var(--project-arch-top) var(--page-gutter)
+    clamp(3rem, 6vh, 4.5rem);
+}
+
+.chapter-layout--project .chapter-model-space {
+  width: 100%;
+}
+
+.chapter-layout--project .chapter-copy {
+  align-self: start;
+  width: min(100%, 47rem);
+  text-align: center;
+}
+
+.chapter-layout--project .chapter-copy__inner {
+  padding-inline: 1rem;
+}
+
+.chapter-layout--project .chapter-heading {
+  color: var(--route-accent);
+  font-size: clamp(3.2rem, 6vw, 6rem);
+}
+
+.chapter-layout--project .prose {
+  max-width: 45rem;
+  margin: 1.4rem auto 0;
+  font-size: clamp(1rem, 1.3vw, 1.16rem);
+}
+
+.chapter-layout--project .technical-line {
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+.project-chapter + .project-chapter {
+  margin-top: clamp(2rem, 4vh, 3rem);
 }
 
 .scene-poster {
@@ -568,8 +859,12 @@ img {
   }
 
   .page-hero--layered .page-hero__copy {
-    top: 48%;
+    top: 40%;
     padding-inline: var(--page-gutter);
+  }
+
+  .site-shell[data-route="home"] .page-hero__copy {
+    top: 63%;
   }
 
   .page-hero--layered h1 {
@@ -585,6 +880,23 @@ img {
     font-size: clamp(3rem, 15.5vw, 6.5rem);
   }
 
+  .site-shell[data-route="experience"] .page-hero--layered .page-hero__copy,
+  .site-shell[data-route="projects"] .page-hero--layered .page-hero__copy {
+    top: 11%;
+  }
+
+  .site-shell[data-route="experience"]
+    .page-hero--layered:not(.page-hero--editorial)
+    h1 {
+    font-size: clamp(4rem, 20.5vw, 7rem);
+  }
+
+  .site-shell[data-route="projects"]
+    .page-hero--layered:not(.page-hero--editorial)
+    h1 {
+    font-size: clamp(4rem, 22.5vw, 6.5rem);
+  }
+
   .page-hero--layered.page-hero--editorial h1 {
     font-size: clamp(4.8rem, 23vw, 7.25rem);
   }
@@ -595,6 +907,121 @@ img {
 
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .chapter-layout--experience {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    min-height: 0;
+    padding: 2rem var(--page-gutter) 4.5rem;
+  }
+
+  .chapter-layout--experience .chapter-model-space {
+    grid-row: 1;
+    min-height: min(43svh, 23rem);
+  }
+
+  .chapter-layout--experience .chapter-copy {
+    grid-row: 2;
+  }
+
+  .chapter-layout--experience .chapter-copy__inner {
+    max-width: 38rem;
+  }
+
+  .experience-intro__heading {
+    font-size: clamp(3rem, 15vw, 5rem);
+  }
+
+  .experience-intro__prose {
+    margin-top: 1.35rem;
+  }
+
+  .experience-chapter:not(.experience-chapter--poster) > .scene-stage,
+  .experience-chapter:not(.experience-chapter--poster)
+    > .scene-section__poster {
+    top: 2rem;
+    right: var(--page-gutter);
+    left: var(--page-gutter);
+    width: auto;
+    height: min(43svh, 23rem);
+    border-radius: 0;
+    transform: none;
+  }
+
+  .experience-chapter--poster > .scene-section__poster {
+    top: 2rem;
+    right: var(--page-gutter);
+    left: var(--page-gutter);
+    width: auto;
+    height: min(39svh, 20rem);
+    border-radius: 50% 50% 0.85rem 0.85rem / 11% 11% 0.85rem 0.85rem;
+    transform: none;
+  }
+
+  .project-chapter {
+    --project-arch-top: 2rem;
+    --project-arch-rise: clamp(10rem, 48vw, 13rem);
+    min-height: max(calc(100svh - var(--nav-height)), 50rem);
+  }
+
+  .project-chapter::before {
+    right: -5%;
+    left: -5%;
+  }
+
+  .project-chapter > .scene-stage {
+    top: var(--project-arch-top);
+    right: 0;
+    left: 0;
+    width: 100%;
+    height: min(46svh, 24rem);
+    border-radius: 0;
+  }
+
+  .project-chapter--froggie-adventures > .scene-stage {
+    top: calc(var(--project-arch-top) + 1.5rem);
+    height: calc(min(46svh, 24rem) - 1.5rem);
+  }
+
+  .project-chapter > .scene-section__poster {
+    top: var(--project-arch-top);
+    right: -5%;
+    left: -5%;
+    width: 110%;
+    height: min(46svh, 24rem);
+    border-radius: 50% 50% 0 0 / var(--project-arch-rise)
+      var(--project-arch-rise) 0 0;
+  }
+
+  .chapter-layout--project {
+    grid-template-rows: minmax(21rem, 46svh) auto;
+    min-height: max(calc(100svh - var(--nav-height)), 50rem);
+    padding: var(--project-arch-top) var(--page-gutter) 4rem;
+  }
+
+  .chapter-layout--project .chapter-copy__inner {
+    padding-inline: 0;
+  }
+
+  .chapter-layout--project .chapter-heading {
+    font-size: clamp(2.8rem, 14vw, 4.5rem);
+  }
+
+  .chapter-layout--project .prose {
+    margin-top: 1rem;
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  .chapter-layout--project .technical-line {
+    font-size: 0.74rem;
+    line-height: 1.45;
+  }
+
+  .project-chapter + .project-chapter {
+    margin-top: 2rem;
   }
 
   .scene-poster {
