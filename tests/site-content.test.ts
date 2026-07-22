@@ -126,9 +126,26 @@ describe("site content", () => {
     expect(contact.resumeHref).toBe("/Richard-Phong-Resume.pdf");
     expect(contact).not.toHaveProperty("footer");
     expect(footer).toEqual({
-      disclosure: "Operational diagnostics only. No engagement or identity tracking.",
+      disclosure: "No contact-link tracking or session replay.",
       privacyHref: "/contact#privacy",
     });
+  });
+
+  it("defines the owner-supplied home intro and rabbit holes", () => {
+    expect(getOwnerGatedFields(home)).toEqual([]);
+    expect(home.introduction).toMatch(/University of Houston/);
+    expect(home.experienceLink).toEqual({
+      label: "What I've been up to →",
+      href: "/experience",
+    });
+    expect(
+      home.rabbitHoles.map(({ index, title, href }) => [index, title, href]),
+    ).toEqual([
+      ["01", "Frontend", "/projects"],
+      ["02", "Games", "/projects"],
+      ["03", "Contests", "https://codeforces.com/profile/richardp"],
+    ]);
+    expect(JSON.stringify(home)).not.toContain(OWNER_INPUT_SENTINEL);
   });
 
   it("reports every home field that still needs owner input", () => {

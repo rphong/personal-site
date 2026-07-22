@@ -54,7 +54,7 @@ describe("site shell", () => {
     );
   });
 
-  it("renders the operational privacy disclosure", () => {
+  it("renders the privacy disclosure", () => {
     render(
       <SiteShell>
         <main>Page content</main>
@@ -62,9 +62,7 @@ describe("site shell", () => {
     );
 
     expect(
-      screen.getByText(
-        "Operational diagnostics only. No engagement or identity tracking.",
-      ),
+      screen.getByText("No contact-link tracking or session replay."),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Privacy details." })).toHaveAttribute(
       "href",

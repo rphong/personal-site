@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHero } from "../components/page-hero";
-import { getOwnerGatedFields, home, routeByKey } from "../content/site-content";
+import { home, routeByKey } from "../content/site-content";
 import { createPageMetadata } from "../lib/site-metadata";
+import styles from "./home.module.css";
 
 const route = routeByKey.home;
-const unresolvedOwnerFields = getOwnerGatedFields(home);
 
 export function generateMetadata(): Metadata {
   return createPageMetadata("home");
@@ -19,50 +19,50 @@ export default function HomePage() {
         title={route.title}
         titleStyle="editorial"
       />
-      <section className="content-surface" id="page-content">
-        <div className="content-inner content-grid">
-          <div>
-            <p className="section-kicker">A little context</p>
-            <h2 className="section-heading">Welcome to my corner.</h2>
-          </div>
+      <div className="content-surface" id="page-content">
+        <section className={`content-inner ${styles.homeIntro}`}>
+          <p className="section-kicker">Hello</p>
+          <h2 className="chapter-heading">Hi, I&apos;m Richard.</h2>
           <div className="prose">
             <p>{home.introduction}</p>
-            <p>
-              <strong>{home.currentRole}</strong>
-            </p>
-            <div
-              className="link-cluster"
-              aria-label="Explore Richard's site"
-            >
-              {home.links.map((link) => {
-                const external = link.href.startsWith("https://");
+          </div>
+          <div className="link-cluster">
+            <Link className="text-link" href={home.experienceLink.href}>
+              {home.experienceLink.label}
+            </Link>
+          </div>
+        </section>
 
-                return (
+        <section
+          aria-labelledby="rabbit-holes-heading"
+          className={`content-inner ${styles.homeRabbitHoles}`}
+        >
+          <h2 className="section-kicker" id="rabbit-holes-heading">
+            Rabbit holes
+          </h2>
+          <ul aria-label="Rabbit holes" className={styles.domainGrid}>
+            {home.rabbitHoles.map((rabbitHole) => {
+              const external = rabbitHole.href.startsWith("https://");
+
+              return (
+                <li key={rabbitHole.index}>
                   <Link
-                    className="text-link"
-                    href={link.href}
-                    key={link.href}
+                    className={styles.domain}
+                    href={rabbitHole.href}
                     rel={external ? "noreferrer" : undefined}
                     target={external ? "_blank" : undefined}
                   >
-                    {link.label}
+                    <span className={styles.domainIndex}>{rabbitHole.index}</span>
+                    <h3 className={styles.domainTitle}>{rabbitHole.title}</h3>
+                    <p>{rabbitHole.description}</p>
+                    <span className={styles.domainGo}>{rabbitHole.linkLabel}</span>
                   </Link>
-                );
-              })}
-            </div>
-            <div
-              className="owner-gate"
-              data-owner-gated-fields="home.nonWorkInterest home.technicalCuriosity"
-            >
-              <p>{home.nonWorkInterest}</p>
-              <p>{home.technicalCuriosity}</p>
-              {unresolvedOwnerFields.length > 0 ? (
-                <p>{home.ownerDraftMessage}</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </section>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      </div>
     </main>
   );
 }

@@ -27,7 +27,7 @@ export default function ExperiencePage() {
               <div className="chapter-copy__inner">
                 <p className="section-kicker">The through line</p>
                 <h2 className="section-heading experience-intro__heading">
-                  Who let the intern out.
+                  Learning by building what matters.
                 </h2>
                 <div className="prose experience-intro__prose">
                   <p>

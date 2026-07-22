@@ -30,7 +30,7 @@ export const routes = [
     label: "Home",
     title: "Richard Phong",
     description:
-      "Richard Phong's personal home for software work, creative experiments, and interactive web scenes.",
+      "Software developer Richard Phong shares his experience, projects, and interactive web experiments.",
     eyebrow: "Personal home",
     heroSummary:
       "Software developer, curious builder, and collector of projects with a little personality.",
@@ -48,7 +48,7 @@ export const routes = [
     label: "Experience",
     title: "Experience",
     description:
-      "Richard Phong's first-person software experience across NASA, EOG Resources, and Paycom.",
+      "Software engineering experience at NASA, EOG Resources, and Paycom.",
     eyebrow: "Work, in my own words",
     heroSummary:
       "Three chapters shaped by high-stakes tools, technical data, and software people depend on.",
@@ -66,7 +66,7 @@ export const routes = [
     label: "Projects",
     title: "Projects",
     description:
-      "Creative college projects that connected Richard Phong's interests, teamwork, and software craft.",
+      "Selected projects by Richard Phong, including League Ban Site and Froggie Adventures.",
     eyebrow: "Built for the fun of it",
     heroSummary:
       "A pair of formative projects remembered for curiosity, collaboration, and flair.",
@@ -84,7 +84,7 @@ export const routes = [
     label: "Contact",
     title: "Contact",
     description:
-      "Email, LinkedIn, GitHub, phone, and résumé links for Richard Phong.",
+      "Contact Richard Phong by email, LinkedIn, GitHub, or phone, and download his résumé.",
     eyebrow: "Say hello",
     heroSummary:
       "The direct routes to my inbox, work, code, résumé, and phone.",
@@ -127,18 +127,40 @@ export type OwnerHomeFields = {
 
 export const home = {
   introduction:
-    "I'm Richard, a software developer who likes turning ideas into things people can see, use, and remember. This is my corner of the web for the work, experiments, and details that feel most like me.",
-  currentRole: "Currently building software at EOG Resources.",
-  nonWorkInterest: `${OWNER_INPUT_SENTINEL} home.nonWorkInterest`,
-  technicalCuriosity: `${OWNER_INPUT_SENTINEL} home.technicalCuriosity`,
+    "I studied computer science at the University of Houston. In my free time I like poking at whatever corner of the field will have me — building games, tinkering with robotics, fussing over frontends, and following whatever I get curious about next.",
+  experienceLink: {
+    label: "What I've been up to →",
+    href: "/experience",
+  },
+  rabbitHoles: [
+    {
+      index: "01",
+      title: "Frontend",
+      description: "Interfaces that feel good to touch.",
+      href: "/projects",
+      linkLabel: "See projects →",
+    },
+    {
+      index: "02",
+      title: "Games",
+      description: "Engines, mechanics, and the odd shader rabbit hole.",
+      href: "/projects",
+      linkLabel: "See projects →",
+    },
+    {
+      index: "03",
+      title: "Contests",
+      description: "Chasing rating on Codeforces, one problem at a time.",
+      href: "https://codeforces.com/profile/richardp",
+      linkLabel: "Codeforces ↗",
+    },
+  ],
+  nonWorkInterest:
+    "Games have a habit of turning into side projects for me, from League Ban Site to Froggie Adventures.",
+  technicalCuriosity:
+    "This site is my current experiment in bringing Blender-built 3D scenes to the web while keeping each page fast and usable.",
   ownerDraftMessage:
     "Richard will replace these two marked lines with his own words before production.",
-  links: [
-    { label: "Read my experience", href: "/experience" },
-    { label: "See my projects", href: "/projects" },
-    { label: "Browse my GitHub", href: "https://github.com/rphong" },
-    { label: "Contact me", href: "/contact" },
-  ],
 } as const;
 
 export function getOwnerGatedFields(fields: OwnerHomeFields) {
@@ -179,7 +201,7 @@ export const experience = [
     ],
     narrative: [
       "At NASA, I worked across crew-facing interfaces, training tools, and simulator workflows. I helped redesign an ISS crew calendar interface used during Artemis III preparation, automated feedback for On-Board Training, and built a Razor Pages coordination tool.",
-      "I also reduced a training-simulator file by 60 percent and improved one script's speed by more than 5×. That range made performance and clarity feel inseparable from the people relying on the software.",
+      "I also reduced a training-simulator file's size by 60 percent and improved one script's speed by more than 5×. That range made performance and clarity feel inseparable from the people relying on the software.",
     ],
   },
   {
@@ -201,7 +223,7 @@ export const experience = [
     sceneId: "paycom-poster",
     roles: [{ title: "Software Developer Intern", dates: "2023" }],
     narrative: [
-      "At Paycom, I built an ASP.NET and React Web API that used FedEx APIs to support more than 15,000 packages each week, then built out a test suite that reached 90 percent coverage.",
+      "At Paycom, I built an ASP.NET Web API using FedEx APIs, paired with a React interface, to support more than 15,000 packages each week. I also built a test suite that reached 90 percent coverage.",
       "It was a focused lesson in treating reliability as part of the feature rather than a separate concern.",
     ],
   },
@@ -222,9 +244,9 @@ export const projects = [
     name: "League Ban Site",
     sceneId: "league-ban",
     reflection:
-      "League Ban Site began with a simple connection: I was already playing League of Legends, and I wanted to see what would happen if I turned that familiarity into a coding project. Building around match data made software feel less abstract and pushed me to keep learning because the problem already meant something to me.",
+      "I built League Ban Site around a game I already knew well: League of Legends. Working with recent match data gave me a practical way to learn APIs and backend development, then turn the results into playful ban recommendations.",
     technicalLine:
-      "Node.js · Express · EJS · node-fetch · Riot APIs · accepts a summoner name, reads recent ranked matches, and derives playful opponent/ban recommendations",
+      "Node.js · Express · EJS · node-fetch · Riot APIs · turns a summoner name and recent ranked matches into playful opponent and ban recommendations",
     repository: "https://github.com/rphong/LeagueBanSite",
   },
   {
@@ -232,9 +254,9 @@ export const projects = [
     name: "Froggie Adventures",
     sceneId: "froggie-adventures",
     reflection:
-      "Froggie Adventures is the project I remember most for the teamwork. I helped lead a three-person team, which meant sharing ideas, dividing responsibility, and bringing separate pieces together into something we could demonstrate publicly. Seeing the game take shape as a group made shipping feel as rewarding as the code itself.",
+      "Froggie Adventures was a three-person Unity project that taught me how to build as a team. I helped lead the project, divide the work, and bring the game together for a public demo.",
     technicalLine:
-      "Unity · C# · three-person team · procedural, difficulty-scaled level generation",
+      "Unity · C# · three-person team · procedurally generated levels with scaling difficulty",
     repository: "https://github.com/rphong/Froggie",
   },
 ] as const satisfies readonly ProjectChapter[];
@@ -266,10 +288,10 @@ export const contact = {
   ],
   resumeHref: "/Richard-Phong-Resume.pdf",
   privacy:
-    "The production site is designed to use Cloudflare and Sentry only for sampled performance and error diagnostics. It does not attach contact details to diagnostics, track contact actions, collect visitor identity, or use session replay. The future 3D preference stays on this device.",
+    "This site is hosted on Cloudflare and does not track contact-link clicks or use session replay. Your 3D preference is stored only in this browser.",
 } as const;
 
 export const footer = {
-  disclosure: "Operational diagnostics only. No engagement or identity tracking.",
+  disclosure: "No contact-link tracking or session replay.",
   privacyHref: "/contact#privacy",
 } as const;

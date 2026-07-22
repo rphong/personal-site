@@ -1,75 +1,68 @@
+import { readFileSync } from "node:fs";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import HomePage from "../app/page";
-import { getOwnerGatedFields, home } from "../content/site-content";
 
 afterEach(cleanup);
 
 describe("home page", () => {
-  it("renders Richard's approved introduction and owner-gated context", () => {
+  it("keeps the hero intact and renders the simplified introduction", () => {
     const { container } = render(<HomePage />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Richard Phong" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "I'm Richard, a software developer who likes turning ideas into things people can see, use, and remember. This is my corner of the web for the work, experiments, and details that feel most like me.",
-      ),
+      screen.getByRole("heading", { level: 2, name: "Hi, I'm Richard." }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Currently building software at EOG Resources."),
+      screen.getByText(/I studied computer science at the University of Houston/),
     ).toBeInTheDocument();
+    expect(screen.getByText("Hello")).toBeInTheDocument();
     expect(container.querySelector('[data-scene-id="home-hero"]')).not.toBeNull();
     expect(container.querySelector(".page-hero--layered")).not.toBeNull();
-    expect(screen.queryByText("Personal home")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Software developer, curious builder, and collector of projects with a little personality.",
-      ),
-    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Scroll down" })).toHaveAttribute(
       "href",
       "#page-content",
     );
-    expect(screen.getByText(home.nonWorkInterest)).toBeInTheDocument();
-    expect(screen.getByText(home.technicalCuriosity)).toBeInTheDocument();
-
-    const ownerGate = container.querySelector("[data-owner-gated-fields]");
-    expect(ownerGate).toHaveAttribute(
-      "data-owner-gated-fields",
-      "home.nonWorkInterest home.technicalCuriosity",
+    expect(container.querySelector(".owner-gate")).toBeNull();
+    expect(container).not.toHaveTextContent(
+      /Currently building software at EOG Resources|Welcome to my corner/i,
     );
-
-    if (getOwnerGatedFields(home).length > 0) {
-      expect(within(ownerGate as HTMLElement).getByText(home.ownerDraftMessage)).toBeInTheDocument();
-    } else {
-      expect(
-        within(ownerGate as HTMLElement).queryByText(home.ownerDraftMessage),
-      ).not.toBeInTheDocument();
-    }
-
-    expect(container).not.toHaveTextContent(/skills|resume bullets/i);
   });
 
-  it("links to Richard's experience, projects, GitHub, and contact routes", () => {
+  it("links the intro and three rabbit holes to their destinations", () => {
     render(<HomePage />);
 
-    expect(screen.getByRole("link", { name: "Read my experience" })).toHaveAttribute(
-      "href",
-      "/experience",
-    );
-    expect(screen.getByRole("link", { name: "See my projects" })).toHaveAttribute(
-      "href",
+    expect(
+      screen.getByRole("link", { name: "What I've been up to →" }),
+    ).toHaveAttribute("href", "/experience");
+
+    const rabbitHoles = screen.getByRole("list", { name: "Rabbit holes" });
+    const items = within(rabbitHoles).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(
+      items.map((item) => within(item).getByRole("heading").textContent),
+    ).toEqual(["Frontend", "Games", "Contests"]);
+
+    const links = items.map((item) => within(item).getByRole("link"));
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/projects",
+      "/projects",
+      "https://codeforces.com/profile/richardp",
+    ]);
+    expect(links[2]).toHaveAttribute("target", "_blank");
+    expect(links[2]).toHaveAttribute("rel", "noreferrer");
+    expect(links[0]).not.toHaveAttribute("target");
+    expect(links[1]).not.toHaveAttribute("target");
+  });
+
+  it("keeps the rabbit-hole cards responsive and keyboard visible", () => {
+    const css = readFileSync("app/home.module.css", "utf8");
+
+    expect(css).toMatch(
+      /\.domainGrid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(13rem,\s*1fr\)\)/,
     );
-    expect(screen.getByRole("link", { name: "Browse my GitHub" })).toHaveAttribute(
-      "href",
-      "https://github.com/rphong",
-    );
-    expect(screen.getByRole("link", { name: "Contact me" })).toHaveAttribute(
-      "href",
-      "/contact",
-    );
+    expect(css).toMatch(/\.domain:focus-visible\s*\{[^}]*outline:/);
   });
 });

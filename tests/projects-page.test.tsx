@@ -24,16 +24,24 @@ describe("projects page", () => {
   it("keeps the personality-first reflections and technical context", () => {
     render(<ProjectsPage />);
 
+    expect(screen.getAllByText("College project")).toHaveLength(2);
     expect(
-      screen.getByText(/I was already playing League of Legends/i),
+      screen.getByText(/a game I already knew well: League of Legends/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/helped lead a three-person team/i),
+      screen.getByText(/Froggie Adventures was a three-person Unity project/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/Node\.js · Express · EJS/)).toBeInTheDocument();
     expect(
+      screen.getByText(/summoner name and recent ranked matches/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/opponent and ban recommendations/),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/Unity · C# · three-person team/),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Creative project")).not.toBeInTheDocument();
   });
 
   it("links to the repositories and marks both chapters as required live scenes", () => {

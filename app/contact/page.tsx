@@ -54,7 +54,7 @@ export default function ContactPage() {
             })}
           </ul>
           <section className="privacy-panel prose" id="privacy">
-            <p className="section-kicker">Operational telemetry</p>
+            <p className="section-kicker">A quick privacy note</p>
             <h2 className="chapter-heading">Privacy, plainly.</h2>
             <p>{contact.privacy}</p>
           </section>

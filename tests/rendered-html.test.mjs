@@ -225,13 +225,16 @@ test("server-renders the complete Home page without JavaScript or WebGL", async 
   const html = await response.text();
   assertPreviewDocument(html, "Richard Phong");
   assertScenePosters(html, ROUTE_SCENE_POSTERS["/"]);
-  assert.match(html, /Welcome to my corner/);
-  assert.match(html, /Currently building software at EOG Resources/);
-  assert.match(
+  assert.match(html, /Hi, I/);
+  assert.match(html, /University of Houston/);
+  assert.match(html, /Rabbit holes/);
+  assertOrdered(html, ["Frontend", "Games", "Contests"]);
+  assert.match(html, /https:\/\/codeforces\.com\/profile\/richardp/);
+  assert.doesNotMatch(
     html,
-    /Owner wording|required before production|replace these two marked lines/i,
+    /OWNER_INPUT_REQUIRED|replace these two marked lines|Welcome to my corner|Currently building software at EOG Resources/i,
   );
-  assert.match(html, /Operational diagnostics only/);
+  assert.match(html, /No contact-link tracking or session replay/);
 });
 
 test("server-renders Experience in approved company order", async () => {
@@ -242,6 +245,8 @@ test("server-renders Experience in approved company order", async () => {
   assertPreviewDocument(html, "Experience | Richard Phong");
   assertScenePosters(html, ROUTE_SCENE_POSTERS["/experience"]);
   assert.deepEqual(chapterHeadings(html), ["NASA", "EOG Resources", "Paycom"]);
+  assert.match(html, /Learning by building what matters/);
+  assert.doesNotMatch(html, /Who let the intern out/i);
   assert.match(html, /Artemis III preparation/);
   assert.match(html, /40–50 seconds to 1–2 seconds/);
   assert.match(html, /href="\/Richard-Phong-Resume\.pdf"/);
@@ -258,6 +263,9 @@ test("server-renders Projects in approved project order", async () => {
     "League Ban Site",
     "Froggie Adventures",
   ]);
+  assert.match(html, /College project/);
+  assert.match(html, /summoner name and recent ranked matches/);
+  assert.match(html, /opponent and ban recommendations/);
   assert.match(html, /https:\/\/github\.com\/rphong\/LeagueBanSite/);
   assert.match(html, /https:\/\/github\.com\/rphong\/Froggie/);
   assert.doesNotMatch(html, /<iframe\b/i);
@@ -274,7 +282,10 @@ test("server-renders every Contact action and privacy disclosure", async () => {
   assert.match(html, /https:\/\/linkedin\.com\/in\/richard-phong\//);
   assert.match(html, /https:\/\/github\.com\/rphong/);
   assert.match(html, /tel:\+12817776437/);
-  assert.match(html, /Cloudflare and Sentry/);
+  assert.match(html, /hosted on Cloudflare/);
+  assert.match(html, /does not track contact-link clicks/);
+  assert.match(html, /3D preference is stored only in this browser/);
+  assert.doesNotMatch(html, /Cloudflare and Sentry|future 3D/i);
 });
 
 test("preview robots disallows crawling and advertises no sitemap", async () => {

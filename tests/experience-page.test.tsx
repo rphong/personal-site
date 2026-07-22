@@ -27,15 +27,16 @@ describe("experience page", () => {
     expect(screen.getByText("2024", { exact: true })).toBeInTheDocument();
   });
 
-  it("integrates the approved narrative and personality heading with every scene", () => {
+  it("integrates the approved narrative and heading with every scene", () => {
     const { container } = render(<ExperiencePage />);
 
     expect(
       screen.getByRole("heading", {
         level: 2,
-        name: "Who let the intern out.",
+        name: "Learning by building what matters.",
       }),
     ).toHaveClass("experience-intro__heading");
+    expect(container).not.toHaveTextContent(/Who let the intern out/i);
     expect(screen.getByText(/Artemis III preparation/)).toBeInTheDocument();
     expect(screen.getByText(/40–50 seconds to 1–2 seconds/)).toBeInTheDocument();
     expect(

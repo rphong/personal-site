@@ -55,13 +55,13 @@ describe("contact page", () => {
 
     const privacy = container.querySelector("#privacy");
     expect(privacy).not.toBeNull();
+    expect(privacy).toHaveTextContent(/hosted on Cloudflare/i);
+    expect(privacy).toHaveTextContent(/does not track contact-link clicks/i);
+    expect(privacy).toHaveTextContent(/does not.*use session replay/i);
     expect(privacy).toHaveTextContent(
-      /Cloudflare and Sentry only for sampled performance and error diagnostics/i,
+      /3D preference is stored only in this browser/i,
     );
-    expect(privacy).toHaveTextContent(/does not attach contact details/i);
-    expect(privacy).toHaveTextContent(
-      /future 3D preference stays on this device/i,
-    );
+    expect(privacy).not.toHaveTextContent(/Sentry|future 3D/i);
   });
 
   it("uses the contact hero scene without a contact form or client controls", () => {

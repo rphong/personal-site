@@ -30,7 +30,7 @@ export default function ProjectsPage() {
                 <div aria-hidden="true" className="chapter-model-space" />
                 <div className="chapter-copy">
                   <div className="chapter-copy__inner">
-                    <p className="section-kicker">Creative project</p>
+                    <p className="section-kicker">College project</p>
                     <h2 className="chapter-heading">{project.name}</h2>
                     <div className="prose">
                       <p>{project.reflection}</p>

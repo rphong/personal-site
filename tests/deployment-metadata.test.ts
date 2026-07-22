@@ -7,6 +7,27 @@ import {
 } from "../lib/site-metadata";
 
 describe("deployment metadata", () => {
+  it.each([
+    [
+      "home",
+      "Software developer Richard Phong shares his experience, projects, and interactive web experiments.",
+    ],
+    [
+      "experience",
+      "Software engineering experience at NASA, EOG Resources, and Paycom.",
+    ],
+    [
+      "projects",
+      "Selected projects by Richard Phong, including League Ban Site and Froggie Adventures.",
+    ],
+    [
+      "contact",
+      "Contact Richard Phong by email, LinkedIn, GitHub, or phone, and download his résumé.",
+    ],
+  ] as const)("uses the approved %s description", (route, description) => {
+    expect(createPageMetadata(route, {}).description).toBe(description);
+  });
+
   it("defaults every unspecified deployment to a non-indexed preview", () => {
     expect(resolveDeployment({})).toEqual({
       kind: "preview",
@@ -16,7 +37,7 @@ describe("deployment metadata", () => {
     const metadata = createPageMetadata("home", {});
     expect(metadata.title).toBe("Richard Phong");
     expect(metadata.description).toBe(
-      "Richard Phong's personal home for software work, creative experiments, and interactive web scenes.",
+      "Software developer Richard Phong shares his experience, projects, and interactive web experiments.",
     );
     expect(metadata.robots).toMatchObject({
       index: false,
@@ -68,7 +89,7 @@ describe("deployment metadata", () => {
     const metadata = createPageMetadata("experience", env);
     expect(metadata.title).toBe("Experience | Richard Phong");
     expect(metadata.description).toBe(
-      "Richard Phong's first-person software experience across NASA, EOG Resources, and Paycom.",
+      "Software engineering experience at NASA, EOG Resources, and Paycom.",
     );
     expect(metadata.robots).toMatchObject({ index: true, follow: true });
     expect(metadata.metadataBase?.toString()).toBe("https://richardphong.dev/");
@@ -80,7 +101,7 @@ describe("deployment metadata", () => {
       siteName: "Richard Phong",
       title: "Experience | Richard Phong",
       description:
-        "Richard Phong's first-person software experience across NASA, EOG Resources, and Paycom.",
+        "Software engineering experience at NASA, EOG Resources, and Paycom.",
     });
     expect(metadata.openGraph?.url?.toString()).toBe(
       "https://richardphong.dev/experience",
@@ -89,7 +110,7 @@ describe("deployment metadata", () => {
       card: "summary_large_image",
       title: "Experience | Richard Phong",
       description:
-        "Richard Phong's first-person software experience across NASA, EOG Resources, and Paycom.",
+        "Software engineering experience at NASA, EOG Resources, and Paycom.",
     });
   });
 
