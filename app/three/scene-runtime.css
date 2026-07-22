@@ -45,7 +45,7 @@
 }
 
 .scene-runtime[data-three-status="loading"] .scene-runtime__poster {
-  visibility: hidden;
+  visibility: visible;
 }
 
 .scene-runtime[data-three-status="ready"] .scene-runtime__poster {
@@ -92,7 +92,8 @@
 }
 
 .scene-section[data-required-live="true"]:has(
-    > .scene-stage--resident .scene-runtime[data-three-status="loading"]
+    > .scene-stage--resident
+      .scene-runtime[data-three-status="loading"][data-poster-ready="true"]
   )
   > .scene-section__poster {
   visibility: hidden;

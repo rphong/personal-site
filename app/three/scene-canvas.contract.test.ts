@@ -7,7 +7,11 @@ describe("persistent Canvas source contract", () => {
 
     expect(source.match(/<Canvas\b/g)).toHaveLength(1);
     expect(source).toContain('frameloop="demand"');
-    expect(source).toContain("dpr={[1, 1.5]}");
+    expect(source).toContain(
+      "props.debugActive === false",
+    );
+    expect(source).toContain("INACTIVE_SCENE_DPR");
+    expect(source).toContain("ACTIVE_SCENE_DPR");
     expect(source).toContain("resize={{ scroll: false }}");
     expect(source).toContain('aria-hidden="true"');
     expect(source).toContain("alpha: true");
