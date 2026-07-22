@@ -79,30 +79,47 @@ export interface SceneTuning {
   readonly model: SceneModelTransform;
 }
 
-export interface SceneDirectionalLight {
+export type SceneAreaEmitterShape = "square" | "disk";
+
+export interface SceneAreaLight {
+  readonly source: {
+    readonly shape: SceneAreaEmitterShape;
+    /** Blender size: square edge length or disk diameter. */
+    readonly size: number;
+    /** Blender emitter power in watts. */
+    readonly power: number;
+  };
   readonly color: string;
   readonly intensity: number;
   readonly position: Vector3Tuple;
-  readonly castShadow: false;
+  readonly target: Vector3Tuple;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface SceneWorldLight {
+  /** Blender-authored world color in linear sRGB. */
+  readonly linearColor: Vector3Tuple;
+  readonly strength: number;
 }
 
 export interface SceneLighting {
   readonly exposure: number;
-  readonly hemisphere: {
-    readonly skyColor: string;
-    readonly groundColor: string;
-    readonly intensity: number;
-  };
-  readonly key: SceneDirectionalLight;
-  readonly fill: SceneDirectionalLight;
-  readonly rim: SceneDirectionalLight;
+  readonly world: SceneWorldLight;
+  readonly key: SceneAreaLight;
 }
 
-export interface SceneContactShadow {
+export interface SceneGroundShadowLobe {
+  readonly profile: "contact" | "cast";
   readonly opacity: number;
   readonly position: Vector3Tuple;
   readonly scale: readonly [width: number, depth: number];
-  readonly textureSize: 64;
+  readonly rotation: number;
+}
+
+export interface SceneGroundShadow {
+  readonly lobes: readonly SceneGroundShadowLobe[];
+  readonly textureSize: 256;
 }
 
 export interface StaticScenePose {
@@ -127,7 +144,7 @@ interface SceneDefinitionBase<Id extends SceneId> {
   readonly desktop: SceneFrame;
   readonly mobile: SceneFrame;
   readonly lighting: SceneLighting;
-  readonly contactShadow?: SceneContactShadow;
+  readonly groundShadow?: SceneGroundShadow;
   readonly rotation: RotationLimits;
   readonly nextSceneId: SceneId | null;
 }

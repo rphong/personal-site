@@ -7,13 +7,28 @@ import {
   LIVE_SCENE_IDS,
   SCENE_DEFINITIONS,
 } from "./scene-registry";
+import type { SceneAreaEmitterShape } from "./types";
 
-function directional(
-  color: string,
-  intensity: number,
+function area(
+  power: number,
+  size: number,
   position: readonly [number, number, number],
+  target: readonly [number, number, number],
+  sourceShape: SceneAreaEmitterShape = "square",
 ) {
-  return { color, intensity, position, castShadow: false };
+  const sourceArea =
+    sourceShape === "disk" ? Math.PI * (size / 2) ** 2 : size ** 2;
+  const proxySide = Math.sqrt(sourceArea);
+
+  return {
+    source: { shape: sourceShape, size, power },
+    color: "#ffffff",
+    intensity: power / (Math.PI * sourceArea),
+    position,
+    target,
+    width: proxySide,
+    height: proxySide,
+  };
 }
 
 describe("scene registry", () => {
@@ -76,30 +91,22 @@ describe("scene registry", () => {
       }
       expect(scene.lighting.exposure).toBeGreaterThan(0);
       expect(scene.lighting.exposure).toBeLessThanOrEqual(1.2);
-      expect(scene.lighting.hemisphere.intensity).toBeGreaterThan(0);
-      expect(scene.lighting.hemisphere.skyColor).toMatch(/^#[A-Fa-f0-9]{6}$/);
-      expect(scene.lighting.hemisphere.groundColor).toMatch(
-        /^#[A-Fa-f0-9]{6}$/,
-      );
-      for (const role of ["key", "fill", "rim"] as const) {
-        const light = scene.lighting[role];
-        expect(light.intensity).toBeGreaterThan(0);
-        expect(light.color).toMatch(/^#[A-Fa-f0-9]{6}$/);
-        expect(light.position).toHaveLength(3);
-        expect(light.castShadow).toBe(false);
+      expect(scene.lighting.world.strength).toBeGreaterThan(0);
+      expect(scene.lighting.world.strength).toBeLessThanOrEqual(1);
+      expect(scene.lighting.world.linearColor).toHaveLength(3);
+      for (const channel of scene.lighting.world.linearColor) {
+        expect(channel).toBeGreaterThanOrEqual(0);
+        expect(channel).toBeLessThanOrEqual(1);
       }
-      expect(
-        scene.lighting.fill.intensity / scene.lighting.key.intensity,
-      ).toBeGreaterThanOrEqual(0.25);
-      expect(
-        scene.lighting.fill.intensity / scene.lighting.key.intensity,
-      ).toBeLessThanOrEqual(0.55);
-      expect(
-        scene.lighting.rim.intensity / scene.lighting.key.intensity,
-      ).toBeGreaterThanOrEqual(0.35);
-      expect(
-        scene.lighting.rim.intensity / scene.lighting.key.intensity,
-      ).toBeLessThanOrEqual(0.5);
+      expect(scene.lighting.key.intensity).toBeGreaterThan(0);
+      expect(scene.lighting.key.color).toMatch(/^#[A-Fa-f0-9]{6}$/);
+      expect(["square", "disk"]).toContain(scene.lighting.key.source.shape);
+      expect(scene.lighting.key.source.size).toBeGreaterThan(0);
+      expect(scene.lighting.key.source.power).toBeGreaterThan(0);
+      expect(scene.lighting.key.position).toHaveLength(3);
+      expect(scene.lighting.key.target).toHaveLength(3);
+      expect(scene.lighting.key.width).toBeGreaterThan(0);
+      expect(scene.lighting.key.height).toBeGreaterThan(0);
       expect(scene.rotation.yaw[0]).toBeGreaterThanOrEqual(-25);
       expect(scene.rotation.yaw[1]).toBeLessThanOrEqual(25);
       expect(scene.rotation.pitch[0]).toBeGreaterThanOrEqual(-8);
@@ -107,99 +114,71 @@ describe("scene registry", () => {
     }
   });
 
-  it("keeps the reviewed per-scene three-point rigs exact", () => {
+  it("keeps the Blender-authored broad area rigs exact", () => {
+    const cranePosition = [0.334772, 7.233446, 1.919428] as const;
+    const craneSize = 26.463022;
     expect(
       Object.fromEntries(
         LIVE_SCENE_IDS.map((id) => [id, getSceneDefinition(id).lighting]),
       ),
     ).toEqual({
       "home-hero": {
-        exposure: 1.11,
-        hemisphere: {
-          skyColor: "#f0f4f2",
-          groundColor: "#69716f",
-          intensity: 0.62,
-        },
-        key: directional("#e8f4f2", 2.65, [-5, 9, 3]),
-        fill: directional("#d9e9ed", 0.72, [5, 3, 4]),
-        rim: directional("#ffffff", 0.98, [2, 7, -6]),
+        exposure: 1,
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
+        key: area(3000, craneSize, cranePosition, [0, 0, 0]),
       },
       "experience-hero": {
-        exposure: 1.09,
-        hemisphere: {
-          skyColor: "#f4f0ee",
-          groundColor: "#949791",
-          intensity: 1.08,
-        },
-        key: directional("#e8f4f2", 1.72, [-5, 9, 3.5]),
-        fill: directional("#d9e9ed", 0.56, [5, 3, 4]),
-        rim: directional("#ffffff", 0.72, [2, 7, -6]),
+        exposure: 1,
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
+        key: area(3000, craneSize, cranePosition, [0, 0, 0]),
       },
       "experience-intro": {
-        exposure: 1.08,
-        hemisphere: {
-          skyColor: "#f0f4f2",
-          groundColor: "#69716f",
-          intensity: 0.6,
-        },
-        key: directional("#e8f4f2", 2.5, [-5, 8.5, 3]),
-        fill: directional("#d9e9ed", 0.68, [5, 2.5, 3.5]),
-        rim: directional("#ffffff", 0.92, [3, 7, -5]),
+        exposure: 1,
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
+        key: area(4000, craneSize, cranePosition, [0, 0, 0]),
       },
       "nasa-rocket": {
         exposure: 1,
-        hemisphere: {
-          skyColor: "#f4f5f3",
-          groundColor: "#686d6c",
-          intensity: 0.4,
-        },
-        key: directional("#fffefa", 1.85, [-5, 9, 3.5]),
-        fill: directional("#dce8eb", 0.48, [5, 3, 4]),
-        rim: directional("#ffffff", 0.68, [2, 8, -6]),
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
+        key: area(
+          5000,
+          20,
+          [-3.736411, 4.354816, 0.722618],
+          [-1.06, 0, 0.5],
+        ),
       },
       "projects-hero": {
-        exposure: 1.1,
-        hemisphere: {
-          skyColor: "#eef2f1",
-          groundColor: "#949a99",
-          intensity: 1.05,
-        },
-        key: directional("#e8f4f2", 1.7, [-5, 9, 3.5]),
-        fill: directional("#d8e9ed", 0.55, [6, 3, 4]),
-        rim: directional("#ffffff", 0.7, [2, 7, -6]),
+        exposure: 1,
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
+        key: area(
+          3750,
+          craneSize,
+          [1.141019, 6.502828, 1.778768],
+          [-1.7, 0, -0.15],
+        ),
       },
       "league-ban": {
-        exposure: 1.08,
-        hemisphere: {
-          skyColor: "#eef3f2",
-          groundColor: "#686f70",
-          intensity: 0.6,
-        },
-        key: directional("#e8f4f2", 2.45, [-5, 8.5, 3.5]),
-        fill: directional("#d8e8ec", 0.66, [6, 3, 4]),
-        rim: directional("#ffffff", 0.9, [3, 7, -6]),
+        exposure: 1,
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
+        key: area(
+          4000,
+          30,
+          [-0.84895, 3.693709, 0.832018],
+          [-0.86, 0, 0.88],
+        ),
       },
       "froggie-adventures": {
         exposure: 1,
-        hemisphere: {
-          skyColor: "#f2f4f3",
-          groundColor: "#646b6c",
-          intensity: 0.4,
+        world: {
+          linearColor: [0.4286905, 0.6583748, 0.7529422],
+          strength: 0.7,
         },
-        key: directional("#e8f4f2", 1.65, [-4, 8.5, 3.5]),
-        fill: directional("#dce8eb", 0.43, [5, 3, 4]),
-        rim: directional("#ffffff", 0.62, [2, 7, -6]),
+        key: area(720, 5, [4.2, 7.2, 5], [-1.85, 0, -2.2], "disk"),
       },
       "contact-hero": {
-        exposure: 1.09,
-        hemisphere: {
-          skyColor: "#f1f3f3",
-          groundColor: "#6c7074",
-          intensity: 0.62,
-        },
-        key: directional("#e8f4f2", 2.65, [-5, 9, 3.5]),
-        fill: directional("#dde8ef", 0.72, [5, 3, 4]),
-        rim: directional("#ffffff", 0.98, [2, 7, -6]),
+        exposure: 1,
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
+        key: area(3000, craneSize, cranePosition, [0, 0, 0]),
       },
     });
   });
@@ -211,72 +190,70 @@ describe("scene registry", () => {
     expect(getSceneDefinition("paycom-poster").requiredLive).toBe(false);
   });
 
-  it("keeps every live scene grounded with its reviewed contact blob", () => {
+  it("authors compact contact and source-aligned cast lobes per composition", () => {
     expect(
       Object.fromEntries(
         LIVE_SCENE_IDS.map((id) => [
           id,
-          getSceneDefinition(id).contactShadow,
+          getSceneDefinition(id).groundShadow.lobes.map(({ profile }) =>
+            profile,
+          ),
         ]),
       ),
     ).toEqual({
-      "home-hero": {
-        opacity: 0.58,
-        position: [-1.05, -0.46, -0.55],
-        scale: [1.9, 0.72],
-        textureSize: 64,
-      },
-      "experience-hero": {
-        opacity: 0.44,
-        position: [0.1, -0.01, 0.45],
-        scale: [3.4, 1.55],
-        textureSize: 64,
-      },
-      "experience-intro": {
-        opacity: 0.5,
-        position: [-0.1, -0.01, 0],
-        scale: [2.3, 0.95],
-        textureSize: 64,
-      },
-      "nasa-rocket": {
-        opacity: 0.46,
-        position: [0, 0.01, -0.95],
-        scale: [4.3, 2.05],
-        textureSize: 64,
-      },
-      "projects-hero": {
-        opacity: 0.4,
-        position: [-0.6, -0.01, 1],
-        scale: [4.3, 1.85],
-        textureSize: 64,
-      },
-      "league-ban": {
-        opacity: 0.52,
-        position: [0.65, -0.01, 0.2],
-        scale: [5.8, 2.7],
-        textureSize: 64,
-      },
-      "froggie-adventures": {
-        opacity: 0.46,
-        position: [0, -0.01, 0],
-        scale: [2.9, 1.3],
-        textureSize: 64,
-      },
-      "contact-hero": {
-        opacity: 0.62,
-        position: [0.1, -0.01, 0.45],
-        scale: [2.6, 1.2],
-        textureSize: 64,
-      },
+      "home-hero": ["contact", "contact", "cast"],
+      "experience-hero": ["contact", "contact", "cast"],
+      "experience-intro": ["contact", "contact", "cast"],
+      "nasa-rocket": ["contact", "cast"],
+      "projects-hero": ["contact", "cast", "contact", "cast"],
+      "league-ban": [
+        "contact",
+        "cast",
+        "contact",
+        "cast",
+        "contact",
+        "cast",
+      ],
+      "froggie-adventures": ["contact", "cast"],
+      "contact-hero": ["contact", "contact", "cast"],
     });
 
     for (const id of LIVE_SCENE_IDS) {
       const scene = getSceneDefinition(id);
-      expect(scene.contactShadow.textureSize).toBe(64);
-      for (const role of ["key", "fill", "rim"] as const) {
-        expect(scene.lighting[role].castShadow).toBe(false);
+      expect(scene.groundShadow.textureSize).toBe(256);
+      for (const lobe of scene.groundShadow.lobes) {
+        expect(lobe.opacity).toBeGreaterThan(0);
+        expect(lobe.opacity).toBeLessThan(0.5);
+        expect(lobe.position).toHaveLength(3);
+        expect(lobe.scale[0]).toBeGreaterThan(0);
+        expect(lobe.scale[1]).toBeGreaterThan(0);
+        expect(Number.isFinite(lobe.rotation)).toBe(true);
+
+        if (lobe.profile !== "cast") continue;
+        const fromKeyX = lobe.position[0] - scene.lighting.key.position[0];
+        const fromKeyZ = lobe.position[2] - scene.lighting.key.position[2];
+        const magnitude = Math.hypot(fromKeyX, fromKeyZ);
+        const castX = Math.cos(lobe.rotation);
+        const castZ = -Math.sin(lobe.rotation);
+        const alignment =
+          castX * (fromKeyX / magnitude) + castZ * (fromKeyZ / magnitude);
+        expect(alignment).toBeGreaterThan(0.999_999);
       }
     }
+  });
+
+  it("maps Froggie's Blender disk to an equal-area rectangular proxy", () => {
+    const key = getSceneDefinition("froggie-adventures").lighting.key;
+    const diskArea = Math.PI * (key.source.size / 2) ** 2;
+
+    expect(key.source).toEqual({ shape: "disk", size: 5, power: 720 });
+    expect(key.width).toBeCloseTo((5 * Math.sqrt(Math.PI)) / 2, 12);
+    expect(key.height).toBe(key.width);
+    expect(key.width * key.height).toBeCloseTo(diskArea, 12);
+    expect(key.intensity * key.width * key.height * Math.PI).toBeCloseTo(
+      key.source.power,
+      12,
+    );
   });
 
   it("samples the reviewed interaction poses once without enabling playback", () => {
