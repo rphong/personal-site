@@ -12,6 +12,7 @@ export const POSTER_RENDER_INPUT_PATHS = [
   "app/scene-capture/page.tsx",
   "app/scene-capture/scene-capture-viewport.tsx",
   "app/three/adjacent-scene-preloader.tsx",
+  "app/three/authored-ground-shadow.tsx",
   "app/three/normalized-scene-root.tsx",
   "app/three/rotation.ts",
   "app/three/runtime-events.ts",
