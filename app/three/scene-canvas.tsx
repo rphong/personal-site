@@ -76,6 +76,9 @@ const WEBGL2_ATTRIBUTES = {
   stencil: false,
 } as const satisfies WebGLContextAttributes;
 
+export const ACTIVE_SCENE_DPR: [number, number] = [1, 1.5];
+export const INACTIVE_SCENE_DPR = 0.75;
+
 export function createWebGL2Renderer(
   defaults: SceneRendererDefaults,
   construct: WebGLRendererConstructor = (parameters) =>
@@ -604,7 +607,11 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
     <Canvas
       aria-hidden="true"
       frameloop="demand"
-      dpr={[1, 1.5]}
+      dpr={
+        props.debugActive === false
+          ? INACTIVE_SCENE_DPR
+          : ACTIVE_SCENE_DPR
+      }
       resize={{ scroll: false }}
       shadows={false}
       camera={{

@@ -67,11 +67,15 @@ function Harness({
   overrides,
   children,
   readySceneIds = LIVE_SCENE_IDS,
+  terminalSceneStatuses = {},
 }: {
   readonly status: ThreeStatus;
   readonly overrides?: Partial<SceneRuntimeContextValue>;
   readonly children?: ReactNode;
   readonly readySceneIds?: readonly (typeof LIVE_SCENE_IDS)[number][];
+  readonly terminalSceneStatuses?: Partial<
+    Record<(typeof LIVE_SCENE_IDS)[number], ThreeStatus>
+  >;
 }) {
   return (
     <SceneRuntimeContext.Provider value={runtimeValue(status, overrides)}>
@@ -83,6 +87,14 @@ function Harness({
             data-scene-runtime-host
             data-scene-for={sceneId}
             data-three-status="ready"
+          />
+        ))}
+        {Object.entries(terminalSceneStatuses).map(([sceneId, sceneStatus]) => (
+          <div
+            key={sceneId}
+            data-scene-runtime-host
+            data-scene-for={sceneId}
+            data-three-status={sceneStatus}
           />
         ))}
       </div>
@@ -200,6 +212,44 @@ describe("InitialDocumentLoadingScreen", () => {
   });
 
   it.each([
+    ["/experience", "experience-hero"],
+    ["/projects", "projects-hero"],
+    ["/contact", "contact-hero"],
+  ] as const)(
+    "warms every resident on a direct %s document load",
+    async (route, activeSceneId) => {
+      pathname = route;
+      vi.mocked(warmLiveSceneModels).mockResolvedValue();
+      const activeScene = getSceneDefinition(activeSceneId);
+      const overrides = {
+        activeScene,
+        activeSceneId,
+        rotation: activeScene.rotation.default,
+      } satisfies Partial<SceneRuntimeContextValue>;
+      const view = render(
+        <Harness status="loading" overrides={overrides} />,
+      );
+      await flushEffects();
+
+      expect(screen.getByRole("status")).toHaveAttribute(
+        "data-loading-frames",
+        "ready",
+      );
+      expect(screen.getByRole("status")).toHaveStyle({
+        "--loading-background": activeScene.background,
+      });
+      expect(warmLiveSceneModels).toHaveBeenCalledOnce();
+
+      view.rerender(<Harness status="ready" overrides={overrides} />);
+      await flushEffects();
+      expect(screen.getByRole("status")).toHaveAttribute(
+        "data-loading-phase",
+        "exiting",
+      );
+    },
+  );
+
+  it.each([
     {
       name: "explicit 3D off",
       status: "disabled" as const,
@@ -267,6 +317,45 @@ describe("InitialDocumentLoadingScreen", () => {
       "exiting",
     );
   });
+
+  it.each(["error", "context-lost"] as const)(
+    "settles immediately onto posters when an inactive resident reaches %s",
+    async (terminalStatus) => {
+      vi.mocked(warmLiveSceneModels).mockResolvedValue();
+      const failedSceneId = LIVE_SCENE_IDS.at(-1)!;
+      const readySceneIds = LIVE_SCENE_IDS.filter(
+        (sceneId) => sceneId !== failedSceneId,
+      );
+      const terminalSceneStatuses = { [failedSceneId]: terminalStatus };
+      const view = render(
+        <Harness
+          status="loading"
+          readySceneIds={readySceneIds}
+          terminalSceneStatuses={terminalSceneStatuses}
+        />,
+      );
+      await flushEffects();
+
+      expect(screen.getByRole("status")).toHaveAttribute(
+        "data-loading-frames",
+        "fallback",
+      );
+      expect(screen.getByText("Preparing scene posters")).toBeInTheDocument();
+
+      view.rerender(
+        <Harness
+          status="ready"
+          readySceneIds={readySceneIds}
+          terminalSceneStatuses={terminalSceneStatuses}
+        />,
+      );
+      await flushEffects();
+      expect(screen.getByRole("status")).toHaveAttribute(
+        "data-loading-phase",
+        "exiting",
+      );
+    },
+  );
 
   it("is fully removed by the twelve-second safety cap", async () => {
     vi.mocked(warmLiveSceneModels).mockReturnValue(new Promise(() => undefined));

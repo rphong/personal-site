@@ -45,6 +45,8 @@ describe("persistent runtime shell", () => {
     expect(host).toContain("poolElement.append(resident.stage)");
     expect(host).toContain("resident.adoptionVersion += 1");
     expect(host).toContain("data-scene-resident-pool");
+    expect(host).toContain("runtime.activeScene.route === pathname");
+    expect(host).not.toContain('currentPathname === "/"');
     expect(host).toContain("const becameActive = active && !wasActive.current");
     expect(host).toMatch(
       /createPortal\([\s\S]*?key=\{key\}[\s\S]*?stage,\s*key,\s*\)/,

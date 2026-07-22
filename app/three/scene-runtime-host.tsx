@@ -402,7 +402,7 @@ export function SceneRuntimeHostView({
 
 export const MAX_CONNECTED_LIVE_SCENES = 8;
 
-const LANDING_WARMUP_SCENES = LIVE_SCENE_IDS.map((sceneId) =>
+const INITIAL_DOCUMENT_WARMUP_SCENES = LIVE_SCENE_IDS.map((sceneId) =>
   getSceneDefinition(sceneId),
 );
 
@@ -505,13 +505,12 @@ function useResidentStages(
     const syncStages = () => {
       const currentPathname = pathnameRef.current;
 
-      // The initial document loader starts only on the landing route. Seed one
-      // permanent resident for every live scene there, so each model performs
-      // a real WebGL render (including shader compilation) behind the loader.
-      // These exact canvases are then adopted by route sections instead of
-      // being created on first navigation.
-      if (currentPathname === "/" && warmAllScenesRef.current) {
-        for (const scene of LANDING_WARMUP_SCENES) {
+      // On any public route's initial document, seed one permanent resident for
+      // every live scene. Each model performs a real WebGL render (including
+      // shader compilation) behind the loader, and these exact canvases are
+      // later adopted by route sections instead of being created on demand.
+      if (warmAllScenesRef.current) {
+        for (const scene of INITIAL_DOCUMENT_WARMUP_SCENES) {
           if (
             !residents.current.some(
               (resident) => resident.scene.id === scene.id,
@@ -738,11 +737,15 @@ export function SceneRuntimeHost() {
   });
   const canvasEnabled =
     runtime.sceneActivationAllowed && preferredStatus === "loading";
+  const warmAllScenes =
+    canvasEnabled &&
+    runtime.activeScene.requiredLive &&
+    runtime.activeScene.route === pathname;
   const stages = useResidentStages(
     pathname,
     runtime.activeSceneId,
     poolElement,
-    canvasEnabled,
+    warmAllScenes,
   );
 
   const activeStatusChanged = useCallback(

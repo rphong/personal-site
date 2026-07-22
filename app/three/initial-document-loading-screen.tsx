@@ -19,17 +19,44 @@ const EXIT_DURATION_MS = 400;
 const FALLBACK_FADE_START_MS = HARD_CAP_MS - EXIT_DURATION_MS;
 
 type LoadingPhase = "pending" | "visible" | "exiting" | "done";
+type FrameWarmupPhase = "loading" | "ready" | "fallback";
 
-export function allLiveSceneFramesReady(root: ParentNode): boolean {
-  const readySceneIds = new Set(
-    Array.from(
-      root.querySelectorAll<HTMLElement>(
-        '[data-scene-runtime-host][data-three-status="ready"]',
-      ),
-      (host) => host.dataset.sceneFor,
-    ),
-  );
-  return LIVE_SCENE_IDS.every((sceneId) => readySceneIds.has(sceneId));
+const TERMINAL_FRAME_STATUSES = new Set([
+  "context-lost",
+  "disabled",
+  "error",
+  "unsupported",
+]);
+
+export function liveSceneFrameWarmupPhase(
+  root: ParentNode,
+): FrameWarmupPhase {
+  const statusesByScene = new Map<string, Set<string>>();
+  for (const host of root.querySelectorAll<HTMLElement>(
+    "[data-scene-runtime-host][data-scene-for][data-three-status]",
+  )) {
+    const sceneId = host.dataset.sceneFor;
+    const status = host.dataset.threeStatus;
+    if (!sceneId || !status) continue;
+    const statuses = statusesByScene.get(sceneId) ?? new Set<string>();
+    statuses.add(status);
+    statusesByScene.set(sceneId, statuses);
+  }
+
+  let usesFallback = false;
+  for (const sceneId of LIVE_SCENE_IDS) {
+    const statuses = statusesByScene.get(sceneId);
+    if (statuses?.has("ready")) continue;
+    if (
+      statuses &&
+      [...statuses].some((status) => TERMINAL_FRAME_STATUSES.has(status))
+    ) {
+      usesFallback = true;
+      continue;
+    }
+    return "loading";
+  }
+  return usesFallback ? "fallback" : "ready";
 }
 
 export function InitialDocumentLoadingScreen() {
@@ -41,16 +68,17 @@ export function InitialDocumentLoadingScreen() {
   const [phase, setPhase] = useState<LoadingPhase>("pending");
   const [fontsReady, setFontsReady] = useState(false);
   const [modelsReady, setModelsReady] = useState(false);
-  const [framesReady, setFramesReady] = useState(false);
+  const [frameWarmupPhase, setFrameWarmupPhase] =
+    useState<FrameWarmupPhase>("loading");
 
-  const isInitialLandingDocument = initialPathname === "/";
+  const isInitialLiveDocument =
+    runtime.activeScene.requiredLive &&
+    runtime.activeScene.route === initialPathname;
   const isInitialDocumentRoute = pathname === initialPathname;
-  const canLoadLandingScene =
-    isInitialLandingDocument &&
+  const canLoadInitialScene =
+    isInitialLiveDocument &&
     isInitialDocumentRoute &&
     runtime.sceneActivationAllowed &&
-    runtime.activeScene.id === "home-hero" &&
-    runtime.activeScene.requiredLive &&
     runtime.threeInitialized &&
     runtime.threeEnabled &&
     runtime.threeSupported;
@@ -69,9 +97,9 @@ export function InitialDocumentLoadingScreen() {
 
   useEffect(() => {
     if (
-      isInitialLandingDocument &&
+      isInitialLiveDocument &&
       isInitialDocumentRoute &&
-      (!runtime.threeInitialized || canLoadLandingScene) &&
+      (!runtime.threeInitialized || canLoadInitialScene) &&
       runtime.status !== "disabled" &&
       runtime.status !== "unsupported" &&
       runtime.status !== "error" &&
@@ -88,10 +116,10 @@ export function InitialDocumentLoadingScreen() {
       current = false;
     };
   }, [
-    canLoadLandingScene,
+    canLoadInitialScene,
     finishImmediately,
     isInitialDocumentRoute,
-    isInitialLandingDocument,
+    isInitialLiveDocument,
     runtime.status,
     runtime.threeInitialized,
   ]);
@@ -99,7 +127,7 @@ export function InitialDocumentLoadingScreen() {
   useEffect(() => {
     if (
       started.current ||
-      !canLoadLandingScene ||
+      !canLoadInitialScene ||
       runtime.status !== "loading"
     ) {
       return;
@@ -116,16 +144,18 @@ export function InitialDocumentLoadingScreen() {
       setModelsReady(true);
     });
 
-  }, [canLoadLandingScene, runtime.status]);
+  }, [canLoadInitialScene, runtime.status]);
 
   useEffect(() => {
-    if (!canLoadLandingScene || phase !== "visible") return;
+    if (!canLoadInitialScene || phase !== "visible") return;
 
     let current = true;
     const checkFrames = () => {
       if (!current) return;
-      const ready = allLiveSceneFramesReady(document);
-      setFramesReady((previous) => (previous === ready ? previous : ready));
+      const nextPhase = liveSceneFrameWarmupPhase(document);
+      setFrameWarmupPhase((previous) =>
+        previous === nextPhase ? previous : nextPhase,
+      );
     };
 
     const observer = new MutationObserver(checkFrames);
@@ -141,7 +171,7 @@ export function InitialDocumentLoadingScreen() {
       current = false;
       observer.disconnect();
     };
-  }, [canLoadLandingScene, phase]);
+  }, [canLoadInitialScene, phase]);
 
   useEffect(() => {
     if (phase !== "visible") return;
@@ -167,7 +197,7 @@ export function InitialDocumentLoadingScreen() {
       phase !== "visible" ||
       !fontsReady ||
       !modelsReady ||
-      !framesReady ||
+      frameWarmupPhase === "loading" ||
       runtime.status !== "ready"
     ) {
       return;
@@ -183,7 +213,7 @@ export function InitialDocumentLoadingScreen() {
   }, [
     beginExit,
     fontsReady,
-    framesReady,
+    frameWarmupPhase,
     modelsReady,
     phase,
     runtime.status,
@@ -238,9 +268,10 @@ export function InitialDocumentLoadingScreen() {
   const progressLabel = useMemo(() => {
     if (!fontsReady) return "Preparing type";
     if (!modelsReady) return "Preparing scenes";
-    if (!framesReady) return "Rendering scenes";
+    if (frameWarmupPhase === "loading") return "Rendering scenes";
+    if (frameWarmupPhase === "fallback") return "Preparing scene posters";
     return "Preparing first frame";
-  }, [fontsReady, framesReady, modelsReady]);
+  }, [fontsReady, frameWarmupPhase, modelsReady]);
 
   if (phase === "pending" || phase === "done") return null;
 
@@ -252,7 +283,7 @@ export function InitialDocumentLoadingScreen() {
       ref={screenElement}
       data-initial-loading-screen
       data-loading-fonts={fontsReady ? "ready" : "loading"}
-      data-loading-frames={framesReady ? "ready" : "loading"}
+      data-loading-frames={frameWarmupPhase}
       data-loading-models={modelsReady ? "ready" : "loading"}
       data-loading-phase={phase}
       data-loading-scene={runtime.status}
