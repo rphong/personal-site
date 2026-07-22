@@ -79,30 +79,29 @@ export interface SceneTuning {
   readonly model: SceneModelTransform;
 }
 
-export interface SceneDirectionalLight {
+export interface SceneAreaLight {
   readonly color: string;
   readonly intensity: number;
   readonly position: Vector3Tuple;
-  readonly castShadow: false;
+  readonly target: Vector3Tuple;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface SceneLighting {
   readonly exposure: number;
-  readonly hemisphere: {
-    readonly skyColor: string;
-    readonly groundColor: string;
+  readonly ambient: {
+    readonly color: string;
     readonly intensity: number;
   };
-  readonly key: SceneDirectionalLight;
-  readonly fill: SceneDirectionalLight;
-  readonly rim: SceneDirectionalLight;
+  readonly key: SceneAreaLight;
 }
 
 export interface SceneContactShadow {
   readonly opacity: number;
   readonly position: Vector3Tuple;
   readonly scale: readonly [width: number, depth: number];
-  readonly textureSize: 64;
+  readonly textureSize: 256;
 }
 
 export interface StaticScenePose {

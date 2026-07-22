@@ -1,10 +1,10 @@
 import ReactThreeTestRenderer from "@react-three/test-renderer";
 import {
   ACESFilmicToneMapping,
-  DirectionalLight,
+  AmbientLight,
   Group,
-  HemisphereLight,
   PerspectiveCamera,
+  RectAreaLight,
   Scene,
   SRGBColorSpace,
   Vector3,
@@ -121,43 +121,39 @@ describe("SceneCanvasContents", () => {
     await renderer.unmount();
   });
 
-  it("renders the exact shadowless three-point rig and applies scene exposure", async () => {
+  it("renders the aimed source area rig and applies scene exposure", async () => {
     const initial = ports();
     const { renderer, gl } = await renderContents(initial);
-    const hemispheres = renderer.scene.findAll(
-      (node) => node.instance.type === "HemisphereLight",
+    const ambients = renderer.scene.findAll(
+      (node) => node.instance.type === "AmbientLight",
     );
-    const directionals = renderer.scene.findAll(
-      (node) => node.instance.type === "DirectionalLight",
-    );
-
-    expect(hemispheres).toHaveLength(1);
-    const hemisphere = hemispheres[0].instance as HemisphereLight;
-    expect(`#${hemisphere.color.getHexString()}`).toBe(
-      initial.scene.lighting.hemisphere.skyColor,
-    );
-    expect(`#${hemisphere.groundColor.getHexString()}`).toBe(
-      initial.scene.lighting.hemisphere.groundColor,
-    );
-    expect(hemisphere.intensity).toBe(
-      initial.scene.lighting.hemisphere.intensity,
+    const areas = renderer.scene.findAll(
+      (node) => node.instance.type === "RectAreaLight",
     );
 
-    expect(directionals).toHaveLength(3);
-    for (const [node, definition] of directionals.map((node, index) => [
-      node,
-      [
-        initial.scene.lighting.key,
-        initial.scene.lighting.fill,
-        initial.scene.lighting.rim,
-      ][index],
-    ] as const)) {
-      const light = node.instance as DirectionalLight;
-      expect(`#${light.color.getHexString()}`).toBe(definition.color);
-      expect(light.intensity).toBe(definition.intensity);
-      expect(light.position.toArray()).toEqual([...definition.position]);
-      expect(light.castShadow).toBe(false);
-    }
+    expect(ambients).toHaveLength(1);
+    const ambient = ambients[0].instance as AmbientLight;
+    expect(`#${ambient.color.getHexString()}`).toBe(
+      initial.scene.lighting.ambient.color,
+    );
+    expect(ambient.intensity).toBe(initial.scene.lighting.ambient.intensity);
+
+    expect(areas).toHaveLength(1);
+    const light = areas[0].instance as RectAreaLight;
+    const definition = initial.scene.lighting.key;
+    expect(`#${light.color.getHexString()}`).toBe(definition.color);
+    expect(light.intensity).toBe(definition.intensity);
+    expect(light.position.toArray()).toEqual([...definition.position]);
+    expect(light.width).toBe(definition.width);
+    expect(light.height).toBe(definition.height);
+    expect(light.castShadow).toBe(false);
+    const expectedDirection = new Vector3(...definition.target)
+      .sub(new Vector3(...definition.position))
+      .normalize();
+    const emissionDirection = light.getWorldDirection(new Vector3()).negate();
+    expect(emissionDirection.distanceTo(expectedDirection)).toBeLessThan(
+      0.000_001,
+    );
     expect(gl.outputColorSpace).toBe(SRGBColorSpace);
     expect(gl.toneMapping).toBe(ACESFilmicToneMapping);
     expect(gl.toneMappingExposure).toBe(initial.scene.lighting.exposure);

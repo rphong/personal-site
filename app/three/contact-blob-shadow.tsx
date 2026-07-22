@@ -11,7 +11,7 @@ import {
 } from "three";
 import type { SceneContactShadow } from "./types";
 
-export const CONTACT_SHADOW_TEXTURE_SIZE = 64 as const;
+export const CONTACT_SHADOW_TEXTURE_SIZE = 256 as const;
 
 export function createContactShadowTexture(
   size: typeof CONTACT_SHADOW_TEXTURE_SIZE = CONTACT_SHADOW_TEXTURE_SIZE,
@@ -22,8 +22,10 @@ export function createContactShadowTexture(
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
       const distance = Math.hypot((x - center) / center, (y - center) / center);
-      const falloff = Math.max(0, 1 - distance);
-      const alpha = Math.round(255 * falloff * falloff * (3 - 2 * falloff));
+      const falloff = Math.max(0, 1 - distance * distance);
+      // A broad gaussian-like shoulder preserves a dark contact core while
+      // fading without the visible concentric bands of the former 64px blob.
+      const alpha = Math.round(255 * falloff * falloff);
       const offset = (y * size + x) * 4;
       pixels[offset] = 0;
       pixels[offset + 1] = 0;
@@ -69,7 +71,7 @@ export function ContactBlobShadow({
       castShadow={false}
       receiveShadow={false}
     >
-      <circleGeometry args={[0.5, 32]} />
+      <circleGeometry args={[0.5, 64]} />
       <meshBasicMaterial
         color="#000000"
         depthWrite={false}

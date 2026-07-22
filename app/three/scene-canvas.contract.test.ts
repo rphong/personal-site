@@ -13,9 +13,12 @@ describe("persistent Canvas source contract", () => {
     expect(source).toContain("alpha: true");
     expect(source).toContain('powerPreference: "high-performance"');
     expect(source).toContain("shadows={false}");
-    expect(source.match(/<hemisphereLight\b/g)).toHaveLength(1);
-    expect(source.match(/<directionalLight\b/g)).toHaveLength(3);
-    expect(source).not.toContain("<ambientLight");
+    expect(source.match(/<ambientLight\b/g)).toHaveLength(1);
+    expect(source.match(/<rectAreaLight\b/g)).toHaveLength(1);
+    expect(source).not.toContain("<directionalLight");
+    expect(source).not.toContain("<hemisphereLight");
+    expect(source).toContain("RectAreaLightUniformsLib.init()");
+    expect(source).toContain("light.current?.lookAt(...scene.lighting.key.target)");
     expect(source).toContain("ACESFilmicToneMapping");
     expect(source).toContain("renderer.toneMappingExposure = scene.lighting.exposure");
     expect(source).toContain("gl.render(scene, activeCamera)");

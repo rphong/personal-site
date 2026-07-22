@@ -9,7 +9,7 @@ import {
 import { getSceneDefinition } from "./scene-registry";
 
 describe("ContactBlobShadow", () => {
-  it("builds one bounded low-resolution alpha texture", () => {
+  it("builds one bounded high-resolution soft alpha texture", () => {
     const texture = createContactShadowTexture();
     expect(texture).toBeInstanceOf(DataTexture);
     expect(texture.image.width).toBe(CONTACT_SHADOW_TEXTURE_SIZE);
@@ -23,7 +23,7 @@ describe("ContactBlobShadow", () => {
     texture.dispose();
   });
 
-  it("reuses the 64px blob design for newly grounded scenes", async () => {
+  it("reuses the 256px blob design for newly grounded scenes", async () => {
     const definition = getSceneDefinition("nasa-rocket").contactShadow;
     const renderer = await ReactThreeTestRenderer.create(
       <ContactBlobShadow definition={definition} />,

@@ -2,8 +2,8 @@ import type {
   LiveSceneId,
   PercentInsets,
   RotationLimits,
+  SceneAreaLight,
   SceneDefinition,
-  SceneDirectionalLight,
   SceneFrame,
   SceneId,
   SceneLighting,
@@ -82,121 +82,93 @@ function frame(
   return { cameraPosition, cameraTarget, fov, rotationArea };
 }
 
-function directionalLight(
-  color: string,
-  intensity: number,
+function areaLight(
+  power: number,
+  size: number,
   position: Vector3Tuple,
-): SceneDirectionalLight {
-  return { color, intensity, position, castShadow: false };
+  target: Vector3Tuple,
+): SceneAreaLight {
+  return {
+    color: "#ffffff",
+    // Blender area lights store total power. Three.js stores luminance, and
+    // derives power as intensity * width * height * PI.
+    intensity: power / (Math.PI * size * size),
+    position,
+    target,
+    width: size,
+    height: size,
+  };
 }
 
-const HOME_LIGHTING: SceneLighting = {
-  exposure: 1.11,
-  hemisphere: {
-    skyColor: "#f0f4f2",
-    groundColor: "#69716f",
-    intensity: 0.62,
-  },
-  key: directionalLight("#e8f4f2", 2.65, [-5, 9, 3]),
-  fill: directionalLight("#d9e9ed", 0.72, [5, 3, 4]),
-  rim: directionalLight("#ffffff", 0.98, [2, 7, -6]),
-};
+function sourceLighting(
+  power: number,
+  size: number,
+  position: Vector3Tuple,
+  target: Vector3Tuple,
+  ambientIntensity = 0.16,
+): SceneLighting {
+  return {
+    exposure: 1,
+    ambient: { color: "#ffffff", intensity: ambientIntensity },
+    key: areaLight(power, size, position, target),
+  };
+}
 
-const EXPERIENCE_HERO_LIGHTING: SceneLighting = {
-  exposure: 1.09,
-  hemisphere: {
-    skyColor: "#f4f0ee",
-    groundColor: "#949791",
-    intensity: 1.08,
-  },
-  key: directionalLight("#e8f4f2", 1.72, [-5, 9, 3.5]),
-  fill: directionalLight("#d9e9ed", 0.56, [5, 3, 4]),
-  rim: directionalLight("#ffffff", 0.72, [2, 7, -6]),
-};
+// These rigs mirror the single broad AREA lights kept in the Blender source
+// scenes (Blender Z-up positions converted to glTF/Three.js Y-up). The dim
+// ambient term approximates the source world's 0.05 background strength.
+const CRANE_LIGHT_POSITION = [
+  0.334772,
+  7.233446,
+  1.919428,
+] as const satisfies Vector3Tuple;
+const CRANE_LIGHT_SIZE = 26.463022;
 
-const EXPERIENCE_INTRO_LIGHTING: SceneLighting = {
-  exposure: 1.08,
-  hemisphere: {
-    skyColor: "#f0f4f2",
-    groundColor: "#69716f",
-    intensity: 0.6,
-  },
-  key: directionalLight("#e8f4f2", 2.5, [-5, 8.5, 3]),
-  fill: directionalLight("#d9e9ed", 0.68, [5, 2.5, 3.5]),
-  rim: directionalLight("#ffffff", 0.92, [3, 7, -5]),
-};
-
-const NASA_ROCKET_LIGHTING: SceneLighting = {
-  exposure: 1,
-  hemisphere: {
-    skyColor: "#f4f5f3",
-    groundColor: "#686d6c",
-    intensity: 0.4,
-  },
-  key: directionalLight("#fffefa", 1.85, [-5, 9, 3.5]),
-  fill: directionalLight("#dce8eb", 0.48, [5, 3, 4]),
-  rim: directionalLight("#ffffff", 0.68, [2, 8, -6]),
-};
-
-const PINK_POSTER_LIGHTING: SceneLighting = {
-  exposure: 1,
-  hemisphere: {
-    skyColor: "#f2d6dc",
-    groundColor: "#f0d0c2",
-    intensity: 0.95,
-  },
-  key: directionalLight("#ffe2cf", 1.75, [-4.5, 7, 5]),
-  fill: directionalLight("#d5dff0", 0.9, [5, 3, 4]),
-  rim: directionalLight("#fff0dc", 1.1, [2, 7, -6]),
-};
-
-const PROJECTS_HERO_LIGHTING: SceneLighting = {
-  exposure: 1.1,
-  hemisphere: {
-    skyColor: "#eef2f1",
-    groundColor: "#949a99",
-    intensity: 1.05,
-  },
-  key: directionalLight("#e8f4f2", 1.7, [-5, 9, 3.5]),
-  fill: directionalLight("#d8e9ed", 0.55, [6, 3, 4]),
-  rim: directionalLight("#ffffff", 0.7, [2, 7, -6]),
-};
-
-const LEAGUE_BAN_LIGHTING: SceneLighting = {
-  exposure: 1.08,
-  hemisphere: {
-    skyColor: "#eef3f2",
-    groundColor: "#686f70",
-    intensity: 0.6,
-  },
-  key: directionalLight("#e8f4f2", 2.45, [-5, 8.5, 3.5]),
-  fill: directionalLight("#d8e8ec", 0.66, [6, 3, 4]),
-  rim: directionalLight("#ffffff", 0.9, [3, 7, -6]),
-};
-
-const FROGGIE_LIGHTING: SceneLighting = {
-  exposure: 1,
-  hemisphere: {
-    skyColor: "#f2f4f3",
-    groundColor: "#646b6c",
-    intensity: 0.4,
-  },
-  key: directionalLight("#e8f4f2", 1.65, [-4, 8.5, 3.5]),
-  fill: directionalLight("#dce8eb", 0.43, [5, 3, 4]),
-  rim: directionalLight("#ffffff", 0.62, [2, 7, -6]),
-};
-
-const CONTACT_LIGHTING: SceneLighting = {
-  exposure: 1.09,
-  hemisphere: {
-    skyColor: "#f1f3f3",
-    groundColor: "#6c7074",
-    intensity: 0.62,
-  },
-  key: directionalLight("#e8f4f2", 2.65, [-5, 9, 3.5]),
-  fill: directionalLight("#dde8ef", 0.72, [5, 3, 4]),
-  rim: directionalLight("#ffffff", 0.98, [2, 7, -6]),
-};
+const HOME_LIGHTING = sourceLighting(
+  3000,
+  CRANE_LIGHT_SIZE,
+  CRANE_LIGHT_POSITION,
+  [0, 0, 0],
+);
+const EXPERIENCE_HERO_LIGHTING = sourceLighting(
+  3000,
+  CRANE_LIGHT_SIZE,
+  CRANE_LIGHT_POSITION,
+  [0, 0, 0],
+);
+const EXPERIENCE_INTRO_LIGHTING = sourceLighting(
+  4000,
+  CRANE_LIGHT_SIZE,
+  CRANE_LIGHT_POSITION,
+  [0, 0, 0],
+);
+const NASA_ROCKET_LIGHTING = sourceLighting(
+  5000,
+  20,
+  [-3.736411, 4.354816, 0.722618],
+  [-1.06, 0, 0.5],
+);
+const PINK_POSTER_LIGHTING = HOME_LIGHTING;
+const PROJECTS_HERO_LIGHTING = sourceLighting(
+  3750,
+  CRANE_LIGHT_SIZE,
+  [1.141019, 6.502828, 1.778768],
+  [-1.7, 0, -0.15],
+);
+const LEAGUE_BAN_LIGHTING = sourceLighting(
+  4000,
+  30,
+  [-0.84895, 3.693709, 0.832018],
+  [-0.86, 0, 0.88],
+);
+const FROGGIE_LIGHTING = sourceLighting(
+  720,
+  5,
+  [4.2, 7.2, 5],
+  [-1.85, 0, -2.2],
+  0.11,
+);
+const CONTACT_LIGHTING = EXPERIENCE_HERO_LIGHTING;
 
 export const SCENE_DEFINITIONS = {
   "home-hero": {
@@ -219,7 +191,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.58,
       position: [-1.05, -0.46, -0.55],
       scale: [1.9, 0.72],
-      textureSize: 64,
+      textureSize: 256,
     },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "experience-hero",
@@ -244,7 +216,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.44,
       position: [0.1, -0.01, 0.45],
       scale: [3.4, 1.55],
-      textureSize: 64,
+      textureSize: 256,
     },
     staticPose: {
       clips: [
@@ -286,7 +258,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.5,
       position: [-0.1, -0.01, 0],
       scale: [2.3, 0.95],
-      textureSize: 64,
+      textureSize: 256,
     },
     staticPose: {
       clips: [
@@ -327,7 +299,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.46,
       position: [0, 0.01, -0.95],
       scale: [4.3, 2.05],
-      textureSize: 64,
+      textureSize: 256,
     },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "eog-poster",
@@ -393,7 +365,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.4,
       position: [-0.6, -0.01, 1],
       scale: [4.3, 1.85],
-      textureSize: 64,
+      textureSize: 256,
     },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "league-ban",
@@ -428,7 +400,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.52,
       position: [0.65, -0.01, 0.2],
       scale: [5.8, 2.7],
-      textureSize: 64,
+      textureSize: 256,
     },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "froggie-adventures",
@@ -463,7 +435,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.46,
       position: [0, -0.01, 0],
       scale: [2.9, 1.3],
-      textureSize: 64,
+      textureSize: 256,
     },
     rotation: DEFAULT_ROTATION,
     nextSceneId: "contact-hero",
@@ -488,7 +460,7 @@ export const SCENE_DEFINITIONS = {
       opacity: 0.62,
       position: [0.1, -0.01, 0.45],
       scale: [2.6, 1.2],
-      textureSize: 64,
+      textureSize: 256,
     },
     staticPose: {
       clips: [

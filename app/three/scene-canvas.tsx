@@ -17,12 +17,14 @@ import {
 import {
   ACESFilmicToneMapping,
   PerspectiveCamera,
+  type RectAreaLight,
   SRGBColorSpace,
   WebGLRenderer,
   type Camera,
   type Scene,
   type WebGLRendererParameters,
 } from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { ContactBlobShadow } from "./contact-blob-shadow";
 import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneErrorBoundary } from "./scene-error-boundary";
@@ -37,6 +39,8 @@ import type {
   SceneFailureReason,
   SceneRotation,
 } from "./types";
+
+RectAreaLightUniformsLib.init();
 
 export interface SceneCanvasPortProps {
   readonly scene: SceneDefinition;
@@ -218,32 +222,38 @@ function SceneRendererSettings({
   return null;
 }
 
+function SceneAreaKey({ scene }: { readonly scene: SceneDefinition }) {
+  const light = useRef<RectAreaLight>(null);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useLayoutEffect(() => {
+    light.current?.lookAt(...scene.lighting.key.target);
+    light.current?.updateMatrixWorld();
+    invalidate();
+  }, [invalidate, scene.lighting.key]);
+
+  return (
+    <rectAreaLight
+      ref={light}
+      name="source-area-key"
+      color={scene.lighting.key.color}
+      intensity={scene.lighting.key.intensity}
+      position={scene.lighting.key.position}
+      width={scene.lighting.key.width}
+      height={scene.lighting.key.height}
+    />
+  );
+}
+
 function SceneLights({ scene }: { readonly scene: SceneDefinition }) {
   return (
     <>
-      <hemisphereLight
-        color={scene.lighting.hemisphere.skyColor}
-        groundColor={scene.lighting.hemisphere.groundColor}
-        intensity={scene.lighting.hemisphere.intensity}
+      <ambientLight
+        name="source-world-fill"
+        color={scene.lighting.ambient.color}
+        intensity={scene.lighting.ambient.intensity}
       />
-      <directionalLight
-        color={scene.lighting.key.color}
-        intensity={scene.lighting.key.intensity}
-        position={scene.lighting.key.position}
-        castShadow={scene.lighting.key.castShadow}
-      />
-      <directionalLight
-        color={scene.lighting.fill.color}
-        intensity={scene.lighting.fill.intensity}
-        position={scene.lighting.fill.position}
-        castShadow={scene.lighting.fill.castShadow}
-      />
-      <directionalLight
-        color={scene.lighting.rim.color}
-        intensity={scene.lighting.rim.intensity}
-        position={scene.lighting.rim.position}
-        castShadow={scene.lighting.rim.castShadow}
-      />
+      <SceneAreaKey scene={scene} />
     </>
   );
 }
