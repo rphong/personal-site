@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { shouldUseNavigationIsland } from "../components/site-nav";
 import { SiteShell } from "../components/site-shell";
 
 const mocks = vi.hoisted(() => ({
@@ -54,10 +55,18 @@ describe("site shell", () => {
     );
   });
 
-  it("turns the navigation into an island after the hero clears the header", () => {
-    let heroBottom = 900;
+  it("turns the navigation into an island at the closest reachable boundary", () => {
+    let scrollY = 0;
     const nativeGetBoundingClientRect =
       HTMLElement.prototype.getBoundingClientRect;
+
+    vi.spyOn(window, "scrollY", "get").mockImplementation(() => scrollY);
+    vi.spyOn(document.documentElement, "clientHeight", "get").mockReturnValue(
+      900,
+    );
+    vi.spyOn(document.documentElement, "scrollHeight", "get").mockReturnValue(
+      1615,
+    );
 
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
       function getBoundingClientRect(this: HTMLElement) {
@@ -76,6 +85,7 @@ describe("site shell", () => {
         }
 
         if (this.classList.contains("page-hero")) {
+          const heroBottom = 900 - scrollY;
           return {
             bottom: heroBottom,
             height: 824,
@@ -103,16 +113,35 @@ describe("site shell", () => {
     expect(header).toHaveAttribute("data-island", "false");
 
     act(() => {
-      heroBottom = 70;
+      scrollY = 715;
       window.dispatchEvent(new Event("resize"));
     });
     expect(header).toHaveAttribute("data-island", "true");
 
     act(() => {
-      heroBottom = 80;
+      scrollY = 690;
       window.dispatchEvent(new Event("resize"));
     });
     expect(header).toHaveAttribute("data-island", "false");
+  });
+
+  it("preserves the ideal hero/header crossing on longer pages", () => {
+    expect(
+      shouldUseNavigationIsland({
+        currentScrollY: 823,
+        headerBottom: 76,
+        heroBottom: 77,
+        maximumScrollY: 1600,
+      }),
+    ).toBe(true);
+    expect(
+      shouldUseNavigationIsland({
+        currentScrollY: 800,
+        headerBottom: 76,
+        heroBottom: 100,
+        maximumScrollY: 1600,
+      }),
+    ).toBe(false);
   });
 
   it("renders the operational privacy disclosure", () => {

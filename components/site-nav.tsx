@@ -14,6 +14,38 @@ type SiteNavProps = {
   activeRoute: RouteKey;
 };
 
+type HeaderModeGeometry = {
+  currentScrollY: number;
+  headerBottom: number;
+  heroBottom: number;
+  maximumScrollY: number;
+};
+
+const SCROLL_BOUNDARY_TOLERANCE_PX = 1;
+
+export function shouldUseNavigationIsland({
+  currentScrollY,
+  headerBottom,
+  heroBottom,
+  maximumScrollY,
+}: HeaderModeGeometry): boolean {
+  if (maximumScrollY <= 0) return false;
+
+  const idealActivationScrollY = Math.max(
+    0,
+    currentScrollY + heroBottom - headerBottom,
+  );
+  const reachableActivationScrollY = Math.min(
+    idealActivationScrollY,
+    maximumScrollY,
+  );
+
+  return (
+    currentScrollY >=
+    reachableActivationScrollY - SCROLL_BOUNDARY_TOLERANCE_PX
+  );
+}
+
 export function SiteNav({ activeRoute }: SiteNavProps) {
   const prefersReducedMotion = useReducedMotion();
   const headerRef = useRef<HTMLElement>(null);
@@ -39,7 +71,21 @@ export function SiteNav({ activeRoute }: SiteNavProps) {
       return;
     }
 
-    setIsIsland(heroBounds.bottom <= headerBounds.bottom);
+    const root = document.documentElement;
+    const documentHeight = Math.max(
+      root.scrollHeight,
+      document.body?.scrollHeight ?? 0,
+    );
+    const viewportHeight = root.clientHeight || window.innerHeight;
+
+    setIsIsland(
+      shouldUseNavigationIsland({
+        currentScrollY: window.scrollY,
+        headerBottom: headerBounds.bottom,
+        heroBottom: heroBounds.bottom,
+        maximumScrollY: Math.max(0, documentHeight - viewportHeight),
+      }),
+    );
   }, []);
 
   useMotionValueEvent(scrollY, "change", updateHeaderMode);
