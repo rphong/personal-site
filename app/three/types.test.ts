@@ -28,11 +28,16 @@ describe("THREE_STATUSES", () => {
       `/models/${string}.glb`
     >();
     expectTypeOf<PosterOnlySceneDefinition["modelUrl"]>().toEqualTypeOf<null>();
-    expectTypeOf<SceneLighting["key"]["castShadow"]>().toEqualTypeOf<false>();
-    expectTypeOf<SceneLighting["fill"]["castShadow"]>().toEqualTypeOf<false>();
-    expectTypeOf<SceneLighting["rim"]["castShadow"]>().toEqualTypeOf<false>();
-    expectTypeOf<
-      SceneLighting["hemisphere"]["groundColor"]
-    >().toEqualTypeOf<string>();
+    expectTypeOf<SceneLighting["key"]["target"]>().toEqualTypeOf<
+      readonly [number, number, number]
+    >();
+    expectTypeOf<SceneLighting["key"]["width"]>().toEqualTypeOf<number>();
+    expectTypeOf<SceneLighting["key"]["source"]["shape"]>().toEqualTypeOf<
+      "square" | "disk"
+    >();
+    expectTypeOf<SceneLighting["world"]["linearColor"]>().toEqualTypeOf<
+      readonly [number, number, number]
+    >();
+    expectTypeOf<SceneLighting["world"]["strength"]>().toEqualTypeOf<number>();
   });
 });

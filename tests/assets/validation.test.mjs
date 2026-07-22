@@ -589,6 +589,8 @@ test("full validation generates stable relative-only runtime metadata", async ()
       entry.url.startsWith("/models/"),
     ),
   );
+  await writeFile(outputPath, serialized.replaceAll("\n", "\r\n"));
+  await validateAll({ outputPath, requirePosters: false, root });
   await writeFile(
     outputPath,
     serialized.replace('"schemaVersion": 1', '"schemaVersion": 999'),

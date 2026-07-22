@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import sharp from "sharp";
 import {
   buildPosterManifest,
@@ -9,7 +9,6 @@ import {
   posterRenderInputsSha256,
   sha256Buffer,
 } from "../../scripts/posters/lib.mjs";
-import { makeFlatBackgroundTransparent } from "../../scripts/posters/foreground.mjs";
 import { posterOperationRoot } from "../../scripts/posters/pipeline.mjs";
 
 type VariantName = "desktop" | "mobile";
@@ -51,6 +50,7 @@ interface PosterManifest {
 interface ReviewRecord extends PosterRecord {
   readonly backgroundMaxDelta: number;
   readonly changedChannelRatio: number;
+  readonly cornerMaxAlpha: number;
   readonly foregroundBounds: ForegroundBounds;
   readonly foregroundRatio: number;
 }
@@ -92,6 +92,7 @@ function inspectPixels(
 ) {
   let foreground = 0;
   let backgroundMaxDelta = 0;
+  let cornerMaxAlpha = 0;
   let minimumAlpha = 255;
   let minimumForegroundX = width;
   let minimumForegroundY = height;
@@ -119,13 +120,17 @@ function inspectPixels(
       }
       minimumAlpha = Math.min(minimumAlpha, pixels[offset + 3]);
       if (y < cornerSize && cornerXs.some((start) => x >= start && x < start + cornerSize)) {
-        backgroundMaxDelta = Math.max(backgroundMaxDelta, delta);
+        cornerMaxAlpha = Math.max(cornerMaxAlpha, pixels[offset + 3]);
+        if (pixels[offset + 3] > 0) {
+          backgroundMaxDelta = Math.max(backgroundMaxDelta, delta);
+        }
       }
     }
   }
 
   return {
     backgroundMaxDelta,
+    cornerMaxAlpha,
     foregroundBounds: {
       bottom: height - 1 - maximumForegroundY,
       left: minimumForegroundX,
@@ -135,6 +140,37 @@ function inspectPixels(
     foregroundRatio: foreground / (width * height),
     minimumAlpha,
   };
+}
+
+async function prepareTransparentPageCapture(page: Page) {
+  const backgrounds = await page.evaluate(() => {
+    const elements = [
+      document.documentElement,
+      document.body,
+      document.querySelector<HTMLElement>(".site-shell"),
+      document.querySelector<HTMLElement>(".scene-capture-root"),
+      document.querySelector<HTMLElement>(".scene-runtime"),
+    ].filter((element): element is HTMLElement => element instanceof HTMLElement);
+
+    for (const element of elements) {
+      element.style.setProperty("--route-background", "transparent");
+      element.style.setProperty("--scene-background", "transparent");
+      element.style.setProperty("background-color", "transparent", "important");
+      element.style.setProperty("background-image", "none", "important");
+    }
+
+    return elements.map((element) => ({
+      inline: element.getAttribute("style"),
+      name: `${element.tagName.toLowerCase()}.${element.className}`,
+    }));
+  });
+
+  expect(backgrounds).toHaveLength(5);
+  expect(
+    backgrounds.every(({ inline }) =>
+      inline?.includes("background-color: transparent !important"),
+    ),
+  ).toBe(true);
 }
 
 async function writeDiff(
@@ -376,6 +412,9 @@ test("captures every poster contract output deterministically", async ({
               requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
             );
           });
+          if (scene.transparent) {
+            await prepareTransparentPageCapture(page);
+          }
           const graphicsStatus = await canvas.evaluate((element) => {
             const context = (element as HTMLCanvasElement).getContext("webgl2");
             if (!context) throw new Error("Capture canvas lost its WebGL 2 context");
@@ -387,7 +426,7 @@ test("captures every poster contract output deterministically", async ({
             animations: "disabled",
             caret: "hide",
             fullPage: false,
-            omitBackground: false,
+            omitBackground: scene.transparent === true,
             scale: "device",
             type: "png",
           });
@@ -395,13 +434,6 @@ test("captures every poster contract output deterministically", async ({
         } finally {
           await context.close();
         }
-      }
-
-      if (scene.transparent) {
-        sourceBuffer = await makeFlatBackgroundTransparent(
-          sourceBuffer,
-          scene.background,
-        );
       }
 
       const source = await decodedPixels(sourceBuffer);
@@ -441,10 +473,17 @@ test("captures every poster contract output deterministically", async ({
         rgbFromHex(scene.background),
       );
       expect(inspection.minimumAlpha).toBe(scene.transparent ? 0 : 255);
-      expect(
-        inspection.backgroundMaxDelta,
-        `${scene.id}/${variantName} corner background drifted`,
-      ).toBeLessThanOrEqual(8);
+      if (scene.transparent) {
+        expect(
+          inspection.cornerMaxAlpha,
+          `${scene.id}/${variantName} transparent corner retained a matte`,
+        ).toBe(0);
+      } else {
+        expect(
+          inspection.backgroundMaxDelta,
+          `${scene.id}/${variantName} corner background drifted`,
+        ).toBeLessThanOrEqual(8);
+      }
       expect(
         inspection.foregroundRatio,
         `${scene.id}/${variantName} has no visible focal content`,
@@ -530,6 +569,7 @@ test("captures every poster contract output deterministically", async ({
         ...candidateRecord,
         backgroundMaxDelta: inspection.backgroundMaxDelta,
         changedChannelRatio: comparisonRatio,
+        cornerMaxAlpha: inspection.cornerMaxAlpha,
         foregroundBounds: inspection.foregroundBounds,
         foregroundRatio: inspection.foregroundRatio,
       });

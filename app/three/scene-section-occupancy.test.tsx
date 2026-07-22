@@ -1,8 +1,9 @@
 import { act, render, waitFor } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneCanvasPortProps } from "./scene-canvas";
-import { getSceneDefinition } from "./scene-registry";
+import { liveSceneFrameWarmupPhase } from "./initial-document-loading-screen";
+import { getSceneDefinition, LIVE_SCENE_IDS } from "./scene-registry";
 import {
   SceneRuntimeContext,
   type SceneRuntimeContextValue,
@@ -12,6 +13,7 @@ import type { SceneId, ThreeStatus } from "./types";
 
 let pathname = "/experience";
 let completeCanvases = true;
+let failedCanvasSceneId: SceneId | null = null;
 const canvasPorts = new Map<SceneId, SceneCanvasPortProps>();
 
 vi.mock("next/navigation", () => ({
@@ -28,9 +30,13 @@ vi.mock("./scene-canvas-boundary", () => ({
       props;
     canvasPorts.set(scene.id, props);
     useEffect(() => {
+      if (scene.id === failedCanvasSceneId) {
+        onFailure("webgl2-unavailable");
+        return;
+      }
       if (!completeCanvases) return;
       onFirstFrame();
-    }, [activationVersion, onFirstFrame, renderVersion, scene.id]);
+    }, [activationVersion, onFailure, onFirstFrame, renderVersion, scene.id]);
     return (
       <canvas
         data-fake-scene-canvas={scene.id}
@@ -128,8 +134,101 @@ describe("section-owned live scene occupants", () => {
   beforeEach(() => {
     pathname = "/experience";
     completeCanvases = true;
+    failedCanvasSceneId = null;
     canvasPorts.clear();
   });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([
+    ["/", "home-hero"],
+    ["/experience", "experience-hero"],
+    ["/projects", "projects-hero"],
+    ["/contact", "contact-hero"],
+  ] as const)(
+    "renders every live scene into a retained resident during %s warmup",
+    async (route, activeSceneId) => {
+      pathname = route;
+      const view = render(
+        <Harness activeSceneId={activeSceneId}>
+          <Section sceneId={activeSceneId} />
+        </Harness>,
+      );
+
+      await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
+      const currentRouteSceneIds = LIVE_SCENE_IDS.filter(
+        (sceneId) => getSceneDefinition(sceneId).route === route,
+      );
+      expect(
+        Array.from(canvasPorts.keys()).slice(0, currentRouteSceneIds.length),
+      ).toEqual([
+        activeSceneId,
+        ...currentRouteSceneIds.filter((sceneId) => sceneId !== activeSceneId),
+      ]);
+      await waitFor(() =>
+        expect(
+          view.container.querySelectorAll(
+            '[data-scene-runtime-host][data-three-status="ready"]',
+          ),
+        ).toHaveLength(LIVE_SCENE_IDS.length),
+      );
+
+      for (const sceneId of LIVE_SCENE_IDS) {
+        const stage = view.container.querySelector<HTMLElement>(
+          `.scene-stage--resident[data-scene-owner-id="${sceneId}"]`,
+        );
+        expect(stage).toBeInTheDocument();
+        expect(stage?.querySelector("canvas")).toHaveAttribute(
+          "data-fake-scene-canvas",
+          sceneId,
+        );
+        expect(stage).toHaveAttribute(
+          "data-scene-pool-state",
+          sceneId === activeSceneId ? "assigned" : "pooled",
+        );
+      }
+    },
+  );
+
+  it.each([
+    ["/projects", "projects-hero", "contact-hero"],
+    ["/contact", "contact-hero", "froggie-adventures"],
+  ] as const)(
+    "settles a mobile-sized %s warmup when an inactive eighth context is refused",
+    async (route, activeSceneId, failedSceneId) => {
+      vi.stubGlobal("innerWidth", 390);
+      pathname = route;
+      failedCanvasSceneId = failedSceneId;
+      const view = render(
+        <Harness activeSceneId={activeSceneId}>
+          <Section sceneId={activeSceneId} />
+        </Harness>,
+      );
+
+      await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
+      await waitFor(() =>
+        expect(
+          view.container.querySelector(
+            `[data-scene-for="${failedSceneId}"][data-scene-runtime-host]`,
+          ),
+        ).toHaveAttribute("data-three-status", "error"),
+      );
+
+      expect(window.innerWidth).toBe(390);
+      expect(Array.from(canvasPorts.keys())[0]).toBe(activeSceneId);
+      expect(liveSceneFrameWarmupPhase(view.container)).toBe("fallback");
+      expect(
+        view.container.querySelector(
+          `[data-scene-for="${activeSceneId}"][data-scene-runtime-host]`,
+        ),
+      ).toHaveAttribute("data-three-status", "ready");
+      expect(
+        view.container.querySelector(
+          `[data-scene-for="${failedSceneId}"] picture.scene-runtime__poster`,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("gives every live section a permanent correct-scene canvas and excludes poster scenes", async () => {
     const view = render(
@@ -144,14 +243,14 @@ describe("section-owned live scene occupants", () => {
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(3),
+      ).toHaveLength(LIVE_SCENE_IDS.length),
     );
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(
           '[data-scene-occupant="canvas"][data-scene-frame-state="ready"]',
         ),
-      ).toHaveLength(3),
+      ).toHaveLength(LIVE_SCENE_IDS.length),
     );
 
     for (const sceneId of [
@@ -435,7 +534,7 @@ describe("section-owned live scene occupants", () => {
       </Harness>,
     );
 
-    await waitFor(() => expect(canvasPorts.size).toBe(3));
+    await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
     act(() => canvasPorts.get("experience-intro")?.onFailure("decode"));
     act(() => canvasPorts.get("nasa-rocket")?.onContextLost());
 
@@ -475,7 +574,7 @@ describe("section-owned live scene occupants", () => {
       </Harness>,
     );
 
-    await waitFor(() => expect(canvasPorts.size).toBe(3));
+    await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
     const failedVersion = canvasPorts.get("experience-intro")?.activationVersion;
     act(() => canvasPorts.get("experience-intro")?.onFailure("fetch"));
     await waitFor(() =>
@@ -636,7 +735,7 @@ describe("section-owned live scene occupants", () => {
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(3),
+      ).toHaveLength(LIVE_SCENE_IDS.length),
     );
     const originalStages = new Map(
       Array.from(

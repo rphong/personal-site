@@ -16,7 +16,11 @@ import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneCanvasBoundary } from "./scene-canvas-boundary";
 import type { SceneCanvasPortProps } from "./scene-canvas";
 import { clearSceneModel } from "./scene-loader";
-import { getSceneDefinition, isSceneId } from "./scene-registry";
+import {
+  getSceneDefinition,
+  isSceneId,
+  LIVE_SCENE_IDS,
+} from "./scene-registry";
 import { ScenePoster } from "./scene-poster";
 import { SceneRotationArea } from "./scene-rotation-area";
 import { useSceneRuntime } from "./scene-runtime-context";
@@ -398,6 +402,26 @@ export function SceneRuntimeHostView({
 
 export const MAX_CONNECTED_LIVE_SCENES = 8;
 
+const INITIAL_DOCUMENT_WARMUP_SCENES = LIVE_SCENE_IDS.map((sceneId) =>
+  getSceneDefinition(sceneId),
+);
+
+function prioritizedInitialDocumentWarmupScenes(
+  pathname: string,
+  activeSceneId: SceneId,
+) {
+  const active = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
+    (scene) => scene.id === activeSceneId,
+  );
+  const currentRoute = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
+    (scene) => scene.id !== activeSceneId && scene.route === pathname,
+  );
+  const speculative = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
+    (scene) => scene.id !== activeSceneId && scene.route !== pathname,
+  );
+  return [...active, ...currentRoute, ...speculative];
+}
+
 interface ResidentStage {
   readonly activationVersion: number;
   adoptionVersion: number;
@@ -430,6 +454,7 @@ function useResidentStages(
   pathname: string,
   activeSceneId: SceneId,
   poolElement: HTMLDivElement | null,
+  warmAllScenes: boolean,
 ) {
   const [stages, setStages] = useState<readonly ResidentStage[]>([]);
   const residents = useRef<ResidentStage[]>([]);
@@ -437,6 +462,7 @@ function useResidentStages(
   const lastSeenClock = useRef(0);
   const pathnameRef = useRef(pathname);
   const activeSceneIdRef = useRef(activeSceneId);
+  const warmAllScenesRef = useRef(warmAllScenes);
   const lastActiveSceneId = useRef<SceneId | null>(null);
   const syncStagesRef = useRef<(() => void) | null>(null);
 
@@ -494,6 +520,27 @@ function useResidentStages(
 
     const syncStages = () => {
       const currentPathname = pathnameRef.current;
+
+      // On any public route's initial document, seed the active scene first,
+      // then the rest of the current route before speculative scenes. This
+      // preserves a live current page when the browser refuses a later WebGL
+      // context. Every successful model still performs a real render behind
+      // the loader and its exact canvas is later adopted by its route section.
+      if (warmAllScenesRef.current) {
+        for (const scene of prioritizedInitialDocumentWarmupScenes(
+          currentPathname,
+          activeSceneIdRef.current,
+        )) {
+          if (
+            !residents.current.some(
+              (resident) => resident.scene.id === scene.id,
+            )
+          ) {
+            createResident(scene);
+          }
+        }
+      }
+
       const sections = Array.from(
         document.querySelectorAll<HTMLElement>(
           'section.scene-section[data-required-live="true"]',
@@ -600,8 +647,9 @@ function useResidentStages(
   useLayoutEffect(() => {
     pathnameRef.current = pathname;
     activeSceneIdRef.current = activeSceneId;
+    warmAllScenesRef.current = warmAllScenes;
     syncStagesRef.current?.();
-  }, [activeSceneId, pathname, poolElement]);
+  }, [activeSceneId, pathname, poolElement, warmAllScenes]);
 
   return stages;
 }
@@ -702,7 +750,6 @@ export function SceneRuntimeHost() {
   const runtime = useSceneRuntime();
   const pathname = usePathname();
   const [poolElement, setPoolElement] = useState<HTMLDivElement | null>(null);
-  const stages = useResidentStages(pathname, runtime.activeSceneId, poolElement);
   const preferredStatus = statusForRuntime({
     initialized: runtime.threeInitialized,
     enabled: runtime.threeEnabled,
@@ -710,6 +757,16 @@ export function SceneRuntimeHost() {
   });
   const canvasEnabled =
     runtime.sceneActivationAllowed && preferredStatus === "loading";
+  const warmAllScenes =
+    canvasEnabled &&
+    runtime.activeScene.requiredLive &&
+    runtime.activeScene.route === pathname;
+  const stages = useResidentStages(
+    pathname,
+    runtime.activeSceneId,
+    poolElement,
+    warmAllScenes,
+  );
 
   const activeStatusChanged = useCallback(
     (sceneId: LiveSceneId, status: ThreeStatus) => {

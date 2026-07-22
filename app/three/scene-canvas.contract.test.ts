@@ -7,15 +7,25 @@ describe("persistent Canvas source contract", () => {
 
     expect(source.match(/<Canvas\b/g)).toHaveLength(1);
     expect(source).toContain('frameloop="demand"');
-    expect(source).toContain("dpr={[1, 1.5]}");
+    expect(source).toContain(
+      "props.debugActive === false",
+    );
+    expect(source).toContain("INACTIVE_SCENE_DPR");
+    expect(source).toContain("ACTIVE_SCENE_DPR");
     expect(source).toContain("resize={{ scroll: false }}");
     expect(source).toContain('aria-hidden="true"');
     expect(source).toContain("alpha: true");
     expect(source).toContain('powerPreference: "high-performance"');
     expect(source).toContain("shadows={false}");
-    expect(source.match(/<hemisphereLight\b/g)).toHaveLength(1);
-    expect(source.match(/<directionalLight\b/g)).toHaveLength(3);
-    expect(source).not.toContain("<ambientLight");
+    expect(source.match(/<ambientLight\b/g)).toHaveLength(1);
+    expect(source.match(/<rectAreaLight\b/g)).toHaveLength(1);
+    expect(source).not.toContain("<directionalLight");
+    expect(source).not.toContain("<hemisphereLight");
+    expect(source).toContain("RectAreaLightUniformsLib.init()");
+    expect(source).toContain("<AuthoredGroundShadow");
+    expect(source).toContain("LinearSRGBColorSpace");
+    expect(source).toContain("scene.lighting.world.strength * Math.PI");
+    expect(source).toContain("light.current?.lookAt(...scene.lighting.key.target)");
     expect(source).toContain("ACESFilmicToneMapping");
     expect(source).toContain("renderer.toneMappingExposure = scene.lighting.exposure");
     expect(source).toContain("gl.render(scene, activeCamera)");
@@ -25,6 +35,7 @@ describe("persistent Canvas source contract", () => {
     expect(source).not.toMatch(
       /OrbitControls|MapControls|PresentationControls|ContactShadows/,
     );
+    expect(source).not.toContain("ContactBlobShadow");
     expect(source).not.toMatch(
       /scene\.background\s*=|attach=["']background["']|planeGeometry/,
     );
