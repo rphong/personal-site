@@ -68,6 +68,10 @@ interface ContextCallRecord {
 
 interface RuntimeAcceptanceProbe {
   readonly calls: ContextCallRecord[];
+  readonly createdContextsByCanvas: Map<
+    HTMLCanvasElement,
+    WebGL2RenderingContext
+  >;
   readonly contextsByCanvas: Map<HTMLCanvasElement, WebGL2RenderingContext>;
   readonly events: RuntimeEventRecord[];
   readonly uncaughtErrors: string[];
@@ -119,6 +123,7 @@ async function installRuntimeProbe(
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
     const probe: RuntimeAcceptanceProbe = {
       calls: [],
+      createdContextsByCanvas: new Map(),
       contextsByCanvas: new Map(),
       events: [],
       uncaughtErrors: [],
@@ -169,17 +174,20 @@ async function installRuntimeProbe(
         kind,
         ...arguments_,
       ]) as RenderingContext | null;
-      if (kind === "webgl2" && connected && context) {
+      if (kind === "webgl2" && context) {
         const webgl2 = context as WebGL2RenderingContext;
-        if (probe.connectedCanvas && probe.connectedCanvas !== this) {
-          probe.connectedCanvasChanges += 1;
+        probe.createdContextsByCanvas.set(this, webgl2);
+        if (connected) {
+          if (probe.connectedCanvas && probe.connectedCanvas !== this) {
+            probe.connectedCanvasChanges += 1;
+          }
+          if (probe.connectedContext && probe.connectedContext !== webgl2) {
+            probe.connectedContextChanges += 1;
+          }
+          probe.connectedCanvas = this;
+          probe.connectedContext = webgl2;
+          probe.contextsByCanvas.set(this, webgl2);
         }
-        if (probe.connectedContext && probe.connectedContext !== webgl2) {
-          probe.connectedContextChanges += 1;
-        }
-        probe.connectedCanvas = this;
-        probe.connectedContext = webgl2;
-        probe.contextsByCanvas.set(this, webgl2);
       }
       return context;
     } as typeof originalGetContext;
@@ -627,6 +635,33 @@ test("anchors resident scene visuals to their sections while desktop and mobile 
       await disposeFixture(models);
       await context.close();
     }
+  }
+});
+
+test("shows scene-capture development controls only when explicitly requested", async ({
+  page,
+}) => {
+  await fulfillPosters(page);
+  const models = await fulfillModels(page);
+
+  try {
+    await page.goto("/scene-capture?scene=home-hero");
+    await expect(page.locator(".three-preference-toggle")).toBeHidden();
+    await expect(page.locator(".scene-debug-launcher")).toBeHidden();
+
+    await page.goto("/scene-capture?scene=home-hero&controls=1");
+    await expect(page.locator(".three-preference-toggle")).toBeVisible();
+    await expect(page.locator(".scene-debug-launcher")).toBeVisible();
+
+    await page.goto("/scene-capture?scene=home-hero&debug3d=1");
+    await expect(page.locator(".scene-debug")).toBeHidden();
+
+    await page.goto(
+      "/scene-capture?scene=home-hero&controls=1&debug3d=1",
+    );
+    await expect(page.locator(".scene-debug")).toBeVisible();
+  } finally {
+    await disposeFixture(models);
   }
 });
 
@@ -2109,10 +2144,21 @@ test("loses the real context before the first model frame and restores pixels on
     const host = await openScene(page, "home-hero");
     await models.waitForRequest(HOME_MODEL);
     await expect(host).toHaveAttribute("data-three-status", "loading");
-    const lost = await page.evaluate(() => {
+    const runtimeCanvas = host.locator("canvas");
+    await expect
+      .poll(() =>
+        runtimeCanvas.evaluate(
+          (element) =>
+            window.__runtimeAcceptanceProbe?.createdContextsByCanvas.has(
+              element as HTMLCanvasElement,
+            ) ?? false,
+        ),
+      )
+      .toBe(true);
+    const lost = await host.locator("canvas").evaluate((element) => {
       const probe = window.__runtimeAcceptanceProbe;
-      const context = probe?.connectedContext;
-      const canvas = probe?.connectedCanvas;
+      const canvas = element as HTMLCanvasElement;
+      const context = probe?.createdContextsByCanvas.get(canvas);
       if (!probe || !context || !canvas) return false;
       canvas.addEventListener("webglcontextlost", (event) => {
         probe.contextLossDefaultPrevented = event.defaultPrevented;
@@ -2166,7 +2212,7 @@ test("loses the real context before the first model frame and restores pixels on
     expect(
       await page.evaluate(
         () =>
-          window.__runtimeAcceptanceProbe?.connectedContext?.isContextLost() ??
+          window.__sceneRuntimeDebug?.context?.isContextLost() ??
           true,
       ),
     ).toBe(false);

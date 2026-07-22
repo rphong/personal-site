@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractSha256": "4c67e30914d1ef0aad513f764daeabdb6f2270d99f4957dd0c30659965645e7e",
-  "renderInputsSha256": "6018e684be0cf3a598bdfd35ebed63456d5e4bf827291f758c79f0f775a2e6f9",
+  "renderInputsSha256": "863844217acd1ff7c1c76da44a9bd9601b19fbd23b8f975b0d98fa13a56421fe",
   "renderer": {
     "browser": "chromium",
     "browserVersion": "149.0.7827.55",
@@ -18,8 +18,8 @@
       "path": "public/posters/contact-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 12748,
-      "sha256": "3caf3d20074aec88a3eeedd69d494d27051c304c5a3183c19521624fe8bb9e96"
+      "bytes": 33596,
+      "sha256": "2880025b9f0fb086b40bb65882da32513d400607d39c17195d1d02e08a5feb74"
     },
     {
       "sceneId": "contact-hero",
@@ -27,8 +27,8 @@
       "path": "public/posters/contact-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 9176,
-      "sha256": "f985aaf1cd91963f8d507bbaa96579a154d259eb1cfcfe417649b6017e9f3ae3"
+      "bytes": 15256,
+      "sha256": "836cc95bd3495ac4d833b291bb07a0af47517ab89789d4d4739423e17e0ff121"
     },
     {
       "sceneId": "eog-poster",
@@ -54,8 +54,8 @@
       "path": "public/posters/experience-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 11998,
-      "sha256": "a844fbfd7f3a0fc2b90f97866ae6799aa0251937a8e411b11a0feeb7abb9aaee"
+      "bytes": 28582,
+      "sha256": "f69b1bca3c415abc5d1928b1a8622280d732d9a0222b088908c9f57fa5b05974"
     },
     {
       "sceneId": "experience-hero",
@@ -63,8 +63,8 @@
       "path": "public/posters/experience-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 8518,
-      "sha256": "e4ff08c6c747dac6943b5cd55997e82c140a62709a89674346fcec88bdcd6e62"
+      "bytes": 13416,
+      "sha256": "bb4b8c0fdffd6a5f144a1edc6262b4a861e6835b27c8a83390e44415266c127d"
     },
     {
       "sceneId": "experience-intro",
@@ -72,8 +72,8 @@
       "path": "public/posters/experience-intro-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 8506,
-      "sha256": "ddf0ec8d1ef7312ca61c886465dd154d888375e13548e48991a6ca615003c175"
+      "bytes": 10648,
+      "sha256": "bf57f8433a497f428faecc8680dbe8591fe21e641dee8b090918510156390501"
     },
     {
       "sceneId": "experience-intro",
@@ -81,8 +81,8 @@
       "path": "public/posters/experience-intro-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 4088,
-      "sha256": "93f9a8d12ee5b9dfcb54b2f8348fe8286198017cfb507f3e218bb9f9cabcdb34"
+      "bytes": 8822,
+      "sha256": "0114ab128498fe57d22d564e8cefcf0bdcac78f5544eda6e207e1e3002138941"
     },
     {
       "sceneId": "froggie-adventures",
@@ -90,8 +90,8 @@
       "path": "public/posters/froggie-adventures-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 37700,
-      "sha256": "ef97debbae9f0eb1866dfa12a7edc1f4cc1ac3302edbc66b689e939b368262e8"
+      "bytes": 41180,
+      "sha256": "c2ec945006bb12b2d430a5ec5420b3accecfd4ea4fc03a40c09c0c8990950311"
     },
     {
       "sceneId": "froggie-adventures",
@@ -99,8 +99,8 @@
       "path": "public/posters/froggie-adventures-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 40444,
-      "sha256": "9771e6b6f78e10dcf8b05919a8bd19acf8c30f45ce5a329512c73e7d744f04f4"
+      "bytes": 36656,
+      "sha256": "8fb97a703074d25dd084759989f99d8a23db33dcf41ea6cc97dc5841c0314294"
     },
     {
       "sceneId": "home-hero",
@@ -108,8 +108,8 @@
       "path": "public/posters/home-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 15518,
-      "sha256": "7508d3d8fff03f460c833597965018d5ebf6f836644394b31d148e364c669f9b"
+      "bytes": 20990,
+      "sha256": "da92cd870f5be10cf0fcd05f2320a5c2bd465fd0776f640867bb9b7512fe1331"
     },
     {
       "sceneId": "home-hero",
@@ -117,8 +117,8 @@
       "path": "public/posters/home-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 10692,
-      "sha256": "43ff00b01a27341b006a1b9d43b6ab1adf14d9adf470dca62f2adbb22c7c3e63"
+      "bytes": 14784,
+      "sha256": "f7c258d4f6105ccd044f53996cdce5490907e70a27f935289a596d2a9869726b"
     },
     {
       "sceneId": "league-ban",
@@ -126,8 +126,8 @@
       "path": "public/posters/league-ban-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 28360,
-      "sha256": "9dac70e82408d33dc1f10f5fa5e2432f935b08823ef12e426c49aa98b3146f8c"
+      "bytes": 56000,
+      "sha256": "68145110045fb72501534e1fe84e70c9b7d51874a03bde7352c2ba170df763c6"
     },
     {
       "sceneId": "league-ban",
@@ -135,8 +135,8 @@
       "path": "public/posters/league-ban-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 12768,
-      "sha256": "9f91551aa1382d6604468789aa07b0d716e3e7e018460bec3e1a4fd76a85e77a"
+      "bytes": 18648,
+      "sha256": "a0ceb06a7122e17214f11d970aed2fed2c67ad8daedfab5b82634688b5b9be96"
     },
     {
       "sceneId": "nasa-rocket",
@@ -144,8 +144,8 @@
       "path": "public/posters/nasa-rocket-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 45498,
-      "sha256": "f7ba94bd4abc7052f371097a030c0eb22e84caf7f201de2ff918d83bd05c9e19"
+      "bytes": 26924,
+      "sha256": "ddac15c484c42b46b98cb0bccfe05934a8a1453aa0bc7665afb999f6951b9178"
     },
     {
       "sceneId": "nasa-rocket",
@@ -153,8 +153,8 @@
       "path": "public/posters/nasa-rocket-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 36186,
-      "sha256": "97f2a2e3246563d62f7acd103b1ce16e63eaf5162958d3c95755302ee9851b45"
+      "bytes": 28284,
+      "sha256": "8d752fa1dd449661827e9c6ef73dddcfff9924267ce617e08d3bf10c5234c984"
     },
     {
       "sceneId": "paycom-poster",
@@ -180,8 +180,8 @@
       "path": "public/posters/projects-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 14218,
-      "sha256": "b31eb874d46db69d3e12bb2b2163ec0680b713925e99ecdbc8241e47b95e52e2"
+      "bytes": 25582,
+      "sha256": "0b3454ec4a5ec95b75b43474679e1ea9da2970d1e1e7efda32d1a471b48f8051"
     },
     {
       "sceneId": "projects-hero",
@@ -189,8 +189,8 @@
       "path": "public/posters/projects-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 10784,
-      "sha256": "dc88d2fa1496fdb35365de0019ef902982a722678b69c8c1b1b0910139c3a100"
+      "bytes": 13480,
+      "sha256": "b6a8c853b7824e23bc30c25283af8e6e3f4be9985cc558ad3b0aa0a29ab01a76"
     }
   ]
 }

@@ -64,6 +64,7 @@ describe("scene capture route", () => {
       'process.env.PLAYWRIGHT_EXTERNAL_SERVER === "1"',
     );
     expect(playwright).toContain('NODE_ENV: "development"');
+    expect(playwright).toContain('const serverHostname = "127.0.0.1"');
     expect(playwright).toContain('NEXT_PUBLIC_SITE_ENV: "preview"');
     expect(playwright).toContain('SITE_ENV: "preview"');
     expect(playwright).toContain('"--use-gl=angle"');

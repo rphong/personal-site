@@ -301,7 +301,11 @@ body:has(.scene-capture-root[data-scroll-test="false"])
 }
 
 body:has(.scene-capture-root:not([data-capture-controls="true"]))
-  .three-preference-toggle {
+  .three-preference-toggle,
+body:has(.scene-capture-root:not([data-capture-controls="true"]))
+  .scene-debug-launcher,
+body:has(.scene-capture-root:not([data-capture-controls="true"]))
+  .scene-debug {
   visibility: hidden;
 }
 

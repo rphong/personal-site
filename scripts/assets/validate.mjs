@@ -987,7 +987,11 @@ export async function validateAll({
       }
       throw error;
     }
-    if (committed !== serialized) {
+    // Git may materialize reviewed JSON with CRLF on Windows while the
+    // deterministic serializer always emits LF. Compare semantic text bytes
+    // after newline normalization so checkout policy cannot create false
+    // manifest drift; all field/value changes still fail below.
+    if (committed.replace(/\r\n?/g, "\n") !== serialized.replace(/\r\n?/g, "\n")) {
       throw new Error(
         "committed model manifest drifted; run npm run assets:manifest only after reviewing regenerated GLBs.",
       );

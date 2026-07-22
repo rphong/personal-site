@@ -10,6 +10,7 @@ import {
   createPosterPublicationCandidates,
   posterOperationRoot,
   publishPosterCandidates,
+  renamePosterFileWithRetry,
 } from "../../scripts/posters/pipeline.mjs";
 
 const contract = {
@@ -70,6 +71,37 @@ test("poster publication keeps the manifest last and promotes one complete set",
   } finally {
     await rm(state.root, { force: true, recursive: true });
   }
+});
+
+test("poster publication retries only transient Windows rename locks", async () => {
+  const pauses = [];
+  let attempts = 0;
+  await renamePosterFileWithRetry("from.webp", "to.webp", {
+    delays: [10, 20, 40],
+    pause: async (delay) => pauses.push(delay),
+    renameFile: async () => {
+      attempts += 1;
+      if (attempts < 3) {
+        const error = new Error("injected Windows file lock");
+        error.code = "EBUSY";
+        throw error;
+      }
+    },
+  });
+  assert.equal(attempts, 3);
+  assert.deepEqual(pauses, [10, 20]);
+
+  const permanent = new Error("injected permanent failure");
+  permanent.code = "ENOENT";
+  await assert.rejects(
+    renamePosterFileWithRetry("missing.webp", "to.webp", {
+      pause: async () => assert.fail("permanent errors must not wait"),
+      renameFile: async () => {
+        throw permanent;
+      },
+    }),
+    permanent,
+  );
 });
 
 test("a mid-publication failure restores old files and removes new-only outputs", async () => {
