@@ -11,19 +11,24 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import {
   ACESFilmicToneMapping,
+  Color,
+  LinearSRGBColorSpace,
   PerspectiveCamera,
+  type RectAreaLight,
   SRGBColorSpace,
   WebGLRenderer,
   type Camera,
   type Scene,
   type WebGLRendererParameters,
 } from "three";
-import { ContactBlobShadow } from "./contact-blob-shadow";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+import { AuthoredGroundShadow } from "./authored-ground-shadow";
 import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneErrorBoundary } from "./scene-error-boundary";
 import { SceneModel } from "./scene-model";
@@ -37,6 +42,8 @@ import type {
   SceneFailureReason,
   SceneRotation,
 } from "./types";
+
+RectAreaLightUniformsLib.init();
 
 export interface SceneCanvasPortProps {
   readonly scene: SceneDefinition;
@@ -75,6 +82,9 @@ const WEBGL2_ATTRIBUTES = {
   preserveDrawingBuffer: false,
   stencil: false,
 } as const satisfies WebGLContextAttributes;
+
+export const ACTIVE_SCENE_DPR: [number, number] = [1, 1.5];
+export const INACTIVE_SCENE_DPR = 0.75;
 
 export function createWebGL2Renderer(
   defaults: SceneRendererDefaults,
@@ -218,32 +228,49 @@ function SceneRendererSettings({
   return null;
 }
 
+function SceneAreaKey({ scene }: { readonly scene: SceneDefinition }) {
+  const light = useRef<RectAreaLight>(null);
+  const invalidate = useThree((state) => state.invalidate);
+
+  useLayoutEffect(() => {
+    light.current?.lookAt(...scene.lighting.key.target);
+    light.current?.updateMatrixWorld();
+    invalidate();
+  }, [invalidate, scene.lighting.key]);
+
+  return (
+    <rectAreaLight
+      ref={light}
+      name="source-area-key"
+      color={scene.lighting.key.color}
+      intensity={scene.lighting.key.intensity}
+      position={scene.lighting.key.position}
+      width={scene.lighting.key.width}
+      height={scene.lighting.key.height}
+    />
+  );
+}
+
 function SceneLights({ scene }: { readonly scene: SceneDefinition }) {
+  const worldColor = useMemo(
+    () =>
+      new Color().setRGB(
+        ...scene.lighting.world.linearColor,
+        LinearSRGBColorSpace,
+      ),
+    [scene.lighting.world.linearColor],
+  );
+
   return (
     <>
-      <hemisphereLight
-        color={scene.lighting.hemisphere.skyColor}
-        groundColor={scene.lighting.hemisphere.groundColor}
-        intensity={scene.lighting.hemisphere.intensity}
+      <ambientLight
+        name="source-world-fill"
+        color={worldColor}
+        // AmbientLight is expressed as irradiance; Blender's world is
+        // radiance. A constant hemisphere integrates to PI steradians.
+        intensity={scene.lighting.world.strength * Math.PI}
       />
-      <directionalLight
-        color={scene.lighting.key.color}
-        intensity={scene.lighting.key.intensity}
-        position={scene.lighting.key.position}
-        castShadow={scene.lighting.key.castShadow}
-      />
-      <directionalLight
-        color={scene.lighting.fill.color}
-        intensity={scene.lighting.fill.intensity}
-        position={scene.lighting.fill.position}
-        castShadow={scene.lighting.fill.castShadow}
-      />
-      <directionalLight
-        color={scene.lighting.rim.color}
-        intensity={scene.lighting.rim.intensity}
-        position={scene.lighting.rim.position}
-        castShadow={scene.lighting.rim.castShadow}
-      />
+      <SceneAreaKey scene={scene} />
     </>
   );
 }
@@ -467,8 +494,8 @@ function ModelLayer({
         scene={props.scene}
         rotation={props.rotation}
       />
-      {props.scene.contactShadow ? (
-        <ContactBlobShadow definition={props.scene.contactShadow} />
+      {props.scene.groundShadow ? (
+        <AuthoredGroundShadow definition={props.scene.groundShadow} />
       ) : null}
       <DemandRenderer
         adoptionVersion={props.adoptionVersion}
@@ -604,7 +631,11 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
     <Canvas
       aria-hidden="true"
       frameloop="demand"
-      dpr={[1, 1.5]}
+      dpr={
+        props.debugActive === false
+          ? INACTIVE_SCENE_DPR
+          : ACTIVE_SCENE_DPR
+      }
       resize={{ scroll: false }}
       shadows={false}
       camera={{

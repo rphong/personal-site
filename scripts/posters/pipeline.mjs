@@ -1,9 +1,37 @@
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 
 import { promoteCandidateArtifacts } from "../assets/prepare-all.mjs";
 
 const POSTER_LOCK = "posters.lock";
+const TRANSIENT_RENAME_DELAYS_MS = [25, 50, 100, 200, 400, 800, 1_600];
+const TRANSIENT_RENAME_CODES = new Set(["EACCES", "EBUSY", "EPERM"]);
+
+function wait(delayMs) {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+export async function renamePosterFileWithRetry(
+  from,
+  to,
+  {
+    delays = TRANSIENT_RENAME_DELAYS_MS,
+    pause = wait,
+    renameFile = rename,
+  } = {},
+) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await renameFile(from, to);
+    } catch (error) {
+      const delay = delays[attempt];
+      if (!TRANSIENT_RENAME_CODES.has(error.code) || delay === undefined) {
+        throw error;
+      }
+      await pause(delay);
+    }
+  }
+}
 
 export function assertSafePosterOperationId(operationId) {
   if (
@@ -80,7 +108,11 @@ export async function publishPosterCandidates({
   for (const candidate of candidates) {
     await readFile(candidate.candidatePath);
   }
-  const publication = await promoter({ candidates, operationId });
+  const publication = await promoter({
+    candidates,
+    operationId,
+    renameFile: renamePosterFileWithRetry,
+  });
   if (publication?.cleanupErrors?.length > 0) {
     throw new AggregateError(
       publication.cleanupErrors.map(({ error }) => error),

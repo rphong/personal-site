@@ -140,10 +140,26 @@ img {
   left: 0;
   z-index: 50;
   height: var(--nav-height);
+  pointer-events: none;
+}
+
+.site-nav__surface {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  margin-inline: auto;
   background: var(--route-background);
+  pointer-events: none;
+  transform-origin: top center;
 }
 
 .site-nav__inner {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(4, max-content);
   justify-content: center;
@@ -153,6 +169,23 @@ img {
   height: 100%;
   margin-inline: auto;
   padding-inline: var(--page-gutter);
+  pointer-events: auto;
+}
+
+.site-nav[data-island="true"] :is(.site-nav__surface, .site-nav__inner) {
+  width: min(
+    calc(
+      100% - max(1rem, env(safe-area-inset-left, 0px)) -
+        max(1rem, env(safe-area-inset-right, 0px))
+    ),
+    44rem
+  );
+  height: 3.75rem;
+  margin-top: 0.75rem;
+}
+
+.site-nav[data-island="true"] .site-nav__inner {
+  padding-inline: clamp(1.25rem, 4vw, 2.5rem);
 }
 
 .site-nav__link {
@@ -821,6 +854,20 @@ body:has(.scene-runtime[data-three-status="error"])
     gap: 0.35rem;
     justify-content: stretch;
     padding-inline: 0.8rem;
+  }
+
+  .site-nav[data-island="true"]
+    :is(.site-nav__surface, .site-nav__inner) {
+    width: calc(
+      100% - max(0.5rem, env(safe-area-inset-left, 0px)) -
+        max(0.5rem, env(safe-area-inset-right, 0px))
+    );
+    height: 3.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .site-nav[data-island="true"] .site-nav__inner {
+    padding-inline: 0.4rem;
   }
 
   .site-nav__link {

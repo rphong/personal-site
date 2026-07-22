@@ -64,6 +64,9 @@ describe("SceneCaptureViewport", () => {
       "data-scroll-test",
       "true",
     );
+    expect(screen.getByRole("main")).toHaveStyle({
+      background: "#9ECCC0",
+    });
     expect(document.querySelector(".scene-capture-scroll-space"))
       .toBeInTheDocument();
     expect(screen.getByTestId("capture-next-scene")).toHaveAttribute(
@@ -87,6 +90,9 @@ describe("SceneCaptureViewport", () => {
       expect(screen.getByText("EOG Resources poster").closest("section"))
         .toHaveAttribute("data-scene-status", "poster");
     });
+    expect(screen.getByRole("main")).toHaveStyle({
+      background: "#DFA9B5",
+    });
     expect(screen.getByTestId("capture-next-scene")).toHaveAttribute(
       "href",
       "/scene-capture?scene=paycom-poster&controls=1",
@@ -104,6 +110,9 @@ describe("SceneCaptureViewport", () => {
     await waitFor(() => {
       expect(screen.getByText("Workout crane contact scene").closest("section"))
         .toHaveAttribute("data-scene-status", "loading");
+    });
+    expect(screen.getByRole("main")).toHaveStyle({
+      background: "#C9BAE4",
     });
     expect(screen.getByTestId("capture-next-scene")).toHaveAttribute(
       "href",

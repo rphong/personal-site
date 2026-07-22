@@ -1,7 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
 const serverPort = process.env.POSTER_CAPTURE_PORT ?? "3000";
-const serverUrl = `http://localhost:${serverPort}`;
+const serverHostname = "127.0.0.1";
+const serverUrl = `http://${serverHostname}:${serverPort}`;
 
 export default defineConfig({
   testDir: "./tests/browser",
@@ -34,7 +35,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `node scripts/run-vinext.mjs dev --hostname localhost --port ${serverPort}`,
+    command: `node scripts/run-vinext.mjs dev --hostname ${serverHostname} --port ${serverPort}`,
     url: serverUrl,
     reuseExistingServer:
       process.env.PLAYWRIGHT_EXTERNAL_SERVER === "1",

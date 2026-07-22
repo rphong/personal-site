@@ -45,7 +45,7 @@
 }
 
 .scene-runtime[data-three-status="loading"] .scene-runtime__poster {
-  visibility: hidden;
+  visibility: visible;
 }
 
 .scene-runtime[data-three-status="ready"] .scene-runtime__poster {
@@ -92,7 +92,8 @@
 }
 
 .scene-section[data-required-live="true"]:has(
-    > .scene-stage--resident .scene-runtime[data-three-status="loading"]
+    > .scene-stage--resident
+      .scene-runtime[data-three-status="loading"][data-poster-ready="true"]
   )
   > .scene-section__poster {
   visibility: hidden;
@@ -300,7 +301,11 @@ body:has(.scene-capture-root[data-scroll-test="false"])
 }
 
 body:has(.scene-capture-root:not([data-capture-controls="true"]))
-  .three-preference-toggle {
+  .three-preference-toggle,
+body:has(.scene-capture-root:not([data-capture-controls="true"]))
+  .scene-debug-launcher,
+body:has(.scene-capture-root:not([data-capture-controls="true"]))
+  .scene-debug {
   visibility: hidden;
 }
 

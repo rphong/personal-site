@@ -11,6 +11,7 @@ import { getSceneDefinition } from "./scene-registry";
 import {
   createWebGL2Renderer,
   createWebGL2RendererFactory,
+  INACTIVE_SCENE_DPR,
   SceneCanvas,
 } from "./scene-canvas";
 
@@ -57,6 +58,48 @@ describe("SceneCanvas shell", () => {
       },
     });
     expect(canvasCalls.mock.calls[0][0].gl).toBeTypeOf("function");
+  });
+
+  it("uses a reduced backing-buffer ratio for inactive warmup residents", () => {
+    const view = render(
+      <SceneCanvas
+        scene={getSceneDefinition("contact-hero")}
+        rotation={{ yaw: 0, pitch: 0 }}
+        activationVersion={1}
+        renderVersion={0}
+        loadEnabled
+        preloadReady={false}
+        debugActive={false}
+        onFirstFrame={vi.fn()}
+        onFailure={vi.fn()}
+        onContextLost={vi.fn()}
+        onContextRestored={vi.fn()}
+      />,
+    );
+
+    expect(canvasCalls).toHaveBeenCalledOnce();
+    expect(canvasCalls.mock.calls[0][0]).toMatchObject({
+      dpr: INACTIVE_SCENE_DPR,
+    });
+
+    view.rerender(
+      <SceneCanvas
+        scene={getSceneDefinition("contact-hero")}
+        rotation={{ yaw: 0, pitch: 0 }}
+        activationVersion={1}
+        renderVersion={0}
+        loadEnabled
+        preloadReady
+        debugActive
+        onFirstFrame={vi.fn()}
+        onFailure={vi.fn()}
+        onContextLost={vi.fn()}
+        onContextRestored={vi.fn()}
+      />,
+    );
+    expect(canvasCalls.mock.calls.at(-1)?.[0]).toMatchObject({
+      dpr: [1, 1.5],
+    });
   });
 
   it.each([

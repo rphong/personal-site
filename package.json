@@ -11,7 +11,7 @@
     "start": "node scripts/run-vinext.mjs start",
     "deploy:cloudflare": "wrangler deploy --config dist/server/wrangler.json",
     "test": "npm run test:unit && npm run test:html",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp --ignore-pattern .tmp --ignore-pattern .worktrees",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:browser": "playwright test tests/browser/three-runtime.spec.ts",
