@@ -156,6 +156,15 @@ describe("section-owned live scene occupants", () => {
       );
 
       await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
+      const currentRouteSceneIds = LIVE_SCENE_IDS.filter(
+        (sceneId) => getSceneDefinition(sceneId).route === route,
+      );
+      expect(
+        Array.from(canvasPorts.keys()).slice(0, currentRouteSceneIds.length),
+      ).toEqual([
+        activeSceneId,
+        ...currentRouteSceneIds.filter((sceneId) => sceneId !== activeSceneId),
+      ]);
       await waitFor(() =>
         expect(
           view.container.querySelectorAll(
@@ -181,38 +190,45 @@ describe("section-owned live scene occupants", () => {
     },
   );
 
-  it("settles a mobile-sized warmup when the eighth context is refused", async () => {
-    vi.stubGlobal("innerWidth", 390);
-    pathname = "/projects";
-    failedCanvasSceneId = "contact-hero";
-    const view = render(
-      <Harness activeSceneId="projects-hero">
-        <Section sceneId="projects-hero" />
-      </Harness>,
-    );
+  it.each([
+    ["/projects", "projects-hero", "contact-hero"],
+    ["/contact", "contact-hero", "froggie-adventures"],
+  ] as const)(
+    "settles a mobile-sized %s warmup when an inactive eighth context is refused",
+    async (route, activeSceneId, failedSceneId) => {
+      vi.stubGlobal("innerWidth", 390);
+      pathname = route;
+      failedCanvasSceneId = failedSceneId;
+      const view = render(
+        <Harness activeSceneId={activeSceneId}>
+          <Section sceneId={activeSceneId} />
+        </Harness>,
+      );
 
-    await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
-    await waitFor(() =>
+      await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
+      await waitFor(() =>
+        expect(
+          view.container.querySelector(
+            `[data-scene-for="${failedSceneId}"][data-scene-runtime-host]`,
+          ),
+        ).toHaveAttribute("data-three-status", "error"),
+      );
+
+      expect(window.innerWidth).toBe(390);
+      expect(Array.from(canvasPorts.keys())[0]).toBe(activeSceneId);
+      expect(liveSceneFrameWarmupPhase(view.container)).toBe("fallback");
       expect(
         view.container.querySelector(
-          '[data-scene-for="contact-hero"][data-scene-runtime-host]',
+          `[data-scene-for="${activeSceneId}"][data-scene-runtime-host]`,
         ),
-      ).toHaveAttribute("data-three-status", "error"),
-    );
-
-    expect(window.innerWidth).toBe(390);
-    expect(liveSceneFrameWarmupPhase(view.container)).toBe("fallback");
-    expect(
-      view.container.querySelector(
-        '[data-scene-for="projects-hero"][data-scene-runtime-host]',
-      ),
-    ).toHaveAttribute("data-three-status", "ready");
-    expect(
-      view.container.querySelector(
-        '[data-scene-for="contact-hero"] picture.scene-runtime__poster',
-      ),
-    ).toBeInTheDocument();
-  });
+      ).toHaveAttribute("data-three-status", "ready");
+      expect(
+        view.container.querySelector(
+          `[data-scene-for="${failedSceneId}"] picture.scene-runtime__poster`,
+        ),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("gives every live section a permanent correct-scene canvas and excludes poster scenes", async () => {
     const view = render(

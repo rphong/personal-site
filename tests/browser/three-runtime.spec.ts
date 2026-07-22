@@ -902,70 +902,99 @@ test("pools previous-route residents and re-adopts their exact live canvases acr
   }
 });
 
-test("settles mobile direct-entry warmup when the eighth context is refused", async ({
-  browser,
-}, testInfo) => {
-  const context = await createRuntimeContext(browser, testInfo, {
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-  });
-  const page = await context.newPage();
-  await installRuntimeProbe(page, "context-ceiling");
-  await fulfillPosters(page);
-  const models = await fulfillModels(page, [], {
-    plans: { [PROJECT_MODEL]: { hold: true } },
-  });
-
-  try {
-    await page.goto("/projects");
-    await models.waitForRequest(PROJECT_MODEL);
-    const loadingScreen = page.locator("[data-initial-loading-screen]");
-    await expect(loadingScreen).toBeVisible();
-    await expect(page.locator(".scene-stage--resident")).toHaveCount(8);
-
-    expect(models.release(PROJECT_MODEL)).toBe(1);
-    const releasedAt = Date.now();
-    await expect(loadingScreen).toHaveCount(0, { timeout: 5_000 });
-    expect(Date.now() - releasedAt).toBeLessThan(5_000);
-
-    for (const sceneId of RESIDENT_SCENES_BY_ROUTE["/projects"]) {
-      await expect(residentHost(page, sceneId)).toHaveAttribute(
-        "data-three-status",
-        "ready",
-      );
-    }
-    const refusedHost = residentHost(page, "contact-hero");
-    await expect(refusedHost).toHaveAttribute("data-three-status", "error");
-    await expect(refusedHost.locator("picture.scene-runtime__poster")).toHaveCount(
-      1,
-    );
-
-    const backingRatios = await page.evaluate(() => {
-      const ratioFor = (sceneId: string) => {
-        const canvas = document.querySelector<HTMLCanvasElement>(
-          `.scene-stage--resident[data-scene-owner-id="${sceneId}"] canvas`,
-        );
-        return canvas && canvas.clientWidth > 0
-          ? canvas.width / canvas.clientWidth
-          : null;
-      };
-      return {
-        active: ratioFor("projects-hero"),
-        inactive: ratioFor("home-hero"),
-        contexts: window.__runtimeAcceptanceProbe?.contextsByCanvas.size ?? -1,
-      };
+for (const {
+  activeModel,
+  activeSceneId,
+  refusedSceneId,
+  route,
+} of [
+  {
+    route: "/projects",
+    activeSceneId: "projects-hero",
+    activeModel: PROJECT_MODEL,
+    refusedSceneId: "contact-hero",
+  },
+  {
+    route: "/contact",
+    activeSceneId: "contact-hero",
+    activeModel: EXPERIENCE_MODEL,
+    refusedSceneId: "froggie-adventures",
+  },
+] as const) {
+  test(`settles mobile ${route} direct-entry warmup when the eighth context is refused`, async ({
+    browser,
+  }, testInfo) => {
+    const context = await createRuntimeContext(browser, testInfo, {
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
     });
-    expect(backingRatios.active).toBeGreaterThanOrEqual(0.95);
-    expect(backingRatios.inactive).toBeLessThanOrEqual(0.8);
-    expect(backingRatios.contexts).toBe(7);
-    expect(await connectedContextCallCount(page)).toBe(8);
-    await expectNoUnhandledRuntimeErrors(page);
-  } finally {
-    await disposeFixture(models);
-    await context.close();
-  }
-});
+    const page = await context.newPage();
+    await installRuntimeProbe(page, "context-ceiling");
+    await fulfillPosters(page);
+    const models = await fulfillModels(page, [], {
+      plans: { [activeModel]: { hold: true } },
+    });
+
+    try {
+      await page.goto(route);
+      await models.waitForRequest(activeModel);
+      const loadingScreen = page.locator("[data-initial-loading-screen]");
+      await expect(loadingScreen).toBeVisible();
+      await expect(page.locator(".scene-stage--resident")).toHaveCount(8);
+
+      expect(models.release(activeModel)).toBe(1);
+      const releasedAt = Date.now();
+      await expect(loadingScreen).toHaveCount(0, { timeout: 5_000 });
+      expect(Date.now() - releasedAt).toBeLessThan(5_000);
+
+      await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE[route]);
+      const refusedHost = residentHost(page, refusedSceneId);
+      await expect(refusedHost).toHaveAttribute("data-three-status", "error");
+      await expect(
+        refusedHost.locator("picture.scene-runtime__poster"),
+      ).toBeVisible();
+
+      const backingRatios = await page.evaluate(
+        ({ currentActiveSceneId }) => {
+          const ratioFor = (sceneId: string) => {
+            const canvas = document.querySelector<HTMLCanvasElement>(
+              `.scene-stage--resident[data-scene-owner-id="${sceneId}"] canvas`,
+            );
+            return canvas && canvas.clientWidth > 0
+              ? canvas.width / canvas.clientWidth
+              : null;
+          };
+          const probe = window.__runtimeAcceptanceProbe;
+          return {
+            active: ratioFor(currentActiveSceneId),
+            inactive: ratioFor("home-hero"),
+            contexts: probe?.contextsByCanvas.size ?? -1,
+            contextSceneOrder:
+              probe == null
+                ? []
+                : Array.from(probe.contextsByCanvas.keys()).map(
+                    (canvas) =>
+                      canvas.closest<HTMLElement>(
+                        ".scene-stage--resident",
+                      )?.dataset.sceneOwnerId ?? "missing",
+                  ),
+          };
+        },
+        { currentActiveSceneId: activeSceneId },
+      );
+      expect(backingRatios.active).toBeGreaterThanOrEqual(0.95);
+      expect(backingRatios.inactive).toBeLessThanOrEqual(0.8);
+      expect(backingRatios.contexts).toBe(7);
+      expect(backingRatios.contextSceneOrder[0]).toBe(activeSceneId);
+      expect(await connectedContextCallCount(page)).toBe(8);
+      await expectNoUnhandledRuntimeErrors(page);
+    } finally {
+      await disposeFixture(models);
+      await context.close();
+    }
+  });
+}
 
 test("keeps live capture residents pooled around poster-only scenes and evicts the least-recently-seen context at the cap", async ({
   page,

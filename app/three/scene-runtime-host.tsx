@@ -406,6 +406,22 @@ const INITIAL_DOCUMENT_WARMUP_SCENES = LIVE_SCENE_IDS.map((sceneId) =>
   getSceneDefinition(sceneId),
 );
 
+function prioritizedInitialDocumentWarmupScenes(
+  pathname: string,
+  activeSceneId: SceneId,
+) {
+  const active = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
+    (scene) => scene.id === activeSceneId,
+  );
+  const currentRoute = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
+    (scene) => scene.id !== activeSceneId && scene.route === pathname,
+  );
+  const speculative = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
+    (scene) => scene.id !== activeSceneId && scene.route !== pathname,
+  );
+  return [...active, ...currentRoute, ...speculative];
+}
+
 interface ResidentStage {
   readonly activationVersion: number;
   adoptionVersion: number;
@@ -505,12 +521,16 @@ function useResidentStages(
     const syncStages = () => {
       const currentPathname = pathnameRef.current;
 
-      // On any public route's initial document, seed one permanent resident for
-      // every live scene. Each model performs a real WebGL render (including
-      // shader compilation) behind the loader, and these exact canvases are
-      // later adopted by route sections instead of being created on demand.
+      // On any public route's initial document, seed the active scene first,
+      // then the rest of the current route before speculative scenes. This
+      // preserves a live current page when the browser refuses a later WebGL
+      // context. Every successful model still performs a real render behind
+      // the loader and its exact canvas is later adopted by its route section.
       if (warmAllScenesRef.current) {
-        for (const scene of INITIAL_DOCUMENT_WARMUP_SCENES) {
+        for (const scene of prioritizedInitialDocumentWarmupScenes(
+          currentPathname,
+          activeSceneIdRef.current,
+        )) {
           if (
             !residents.current.some(
               (resident) => resident.scene.id === scene.id,
