@@ -32,6 +32,9 @@ describe("THREE_STATUSES", () => {
       readonly [number, number, number]
     >();
     expectTypeOf<SceneLighting["key"]["width"]>().toEqualTypeOf<number>();
+    expectTypeOf<SceneLighting["key"]["source"]["shape"]>().toEqualTypeOf<
+      "square" | "disk"
+    >();
     expectTypeOf<SceneLighting["world"]["linearColor"]>().toEqualTypeOf<
       readonly [number, number, number]
     >();

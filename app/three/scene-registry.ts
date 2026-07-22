@@ -3,6 +3,7 @@ import type {
   PercentInsets,
   RotationLimits,
   SceneAreaLight,
+  SceneAreaEmitterShape,
   SceneDefinition,
   SceneFrame,
   SceneGroundShadow,
@@ -89,17 +90,30 @@ function areaLight(
   size: number,
   position: Vector3Tuple,
   target: Vector3Tuple,
+  sourceShape: SceneAreaEmitterShape = "square",
 ): SceneAreaLight {
+  const sourceArea =
+    sourceShape === "disk" ? Math.PI * (size / 2) ** 2 : size ** 2;
+  const proxySide = Math.sqrt(sourceArea);
+
   return {
+    source: { shape: sourceShape, size, power },
     color: "#ffffff",
-    // Blender area lights store total power. Three.js stores luminance, and
-    // derives power as intensity * width * height * PI.
-    intensity: power / (Math.PI * size * size),
+    // Blender stores total power and emitter shape. Three.js stores luminance
+    // for a rectangle and derives power as intensity * width * height * PI.
+    // An equal-area square preserves both the disk's emitting area and power.
+    intensity: power / (Math.PI * sourceArea),
     position,
     target,
-    width: size,
-    height: size,
+    width: proxySide,
+    height: proxySide,
   };
+}
+
+interface SourceLightingOptions {
+  readonly emitterShape?: SceneAreaEmitterShape;
+  readonly worldLinearColor?: Vector3Tuple;
+  readonly worldStrength?: number;
 }
 
 function sourceLighting(
@@ -107,13 +121,18 @@ function sourceLighting(
   size: number,
   position: Vector3Tuple,
   target: Vector3Tuple,
-  worldLinearColor: Vector3Tuple = DARK_WORLD_LINEAR,
-  worldStrength = 1,
+  options: SourceLightingOptions = {},
 ): SceneLighting {
+  const {
+    emitterShape = "square",
+    worldLinearColor = DARK_WORLD_LINEAR,
+    worldStrength = 1,
+  } = options;
+
   return {
     exposure: 1,
     world: { linearColor: worldLinearColor, strength: worldStrength },
-    key: areaLight(power, size, position, target),
+    key: areaLight(power, size, position, target, emitterShape),
   };
 }
 
@@ -220,8 +239,11 @@ const FROGGIE_LIGHTING = sourceLighting(
   5,
   [4.2, 7.2, 5],
   [-1.85, 0, -2.2],
-  FROGGIE_WORLD_LINEAR,
-  0.7,
+  {
+    emitterShape: "disk",
+    worldLinearColor: FROGGIE_WORLD_LINEAR,
+    worldStrength: 0.7,
+  },
 );
 const CONTACT_LIGHTING = EXPERIENCE_HERO_LIGHTING;
 

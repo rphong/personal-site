@@ -79,7 +79,16 @@ export interface SceneTuning {
   readonly model: SceneModelTransform;
 }
 
+export type SceneAreaEmitterShape = "square" | "disk";
+
 export interface SceneAreaLight {
+  readonly source: {
+    readonly shape: SceneAreaEmitterShape;
+    /** Blender size: square edge length or disk diameter. */
+    readonly size: number;
+    /** Blender emitter power in watts. */
+    readonly power: number;
+  };
   readonly color: string;
   readonly intensity: number;
   readonly position: Vector3Tuple;

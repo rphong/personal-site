@@ -7,20 +7,27 @@ import {
   LIVE_SCENE_IDS,
   SCENE_DEFINITIONS,
 } from "./scene-registry";
+import type { SceneAreaEmitterShape } from "./types";
 
 function area(
   power: number,
   size: number,
   position: readonly [number, number, number],
   target: readonly [number, number, number],
+  sourceShape: SceneAreaEmitterShape = "square",
 ) {
+  const sourceArea =
+    sourceShape === "disk" ? Math.PI * (size / 2) ** 2 : size ** 2;
+  const proxySide = Math.sqrt(sourceArea);
+
   return {
+    source: { shape: sourceShape, size, power },
     color: "#ffffff",
-    intensity: power / (Math.PI * size * size),
+    intensity: power / (Math.PI * sourceArea),
     position,
     target,
-    width: size,
-    height: size,
+    width: proxySide,
+    height: proxySide,
   };
 }
 
@@ -93,6 +100,9 @@ describe("scene registry", () => {
       }
       expect(scene.lighting.key.intensity).toBeGreaterThan(0);
       expect(scene.lighting.key.color).toMatch(/^#[A-Fa-f0-9]{6}$/);
+      expect(["square", "disk"]).toContain(scene.lighting.key.source.shape);
+      expect(scene.lighting.key.source.size).toBeGreaterThan(0);
+      expect(scene.lighting.key.source.power).toBeGreaterThan(0);
       expect(scene.lighting.key.position).toHaveLength(3);
       expect(scene.lighting.key.target).toHaveLength(3);
       expect(scene.lighting.key.width).toBeGreaterThan(0);
@@ -163,7 +173,7 @@ describe("scene registry", () => {
           linearColor: [0.4286905, 0.6583748, 0.7529422],
           strength: 0.7,
         },
-        key: area(720, 5, [4.2, 7.2, 5], [-1.85, 0, -2.2]),
+        key: area(720, 5, [4.2, 7.2, 5], [-1.85, 0, -2.2], "disk"),
       },
       "contact-hero": {
         exposure: 1,
@@ -230,6 +240,20 @@ describe("scene registry", () => {
         expect(alignment).toBeGreaterThan(0.999_999);
       }
     }
+  });
+
+  it("maps Froggie's Blender disk to an equal-area rectangular proxy", () => {
+    const key = getSceneDefinition("froggie-adventures").lighting.key;
+    const diskArea = Math.PI * (key.source.size / 2) ** 2;
+
+    expect(key.source).toEqual({ shape: "disk", size: 5, power: 720 });
+    expect(key.width).toBeCloseTo((5 * Math.sqrt(Math.PI)) / 2, 12);
+    expect(key.height).toBe(key.width);
+    expect(key.width * key.height).toBeCloseTo(diskArea, 12);
+    expect(key.intensity * key.width * key.height * Math.PI).toBeCloseTo(
+      key.source.power,
+      12,
+    );
   });
 
   it("samples the reviewed interaction poses once without enabling playback", () => {
