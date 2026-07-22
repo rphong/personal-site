@@ -133,10 +133,12 @@ describe("SceneCanvasContents", () => {
 
     expect(ambients).toHaveLength(1);
     const ambient = ambients[0].instance as AmbientLight;
-    expect(`#${ambient.color.getHexString()}`).toBe(
-      initial.scene.lighting.ambient.color,
+    expect(ambient.color.toArray()).toEqual([
+      ...initial.scene.lighting.world.linearColor,
+    ]);
+    expect(ambient.intensity).toBe(
+      initial.scene.lighting.world.strength * Math.PI,
     );
-    expect(ambient.intensity).toBe(initial.scene.lighting.ambient.intensity);
 
     expect(areas).toHaveLength(1);
     const light = areas[0].instance as RectAreaLight;
@@ -177,7 +179,7 @@ describe("SceneCanvasContents", () => {
       renderer.scene.findAllByProps({ name: "mock-model:home-hero" }),
     ).toHaveLength(1);
     expect(
-      renderer.scene.findAllByProps({ name: "contact-blob-shadow" }),
+      renderer.scene.findAllByProps({ name: "authored-ground-shadow" }),
     ).toHaveLength(1);
     lifecycle.events.length = 0;
 
@@ -193,7 +195,7 @@ describe("SceneCanvasContents", () => {
       renderer.scene.findAllByProps({ name: "mock-model:home-hero" }),
     ).toHaveLength(0);
     expect(
-      renderer.scene.findAllByProps({ name: "contact-blob-shadow" }),
+      renderer.scene.findAllByProps({ name: "authored-ground-shadow" }),
     ).toHaveLength(0);
     expect(lifecycle.events).toEqual(["model-detached"]);
 

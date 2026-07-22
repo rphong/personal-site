@@ -84,9 +84,13 @@ describe("scene registry", () => {
       }
       expect(scene.lighting.exposure).toBeGreaterThan(0);
       expect(scene.lighting.exposure).toBeLessThanOrEqual(1.2);
-      expect(scene.lighting.ambient.intensity).toBeGreaterThan(0);
-      expect(scene.lighting.ambient.intensity).toBeLessThanOrEqual(0.2);
-      expect(scene.lighting.ambient.color).toMatch(/^#[A-Fa-f0-9]{6}$/);
+      expect(scene.lighting.world.strength).toBeGreaterThan(0);
+      expect(scene.lighting.world.strength).toBeLessThanOrEqual(1);
+      expect(scene.lighting.world.linearColor).toHaveLength(3);
+      for (const channel of scene.lighting.world.linearColor) {
+        expect(channel).toBeGreaterThanOrEqual(0);
+        expect(channel).toBeLessThanOrEqual(1);
+      }
       expect(scene.lighting.key.intensity).toBeGreaterThan(0);
       expect(scene.lighting.key.color).toMatch(/^#[A-Fa-f0-9]{6}$/);
       expect(scene.lighting.key.position).toHaveLength(3);
@@ -110,22 +114,22 @@ describe("scene registry", () => {
     ).toEqual({
       "home-hero": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.16 },
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
         key: area(3000, craneSize, cranePosition, [0, 0, 0]),
       },
       "experience-hero": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.16 },
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
         key: area(3000, craneSize, cranePosition, [0, 0, 0]),
       },
       "experience-intro": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.16 },
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
         key: area(4000, craneSize, cranePosition, [0, 0, 0]),
       },
       "nasa-rocket": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.16 },
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
         key: area(
           5000,
           20,
@@ -135,7 +139,7 @@ describe("scene registry", () => {
       },
       "projects-hero": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.16 },
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
         key: area(
           3750,
           craneSize,
@@ -145,7 +149,7 @@ describe("scene registry", () => {
       },
       "league-ban": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.16 },
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
         key: area(
           4000,
           30,
@@ -155,12 +159,15 @@ describe("scene registry", () => {
       },
       "froggie-adventures": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.11 },
+        world: {
+          linearColor: [0.4286905, 0.6583748, 0.7529422],
+          strength: 0.7,
+        },
         key: area(720, 5, [4.2, 7.2, 5], [-1.85, 0, -2.2]),
       },
       "contact-hero": {
         exposure: 1,
-        ambient: { color: "#ffffff", intensity: 0.16 },
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
         key: area(3000, craneSize, cranePosition, [0, 0, 0]),
       },
     });
@@ -173,68 +180,55 @@ describe("scene registry", () => {
     expect(getSceneDefinition("paycom-poster").requiredLive).toBe(false);
   });
 
-  it("keeps every live scene grounded with its reviewed contact blob", () => {
+  it("authors compact contact and source-aligned cast lobes per composition", () => {
     expect(
       Object.fromEntries(
         LIVE_SCENE_IDS.map((id) => [
           id,
-          getSceneDefinition(id).contactShadow,
+          getSceneDefinition(id).groundShadow.lobes.map(({ profile }) =>
+            profile,
+          ),
         ]),
       ),
     ).toEqual({
-      "home-hero": {
-        opacity: 0.58,
-        position: [-1.05, -0.46, -0.55],
-        scale: [1.9, 0.72],
-        textureSize: 256,
-      },
-      "experience-hero": {
-        opacity: 0.44,
-        position: [0.1, -0.01, 0.45],
-        scale: [3.4, 1.55],
-        textureSize: 256,
-      },
-      "experience-intro": {
-        opacity: 0.5,
-        position: [-0.1, -0.01, 0],
-        scale: [2.3, 0.95],
-        textureSize: 256,
-      },
-      "nasa-rocket": {
-        opacity: 0.46,
-        position: [0, 0.01, -0.95],
-        scale: [4.3, 2.05],
-        textureSize: 256,
-      },
-      "projects-hero": {
-        opacity: 0.4,
-        position: [-0.6, -0.01, 1],
-        scale: [4.3, 1.85],
-        textureSize: 256,
-      },
-      "league-ban": {
-        opacity: 0.52,
-        position: [0.65, -0.01, 0.2],
-        scale: [5.8, 2.7],
-        textureSize: 256,
-      },
-      "froggie-adventures": {
-        opacity: 0.46,
-        position: [0, -0.01, 0],
-        scale: [2.9, 1.3],
-        textureSize: 256,
-      },
-      "contact-hero": {
-        opacity: 0.62,
-        position: [0.1, -0.01, 0.45],
-        scale: [2.6, 1.2],
-        textureSize: 256,
-      },
+      "home-hero": ["contact", "contact", "cast"],
+      "experience-hero": ["contact", "contact", "cast"],
+      "experience-intro": ["contact", "contact", "cast"],
+      "nasa-rocket": ["contact", "cast"],
+      "projects-hero": ["contact", "cast", "contact", "cast"],
+      "league-ban": [
+        "contact",
+        "cast",
+        "contact",
+        "cast",
+        "contact",
+        "cast",
+      ],
+      "froggie-adventures": ["contact", "cast"],
+      "contact-hero": ["contact", "contact", "cast"],
     });
 
     for (const id of LIVE_SCENE_IDS) {
       const scene = getSceneDefinition(id);
-      expect(scene.contactShadow.textureSize).toBe(256);
+      expect(scene.groundShadow.textureSize).toBe(256);
+      for (const lobe of scene.groundShadow.lobes) {
+        expect(lobe.opacity).toBeGreaterThan(0);
+        expect(lobe.opacity).toBeLessThan(0.5);
+        expect(lobe.position).toHaveLength(3);
+        expect(lobe.scale[0]).toBeGreaterThan(0);
+        expect(lobe.scale[1]).toBeGreaterThan(0);
+        expect(Number.isFinite(lobe.rotation)).toBe(true);
+
+        if (lobe.profile !== "cast") continue;
+        const fromKeyX = lobe.position[0] - scene.lighting.key.position[0];
+        const fromKeyZ = lobe.position[2] - scene.lighting.key.position[2];
+        const magnitude = Math.hypot(fromKeyX, fromKeyZ);
+        const castX = Math.cos(lobe.rotation);
+        const castZ = -Math.sin(lobe.rotation);
+        const alignment =
+          castX * (fromKeyX / magnitude) + castZ * (fromKeyZ / magnitude);
+        expect(alignment).toBeGreaterThan(0.999_999);
+      }
     }
   });
 

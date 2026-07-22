@@ -88,19 +88,28 @@ export interface SceneAreaLight {
   readonly height: number;
 }
 
+export interface SceneWorldLight {
+  /** Blender-authored world color in linear sRGB. */
+  readonly linearColor: Vector3Tuple;
+  readonly strength: number;
+}
+
 export interface SceneLighting {
   readonly exposure: number;
-  readonly ambient: {
-    readonly color: string;
-    readonly intensity: number;
-  };
+  readonly world: SceneWorldLight;
   readonly key: SceneAreaLight;
 }
 
-export interface SceneContactShadow {
+export interface SceneGroundShadowLobe {
+  readonly profile: "contact" | "cast";
   readonly opacity: number;
   readonly position: Vector3Tuple;
   readonly scale: readonly [width: number, depth: number];
+  readonly rotation: number;
+}
+
+export interface SceneGroundShadow {
+  readonly lobes: readonly SceneGroundShadowLobe[];
   readonly textureSize: 256;
 }
 
@@ -126,7 +135,7 @@ interface SceneDefinitionBase<Id extends SceneId> {
   readonly desktop: SceneFrame;
   readonly mobile: SceneFrame;
   readonly lighting: SceneLighting;
-  readonly contactShadow?: SceneContactShadow;
+  readonly groundShadow?: SceneGroundShadow;
   readonly rotation: RotationLimits;
   readonly nextSceneId: SceneId | null;
 }

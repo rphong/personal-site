@@ -11,11 +11,14 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import {
   ACESFilmicToneMapping,
+  Color,
+  LinearSRGBColorSpace,
   PerspectiveCamera,
   type RectAreaLight,
   SRGBColorSpace,
@@ -25,7 +28,7 @@ import {
   type WebGLRendererParameters,
 } from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
-import { ContactBlobShadow } from "./contact-blob-shadow";
+import { AuthoredGroundShadow } from "./authored-ground-shadow";
 import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneErrorBoundary } from "./scene-error-boundary";
 import { SceneModel } from "./scene-model";
@@ -246,12 +249,23 @@ function SceneAreaKey({ scene }: { readonly scene: SceneDefinition }) {
 }
 
 function SceneLights({ scene }: { readonly scene: SceneDefinition }) {
+  const worldColor = useMemo(
+    () =>
+      new Color().setRGB(
+        ...scene.lighting.world.linearColor,
+        LinearSRGBColorSpace,
+      ),
+    [scene.lighting.world.linearColor],
+  );
+
   return (
     <>
       <ambientLight
         name="source-world-fill"
-        color={scene.lighting.ambient.color}
-        intensity={scene.lighting.ambient.intensity}
+        color={worldColor}
+        // AmbientLight is expressed as irradiance; Blender's world is
+        // radiance. A constant hemisphere integrates to PI steradians.
+        intensity={scene.lighting.world.strength * Math.PI}
       />
       <SceneAreaKey scene={scene} />
     </>
@@ -477,8 +491,8 @@ function ModelLayer({
         scene={props.scene}
         rotation={props.rotation}
       />
-      {props.scene.contactShadow ? (
-        <ContactBlobShadow definition={props.scene.contactShadow} />
+      {props.scene.groundShadow ? (
+        <AuthoredGroundShadow definition={props.scene.groundShadow} />
       ) : null}
       <DemandRenderer
         adoptionVersion={props.adoptionVersion}

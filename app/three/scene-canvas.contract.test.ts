@@ -18,6 +18,9 @@ describe("persistent Canvas source contract", () => {
     expect(source).not.toContain("<directionalLight");
     expect(source).not.toContain("<hemisphereLight");
     expect(source).toContain("RectAreaLightUniformsLib.init()");
+    expect(source).toContain("<AuthoredGroundShadow");
+    expect(source).toContain("LinearSRGBColorSpace");
+    expect(source).toContain("scene.lighting.world.strength * Math.PI");
     expect(source).toContain("light.current?.lookAt(...scene.lighting.key.target)");
     expect(source).toContain("ACESFilmicToneMapping");
     expect(source).toContain("renderer.toneMappingExposure = scene.lighting.exposure");
@@ -28,6 +31,7 @@ describe("persistent Canvas source contract", () => {
     expect(source).not.toMatch(
       /OrbitControls|MapControls|PresentationControls|ContactShadows/,
     );
+    expect(source).not.toContain("ContactBlobShadow");
     expect(source).not.toMatch(
       /scene\.background\s*=|attach=["']background["']|planeGeometry/,
     );

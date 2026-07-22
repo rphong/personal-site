@@ -5,6 +5,8 @@ import type {
   SceneAreaLight,
   SceneDefinition,
   SceneFrame,
+  SceneGroundShadow,
+  SceneGroundShadowLobe,
   SceneId,
   SceneLighting,
   SceneModelTransform,
@@ -105,18 +107,70 @@ function sourceLighting(
   size: number,
   position: Vector3Tuple,
   target: Vector3Tuple,
-  ambientIntensity = 0.16,
+  worldLinearColor: Vector3Tuple = DARK_WORLD_LINEAR,
+  worldStrength = 1,
 ): SceneLighting {
   return {
     exposure: 1,
-    ambient: { color: "#ffffff", intensity: ambientIntensity },
+    world: { linearColor: worldLinearColor, strength: worldStrength },
     key: areaLight(power, size, position, target),
   };
 }
 
+function contactLobe(
+  position: Vector3Tuple,
+  scale: readonly [number, number],
+  opacity: number,
+  rotation = 0,
+): SceneGroundShadowLobe {
+  return { profile: "contact", opacity, position, scale, rotation };
+}
+
+function castLobe(
+  keyPosition: Vector3Tuple,
+  origin: Vector3Tuple,
+  length: number,
+  width: number,
+  opacity: number,
+): SceneGroundShadowLobe {
+  const directionX = origin[0] - keyPosition[0];
+  const directionZ = origin[2] - keyPosition[2];
+  const magnitude = Math.hypot(directionX, directionZ) || 1;
+  const normalizedX = directionX / magnitude;
+  const normalizedZ = directionZ / magnitude;
+
+  return {
+    profile: "cast",
+    opacity,
+    // The cast texture reaches its densest point 14% along the plane. Offset
+    // the plane by 36% of its length so that point begins at the object.
+    position: [
+      origin[0] + normalizedX * length * 0.36,
+      origin[1] - 0.002,
+      origin[2] + normalizedZ * length * 0.36,
+    ],
+    scale: [length, width],
+    rotation: Math.atan2(-normalizedZ, normalizedX),
+  };
+}
+
+function groundShadow(
+  ...lobes: readonly SceneGroundShadowLobe[]
+): SceneGroundShadow {
+  return { lobes, textureSize: 256 };
+}
+
+// Blender stores world colors in linear sRGB. Keeping these numbers linear
+// avoids the common double-conversion that made the first web pass too grey.
+const DARK_WORLD_LINEAR = [0.05, 0.05, 0.05] as const satisfies Vector3Tuple;
+const FROGGIE_WORLD_LINEAR = [
+  0.4286905,
+  0.6583748,
+  0.7529422,
+] as const satisfies Vector3Tuple;
+
 // These rigs mirror the single broad AREA lights kept in the Blender source
-// scenes (Blender Z-up positions converted to glTF/Three.js Y-up). The dim
-// ambient term approximates the source world's 0.05 background strength.
+// scenes (Blender Z-up positions converted to glTF/Three.js Y-up).
 const CRANE_LIGHT_POSITION = [
   0.334772,
   7.233446,
@@ -166,7 +220,8 @@ const FROGGIE_LIGHTING = sourceLighting(
   5,
   [4.2, 7.2, 5],
   [-1.85, 0, -2.2],
-  0.11,
+  FROGGIE_WORLD_LINEAR,
+  0.7,
 );
 const CONTACT_LIGHTING = EXPERIENCE_HERO_LIGHTING;
 
@@ -187,12 +242,11 @@ export const SCENE_DEFINITIONS = {
     desktop: frame([6, 2.6, 3.4], [0, 0.2, 0], 34, DESKTOP_AREA),
     mobile: frame([7.6, 3.25, 4.35], [0, -0.05, 0], 38, MOBILE_AREA),
     lighting: HOME_LIGHTING,
-    contactShadow: {
-      opacity: 0.58,
-      position: [-1.05, -0.46, -0.55],
-      scale: [1.9, 0.72],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([-1.05, -0.46, -0.55], [1.25, 0.58], 0.46),
+      contactLobe([-0.82, -0.462, -0.4], [3, 1.5], 0.2, -0.15),
+      castLobe(CRANE_LIGHT_POSITION, [-1.05, -0.458, -0.55], 3.2, 1.65, 0.36),
+    ),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "experience-hero",
   },
@@ -212,12 +266,11 @@ export const SCENE_DEFINITIONS = {
     desktop: frame([3.7, 2.3, 4.7], [0.2, 0.8, 0.3], 36, DESKTOP_AREA),
     mobile: frame([5.2, 4.1, 9.6], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
     lighting: EXPERIENCE_HERO_LIGHTING,
-    contactShadow: {
-      opacity: 0.44,
-      position: [0.1, -0.01, 0.45],
-      scale: [3.4, 1.55],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([0.1, -0.01, 0.45], [1.55, 0.75], 0.46),
+      contactLobe([0.25, -0.012, 0.5], [3.3, 1.6], 0.2, -0.15),
+      castLobe(CRANE_LIGHT_POSITION, [0.1, -0.008, 0.45], 3, 1.55, 0.3),
+    ),
     staticPose: {
       clips: [
         { name: "Dumbell L", timeSeconds: 40 / 24 },
@@ -254,12 +307,11 @@ export const SCENE_DEFINITIONS = {
       EXPERIENCE_CHAPTER_MOBILE_AREA,
     ),
     lighting: EXPERIENCE_INTRO_LIGHTING,
-    contactShadow: {
-      opacity: 0.5,
-      position: [-0.1, -0.01, 0],
-      scale: [2.3, 0.95],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([-0.1, -0.01, 0], [1.3, 0.58], 0.44),
+      contactLobe([0.05, -0.012, 0.08], [2.5, 1.2], 0.18, -0.15),
+      castLobe(CRANE_LIGHT_POSITION, [-0.1, -0.008, 0], 3, 1.35, 0.3),
+    ),
     staticPose: {
       clips: [
         { name: "EmptyAction", timeSeconds: 1 / 24 },
@@ -295,12 +347,16 @@ export const SCENE_DEFINITIONS = {
       EXPERIENCE_CHAPTER_MOBILE_AREA,
     ),
     lighting: NASA_ROCKET_LIGHTING,
-    contactShadow: {
-      opacity: 0.46,
-      position: [0, 0.01, -0.95],
-      scale: [4.3, 2.05],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([0, 0.01, -0.95], [3.6, 1.65], 0.46),
+      castLobe(
+        NASA_ROCKET_LIGHTING.key.position,
+        [0, 0.012, -0.95],
+        3.8,
+        2.1,
+        0.3,
+      ),
+    ),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "eog-poster",
   },
@@ -361,12 +417,24 @@ export const SCENE_DEFINITIONS = {
     ),
     mobile: frame([5.5, 4.4, 10.8], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
     lighting: PROJECTS_HERO_LIGHTING,
-    contactShadow: {
-      opacity: 0.4,
-      position: [-0.6, -0.01, 1],
-      scale: [4.3, 1.85],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([0.15, -0.01, 0.45], [2, 0.9], 0.45),
+      castLobe(
+        PROJECTS_HERO_LIGHTING.key.position,
+        [0.15, -0.008, 0.45],
+        2.25,
+        1,
+        0.27,
+      ),
+      contactLobe([0.1, -0.009, 1.75], [1.45, 0.7], 0.42),
+      castLobe(
+        PROJECTS_HERO_LIGHTING.key.position,
+        [0.1, -0.007, 1.75],
+        1.8,
+        0.75,
+        0.25,
+      ),
+    ),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "league-ban",
   },
@@ -396,12 +464,32 @@ export const SCENE_DEFINITIONS = {
       PROJECT_CHAPTER_MOBILE_AREA,
     ),
     lighting: LEAGUE_BAN_LIGHTING,
-    contactShadow: {
-      opacity: 0.52,
-      position: [0.65, -0.01, 0.2],
-      scale: [5.8, 2.7],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([-1.75, -0.01, 0.65], [2.6, 1.25], 0.32),
+      castLobe(
+        LEAGUE_BAN_LIGHTING.key.position,
+        [-1.75, -0.008, 0.65],
+        2.1,
+        1.05,
+        0.19,
+      ),
+      contactLobe([0.35, -0.009, 1.1], [1.8, 0.85], 0.34),
+      castLobe(
+        LEAGUE_BAN_LIGHTING.key.position,
+        [0.35, -0.007, 1.1],
+        1.8,
+        0.8,
+        0.21,
+      ),
+      contactLobe([1.6, -0.008, 0.15], [2.3, 1.1], 0.44),
+      castLobe(
+        LEAGUE_BAN_LIGHTING.key.position,
+        [1.6, -0.006, 0.15],
+        2.35,
+        1.15,
+        0.27,
+      ),
+    ),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "froggie-adventures",
   },
@@ -431,12 +519,10 @@ export const SCENE_DEFINITIONS = {
       PROJECT_CHAPTER_MOBILE_AREA,
     ),
     lighting: FROGGIE_LIGHTING,
-    contactShadow: {
-      opacity: 0.46,
-      position: [0, -0.01, 0],
-      scale: [2.9, 1.3],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([0, -0.01, 0], [2.7, 1.2], 0.26),
+      castLobe(FROGGIE_LIGHTING.key.position, [0, -0.008, 0], 1.7, 1, 0.12),
+    ),
     rotation: DEFAULT_ROTATION,
     nextSceneId: "contact-hero",
   },
@@ -456,12 +542,11 @@ export const SCENE_DEFINITIONS = {
     desktop: frame([3.7, 2.3, 4.7], [0.2, 0.8, 0.3], 36, DESKTOP_AREA),
     mobile: frame([5.2, 4.1, 9.6], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
     lighting: CONTACT_LIGHTING,
-    contactShadow: {
-      opacity: 0.62,
-      position: [0.1, -0.01, 0.45],
-      scale: [2.6, 1.2],
-      textureSize: 256,
-    },
+    groundShadow: groundShadow(
+      contactLobe([0.1, -0.01, 0.45], [1.55, 0.75], 0.48),
+      contactLobe([0.3, -0.012, 0.5], [4.2, 2], 0.22, -0.15),
+      castLobe(CRANE_LIGHT_POSITION, [0.1, -0.008, 0.45], 3.5, 1.8, 0.36),
+    ),
     staticPose: {
       clips: [
         { name: "Dumbell L", timeSeconds: 40 / 24 },
