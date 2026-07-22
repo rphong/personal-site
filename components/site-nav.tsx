@@ -1,7 +1,13 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import {
+  motion,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+} from "framer-motion";
 import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { routes, type RouteKey } from "../content/site-content";
 
 type SiteNavProps = {
@@ -10,9 +16,91 @@ type SiteNavProps = {
 
 export function SiteNav({ activeRoute }: SiteNavProps) {
   const prefersReducedMotion = useReducedMotion();
+  const headerRef = useRef<HTMLElement>(null);
+  const [isIsland, setIsIsland] = useState(false);
+  const { scrollY } = useScroll();
+
+  const updateHeaderMode = useCallback(() => {
+    const header = headerRef.current;
+    const hero = document.querySelector<HTMLElement>(".page-hero");
+
+    if (!header || !hero) {
+      setIsIsland(false);
+      return;
+    }
+
+    const headerBounds = header.getBoundingClientRect();
+    const heroBounds = hero.getBoundingClientRect();
+
+    // A zero-sized box means the document has not been laid out yet (notably in
+    // non-visual environments). The resize/scroll observers will try again.
+    if (headerBounds.height <= 0 || heroBounds.height <= 0) {
+      setIsIsland(false);
+      return;
+    }
+
+    setIsIsland(heroBounds.bottom <= headerBounds.bottom);
+  }, []);
+
+  useMotionValueEvent(scrollY, "change", updateHeaderMode);
+
+  useEffect(() => {
+    updateHeaderMode();
+    window.addEventListener("resize", updateHeaderMode);
+
+    const hero = document.querySelector<HTMLElement>(".page-hero");
+    const resizeObserver =
+      hero && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateHeaderMode)
+        : null;
+
+    if (hero) resizeObserver?.observe(hero);
+
+    return () => {
+      window.removeEventListener("resize", updateHeaderMode);
+      resizeObserver?.disconnect();
+    };
+  }, [activeRoute, updateHeaderMode]);
 
   return (
-    <header className="site-nav">
+    <header
+      className="site-nav"
+      data-island={isIsland ? "true" : "false"}
+      ref={headerRef}
+    >
+      <motion.div
+        animate={
+          isIsland
+            ? {
+                borderRadius: "999px",
+                boxShadow:
+                  "0 1rem 2.5rem rgb(40 40 40 / 0.2), 0 0.2rem 0.65rem rgb(40 40 40 / 0.12)",
+              }
+            : {
+                borderRadius: "0px",
+                boxShadow:
+                  "0 0rem 0rem rgb(40 40 40 / 0), 0 0rem 0rem rgb(40 40 40 / 0)",
+              }
+        }
+        aria-hidden="true"
+        className="site-nav__surface"
+        initial={false}
+        layout={prefersReducedMotion ? false : true}
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : {
+                borderRadius: { duration: 0.24, ease: "easeOut" },
+                boxShadow: { duration: 0.24, ease: "easeOut" },
+                layout: {
+                  type: "spring",
+                  stiffness: 380,
+                  damping: 34,
+                  mass: 0.72,
+                },
+              }
+        }
+      />
       <nav aria-label="Primary navigation" className="site-nav__inner">
         {routes.map((route) => (
           <Link

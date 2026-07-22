@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SiteShell } from "../components/site-shell";
 
@@ -52,6 +52,67 @@ describe("site shell", () => {
       "tabindex",
       "-1",
     );
+  });
+
+  it("turns the navigation into an island after the hero clears the header", () => {
+    let heroBottom = 900;
+    const nativeGetBoundingClientRect =
+      HTMLElement.prototype.getBoundingClientRect;
+
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRect(this: HTMLElement) {
+        if (this.classList.contains("site-nav")) {
+          return {
+            bottom: 76,
+            height: 76,
+            left: 0,
+            right: 1200,
+            top: 0,
+            width: 1200,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          };
+        }
+
+        if (this.classList.contains("page-hero")) {
+          return {
+            bottom: heroBottom,
+            height: 824,
+            left: 0,
+            right: 1200,
+            top: heroBottom - 824,
+            width: 1200,
+            x: 0,
+            y: heroBottom - 824,
+            toJSON: () => ({}),
+          };
+        }
+
+        return nativeGetBoundingClientRect.call(this);
+      },
+    );
+
+    const { container } = render(
+      <SiteShell>
+        <section className="page-hero">Hero</section>
+      </SiteShell>,
+    );
+    const header = container.querySelector(".site-nav");
+
+    expect(header).toHaveAttribute("data-island", "false");
+
+    act(() => {
+      heroBottom = 70;
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(header).toHaveAttribute("data-island", "true");
+
+    act(() => {
+      heroBottom = 80;
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect(header).toHaveAttribute("data-island", "false");
   });
 
   it("renders the operational privacy disclosure", () => {
