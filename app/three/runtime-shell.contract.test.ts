@@ -109,7 +109,7 @@ describe("persistent runtime shell", () => {
         css,
         '.scene-runtime[data-three-status="loading"] .scene-runtime__poster',
       ),
-    ).toMatch(/visibility:\s*hidden/);
+    ).toMatch(/visibility:\s*visible/);
     expect(
       cssRule(
         css,
@@ -133,7 +133,7 @@ describe("persistent runtime shell", () => {
       /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime:not\(\[data-three-status="ready"\]\):not\([\s\S]*?\[data-three-status="loading"\][\s\S]*?\):not\(\[data-poster-ready="true"\]\)[\s\S]*?> \.scene-section__poster\s*\{[^}]*visibility:\s*visible/,
     );
     expect(css).toMatch(
-      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime\[data-three-status="loading"\][\s\S]*?> \.scene-section__poster\s*\{[^}]*visibility:\s*hidden/,
+      /\.scene-section\[data-required-live="true"\]:has\([\s\S]*?\.scene-runtime\[data-three-status="loading"\]\[data-poster-ready="true"\][\s\S]*?> \.scene-section__poster\s*\{[^}]*visibility:\s*hidden/,
     );
     const pool = cssRule(css, ".scene-resident-pool");
     expect(pool).toMatch(/position:\s*fixed/);

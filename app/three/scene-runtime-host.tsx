@@ -16,7 +16,11 @@ import { emitSceneRuntimeEvent } from "./runtime-events";
 import { SceneCanvasBoundary } from "./scene-canvas-boundary";
 import type { SceneCanvasPortProps } from "./scene-canvas";
 import { clearSceneModel } from "./scene-loader";
-import { getSceneDefinition, isSceneId } from "./scene-registry";
+import {
+  getSceneDefinition,
+  isSceneId,
+  LIVE_SCENE_IDS,
+} from "./scene-registry";
 import { ScenePoster } from "./scene-poster";
 import { SceneRotationArea } from "./scene-rotation-area";
 import { useSceneRuntime } from "./scene-runtime-context";
@@ -398,6 +402,10 @@ export function SceneRuntimeHostView({
 
 export const MAX_CONNECTED_LIVE_SCENES = 8;
 
+const LANDING_WARMUP_SCENES = LIVE_SCENE_IDS.map((sceneId) =>
+  getSceneDefinition(sceneId),
+);
+
 interface ResidentStage {
   readonly activationVersion: number;
   adoptionVersion: number;
@@ -430,6 +438,7 @@ function useResidentStages(
   pathname: string,
   activeSceneId: SceneId,
   poolElement: HTMLDivElement | null,
+  warmAllScenes: boolean,
 ) {
   const [stages, setStages] = useState<readonly ResidentStage[]>([]);
   const residents = useRef<ResidentStage[]>([]);
@@ -437,6 +446,7 @@ function useResidentStages(
   const lastSeenClock = useRef(0);
   const pathnameRef = useRef(pathname);
   const activeSceneIdRef = useRef(activeSceneId);
+  const warmAllScenesRef = useRef(warmAllScenes);
   const lastActiveSceneId = useRef<SceneId | null>(null);
   const syncStagesRef = useRef<(() => void) | null>(null);
 
@@ -494,6 +504,24 @@ function useResidentStages(
 
     const syncStages = () => {
       const currentPathname = pathnameRef.current;
+
+      // The initial document loader starts only on the landing route. Seed one
+      // permanent resident for every live scene there, so each model performs
+      // a real WebGL render (including shader compilation) behind the loader.
+      // These exact canvases are then adopted by route sections instead of
+      // being created on first navigation.
+      if (currentPathname === "/" && warmAllScenesRef.current) {
+        for (const scene of LANDING_WARMUP_SCENES) {
+          if (
+            !residents.current.some(
+              (resident) => resident.scene.id === scene.id,
+            )
+          ) {
+            createResident(scene);
+          }
+        }
+      }
+
       const sections = Array.from(
         document.querySelectorAll<HTMLElement>(
           'section.scene-section[data-required-live="true"]',
@@ -600,8 +628,9 @@ function useResidentStages(
   useLayoutEffect(() => {
     pathnameRef.current = pathname;
     activeSceneIdRef.current = activeSceneId;
+    warmAllScenesRef.current = warmAllScenes;
     syncStagesRef.current?.();
-  }, [activeSceneId, pathname, poolElement]);
+  }, [activeSceneId, pathname, poolElement, warmAllScenes]);
 
   return stages;
 }
@@ -702,7 +731,6 @@ export function SceneRuntimeHost() {
   const runtime = useSceneRuntime();
   const pathname = usePathname();
   const [poolElement, setPoolElement] = useState<HTMLDivElement | null>(null);
-  const stages = useResidentStages(pathname, runtime.activeSceneId, poolElement);
   const preferredStatus = statusForRuntime({
     initialized: runtime.threeInitialized,
     enabled: runtime.threeEnabled,
@@ -710,6 +738,12 @@ export function SceneRuntimeHost() {
   });
   const canvasEnabled =
     runtime.sceneActivationAllowed && preferredStatus === "loading";
+  const stages = useResidentStages(
+    pathname,
+    runtime.activeSceneId,
+    poolElement,
+    canvasEnabled,
+  );
 
   const activeStatusChanged = useCallback(
     (sceneId: LiveSceneId, status: ThreeStatus) => {

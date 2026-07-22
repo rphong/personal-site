@@ -33,6 +33,16 @@ const RESIDENT_SCENES_BY_ROUTE = {
   "/experience": ["experience-hero", "experience-intro", "nasa-rocket"],
   "/projects": ["projects-hero", "league-ban", "froggie-adventures"],
 } as const;
+const ALL_LIVE_SCENES = [
+  "home-hero",
+  "experience-hero",
+  "experience-intro",
+  "nasa-rocket",
+  "projects-hero",
+  "league-ban",
+  "froggie-adventures",
+  "contact-hero",
+] as const;
 
 type ProbeMode = "normal" | "unsupported" | "renderer-throws";
 
@@ -269,6 +279,20 @@ async function expectReadyResidentSet(
   expect(
     await page.locator(".scene-stage--resident canvas").count(),
   ).toBeLessThanOrEqual(8);
+}
+
+async function expectWarmResidentSet(
+  page: Page,
+  sceneIds: readonly string[],
+): Promise<void> {
+  await expect(page.locator(".scene-stage--resident")).toHaveCount(
+    sceneIds.length,
+  );
+  for (const sceneId of sceneIds) {
+    const host = residentHost(page, sceneId);
+    await expect(host).toHaveAttribute("data-three-status", "ready");
+    await expect(host.locator("canvas")).toHaveCount(1);
+  }
 }
 
 async function rememberResidentIdentitySet(
@@ -658,7 +682,7 @@ test("decodes a committed meshopt GLB on alpha WebGL2 and swaps on the first rea
   }
 });
 
-test("shows only the flat route background until the first real Canvas frame", async ({
+test("keeps a decoded poster visible until the first real Canvas frame", async ({
   page,
 }) => {
   await installRuntimeProbe(page);
@@ -673,7 +697,7 @@ test("shows only the flat route background until the first real Canvas frame", a
     await expect(host).toHaveAttribute("data-three-status", "loading");
     await expect(host).toHaveAttribute("data-poster-ready", "true");
     await expect(host).toHaveAttribute("data-transition-frame", "none");
-    await expect(host.locator("picture")).toBeHidden();
+    await expect(host.locator("picture")).toBeVisible();
     await expect(host.locator(".scene-runtime__canvas")).toBeHidden();
     await expect(
       page.locator(
@@ -768,7 +792,8 @@ test("pools previous-route residents and re-adopts their exact live canvases acr
 
     expect(models.release(HOME_MODEL)).toBe(1);
     await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
-    await expect(loadingScreen).toHaveCount(0, { timeout: 5_000 });
+    await expectWarmResidentSet(page, ALL_LIVE_SCENES);
+    await expect(loadingScreen).toHaveCount(0, { timeout: 12_500 });
     await expect(page.locator(".site-shell")).not.toHaveAttribute("aria-busy");
     expect(
       await page
@@ -801,10 +826,8 @@ test("pools previous-route residents and re-adopts their exact live canvases acr
       RESIDENT_SCENES_BY_ROUTE["/experience"],
     );
     await expectResidentIdentitySetState(page, "navigation-home", "pooled");
-    expect(await connectedContextCallCount(page)).toBe(
-      connectedCallsBefore + RESIDENT_SCENES_BY_ROUTE["/experience"].length,
-    );
-    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(4);
+    expect(await connectedContextCallCount(page)).toBe(connectedCallsBefore);
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(8);
     await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
     await expect(
       page.locator(
@@ -847,7 +870,7 @@ test("pools previous-route residents and re-adopts their exact live canvases acr
     );
     expect(await connectedContextCallCount(page)).toBe(destinationCalls);
     expect(models.requestCount(HOME_MODEL)).toBe(1);
-    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(4);
+    await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(8);
     await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
   } finally {
     await disposeFixture(models);

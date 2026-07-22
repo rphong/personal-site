@@ -10,14 +10,27 @@ import {
   type CSSProperties,
 } from "react";
 import { warmLiveSceneModels } from "./adjacent-scene-preloader";
+import { LIVE_SCENE_IDS } from "./scene-registry";
 import { useSceneRuntime } from "./scene-runtime-context";
 import styles from "./initial-document-loading-screen.module.css";
 
-const HARD_CAP_MS = 4_000;
+const HARD_CAP_MS = 12_000;
 const EXIT_DURATION_MS = 400;
 const FALLBACK_FADE_START_MS = HARD_CAP_MS - EXIT_DURATION_MS;
 
 type LoadingPhase = "pending" | "visible" | "exiting" | "done";
+
+export function allLiveSceneFramesReady(root: ParentNode): boolean {
+  const readySceneIds = new Set(
+    Array.from(
+      root.querySelectorAll<HTMLElement>(
+        '[data-scene-runtime-host][data-three-status="ready"]',
+      ),
+      (host) => host.dataset.sceneFor,
+    ),
+  );
+  return LIVE_SCENE_IDS.every((sceneId) => readySceneIds.has(sceneId));
+}
 
 export function InitialDocumentLoadingScreen() {
   const pathname = usePathname();
@@ -28,6 +41,7 @@ export function InitialDocumentLoadingScreen() {
   const [phase, setPhase] = useState<LoadingPhase>("pending");
   const [fontsReady, setFontsReady] = useState(false);
   const [modelsReady, setModelsReady] = useState(false);
+  const [framesReady, setFramesReady] = useState(false);
 
   const isInitialLandingDocument = initialPathname === "/";
   const isInitialDocumentRoute = pathname === initialPathname;
@@ -105,6 +119,31 @@ export function InitialDocumentLoadingScreen() {
   }, [canLoadLandingScene, runtime.status]);
 
   useEffect(() => {
+    if (!canLoadLandingScene || phase !== "visible") return;
+
+    let current = true;
+    const checkFrames = () => {
+      if (!current) return;
+      const ready = allLiveSceneFramesReady(document);
+      setFramesReady((previous) => (previous === ready ? previous : ready));
+    };
+
+    const observer = new MutationObserver(checkFrames);
+    observer.observe(document.documentElement, {
+      attributeFilter: ["data-scene-for", "data-three-status"],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    checkFrames();
+
+    return () => {
+      current = false;
+      observer.disconnect();
+    };
+  }, [canLoadLandingScene, phase]);
+
+  useEffect(() => {
     if (phase !== "visible") return;
     const fallbackFadeTimer = window.setTimeout(
       beginExit,
@@ -128,6 +167,7 @@ export function InitialDocumentLoadingScreen() {
       phase !== "visible" ||
       !fontsReady ||
       !modelsReady ||
+      !framesReady ||
       runtime.status !== "ready"
     ) {
       return;
@@ -140,7 +180,14 @@ export function InitialDocumentLoadingScreen() {
     return () => {
       current = false;
     };
-  }, [beginExit, fontsReady, modelsReady, phase, runtime.status]);
+  }, [
+    beginExit,
+    fontsReady,
+    framesReady,
+    modelsReady,
+    phase,
+    runtime.status,
+  ]);
 
   useEffect(() => {
     if (phase !== "visible" && phase !== "exiting") return;
@@ -191,8 +238,9 @@ export function InitialDocumentLoadingScreen() {
   const progressLabel = useMemo(() => {
     if (!fontsReady) return "Preparing type";
     if (!modelsReady) return "Preparing scenes";
+    if (!framesReady) return "Rendering scenes";
     return "Preparing first frame";
-  }, [fontsReady, modelsReady]);
+  }, [fontsReady, framesReady, modelsReady]);
 
   if (phase === "pending" || phase === "done") return null;
 
@@ -204,6 +252,7 @@ export function InitialDocumentLoadingScreen() {
       ref={screenElement}
       data-initial-loading-screen
       data-loading-fonts={fontsReady ? "ready" : "loading"}
+      data-loading-frames={framesReady ? "ready" : "loading"}
       data-loading-models={modelsReady ? "ready" : "loading"}
       data-loading-phase={phase}
       data-loading-scene={runtime.status}

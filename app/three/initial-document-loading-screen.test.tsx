@@ -3,7 +3,7 @@ import { StrictMode, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { warmLiveSceneModels } from "./adjacent-scene-preloader";
 import { InitialDocumentLoadingScreen } from "./initial-document-loading-screen";
-import { getSceneDefinition } from "./scene-registry";
+import { getSceneDefinition, LIVE_SCENE_IDS } from "./scene-registry";
 import {
   SceneRuntimeContext,
   type SceneRuntimeContextValue,
@@ -66,14 +66,26 @@ function Harness({
   status,
   overrides,
   children,
+  readySceneIds = LIVE_SCENE_IDS,
 }: {
   readonly status: ThreeStatus;
   readonly overrides?: Partial<SceneRuntimeContextValue>;
   readonly children?: ReactNode;
+  readonly readySceneIds?: readonly (typeof LIVE_SCENE_IDS)[number][];
 }) {
   return (
     <SceneRuntimeContext.Provider value={runtimeValue(status, overrides)}>
       <InitialDocumentLoadingScreen />
+      <div data-scene-resident-pool>
+        {readySceneIds.map((sceneId) => (
+          <div
+            key={sceneId}
+            data-scene-runtime-host
+            data-scene-for={sceneId}
+            data-three-status="ready"
+          />
+        ))}
+      </div>
       <div className="site-shell">{children ?? <button>Site action</button>}</div>
       <button className="three-preference-toggle">3D on</button>
       <aside className="scene-debug">
@@ -114,7 +126,7 @@ describe("InitialDocumentLoadingScreen", () => {
     document.body.style.overflow = "";
   });
 
-  it("waits for fonts, eager models, and the landing frame before fading", async () => {
+  it("waits for fonts, eager models, and every resident frame before fading", async () => {
     const fonts = deferred();
     const models = deferred();
     Object.defineProperty(document, "fonts", {
@@ -128,6 +140,10 @@ describe("InitialDocumentLoadingScreen", () => {
     expect(screen.getByRole("status")).toHaveAttribute(
       "data-loading-phase",
       "visible",
+    );
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "data-loading-frames",
+      "ready",
     );
     expect(screen.getByText("Richard Phong")).toBeInTheDocument();
     expect(view.container.querySelector(".site-shell")).toHaveAttribute(
@@ -223,13 +239,42 @@ describe("InitialDocumentLoadingScreen", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("is fully removed by the four-second cap", async () => {
+  it("waits when even one resident scene has not rendered", async () => {
+    vi.mocked(warmLiveSceneModels).mockResolvedValue();
+    const pendingSceneId = LIVE_SCENE_IDS.at(-1)!;
+    const readySceneIds = LIVE_SCENE_IDS.filter(
+      (sceneId) => sceneId !== pendingSceneId,
+    );
+    const view = render(
+      <Harness status="loading" readySceneIds={readySceneIds} />,
+    );
+    await flushEffects();
+    view.rerender(
+      <Harness status="ready" readySceneIds={readySceneIds} />,
+    );
+    await flushEffects();
+
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "data-loading-frames",
+      "loading",
+    );
+    expect(screen.getByText("Rendering scenes")).toBeInTheDocument();
+
+    view.rerender(<Harness status="ready" />);
+    await flushEffects();
+    expect(screen.getByRole("status")).toHaveAttribute(
+      "data-loading-phase",
+      "exiting",
+    );
+  });
+
+  it("is fully removed by the twelve-second safety cap", async () => {
     vi.mocked(warmLiveSceneModels).mockReturnValue(new Promise(() => undefined));
     render(<Harness status="loading" />);
     await flushEffects();
     expect(screen.getByRole("status")).toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(3_600));
+    act(() => vi.advanceTimersByTime(11_600));
     expect(screen.getByRole("status")).toHaveAttribute(
       "data-loading-phase",
       "exiting",
@@ -238,7 +283,7 @@ describe("InitialDocumentLoadingScreen", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("retains its four-second cap through StrictMode effect replay", async () => {
+  it("retains its twelve-second cap through StrictMode effect replay", async () => {
     vi.mocked(warmLiveSceneModels).mockReturnValue(new Promise(() => undefined));
     render(
       <StrictMode>
@@ -248,7 +293,7 @@ describe("InitialDocumentLoadingScreen", () => {
     await flushEffects();
     expect(screen.getByRole("status")).toBeInTheDocument();
 
-    act(() => vi.advanceTimersByTime(3_600));
+    act(() => vi.advanceTimersByTime(11_600));
     expect(screen.getByRole("status")).toHaveAttribute(
       "data-loading-phase",
       "exiting",

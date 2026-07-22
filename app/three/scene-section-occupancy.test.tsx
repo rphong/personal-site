@@ -2,7 +2,7 @@ import { act, render, waitFor } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneCanvasPortProps } from "./scene-canvas";
-import { getSceneDefinition } from "./scene-registry";
+import { getSceneDefinition, LIVE_SCENE_IDS } from "./scene-registry";
 import {
   SceneRuntimeContext,
   type SceneRuntimeContextValue,
@@ -129,6 +129,39 @@ describe("section-owned live scene occupants", () => {
     pathname = "/experience";
     completeCanvases = true;
     canvasPorts.clear();
+  });
+
+  it("renders every live scene into a retained resident during landing warmup", async () => {
+    pathname = "/";
+    const view = render(
+      <Harness activeSceneId="home-hero">
+        <Section sceneId="home-hero" />
+      </Harness>,
+    );
+
+    await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
+    await waitFor(() =>
+      expect(
+        view.container.querySelectorAll(
+          '[data-scene-runtime-host][data-three-status="ready"]',
+        ),
+      ).toHaveLength(LIVE_SCENE_IDS.length),
+    );
+
+    for (const sceneId of LIVE_SCENE_IDS) {
+      const stage = view.container.querySelector<HTMLElement>(
+        `.scene-stage--resident[data-scene-owner-id="${sceneId}"]`,
+      );
+      expect(stage).toBeInTheDocument();
+      expect(stage?.querySelector("canvas")).toHaveAttribute(
+        "data-fake-scene-canvas",
+        sceneId,
+      );
+      expect(stage).toHaveAttribute(
+        "data-scene-pool-state",
+        sceneId === "home-hero" ? "assigned" : "pooled",
+      );
+    }
   });
 
   it("gives every live section a permanent correct-scene canvas and excludes poster scenes", async () => {
