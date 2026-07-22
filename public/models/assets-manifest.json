@@ -26,7 +26,7 @@
     },
     "crane-making-table": {
       "animations": [],
-      "bytes": 32040,
+      "bytes": 31984,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "KHR_mesh_quantization"
@@ -36,19 +36,19 @@
         "KHR_mesh_quantization"
       ],
       "materials": 6,
-      "nodes": 12,
+      "nodes": 13,
       "primitives": 13,
-      "sha256": "ac202977ac3a41b79c673a3fee91f203e3e2039d6f7d1d2bb90b9be29a411770",
-      "sourceSha256": "dc937e9233e1a8925d95ea03a1ef564640472569249b1e9a9a7edb4e0d97760d",
+      "sha256": "2b875070a82a695c3e322e472040c39c04d7547787e03d05df9b4aae9a948f0f",
+      "sourceSha256": "8496b79861dd6bd9215839d3547120cdd0cc32b464adec968c9a9bfda1adced3",
       "textures": [],
       "triangles": 1491,
       "url": "/models/crane-making-table.glb",
       "validatorWarningCodes": [],
-      "vertices": 2581
+      "vertices": 2579
     },
     "crane-on-league": {
       "animations": [],
-      "bytes": 74684,
+      "bytes": 72332,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "EXT_texture_webp",
@@ -60,25 +60,25 @@
         "KHR_mesh_quantization"
       ],
       "materials": 8,
-      "nodes": 76,
+      "nodes": 75,
       "primitives": 76,
-      "sha256": "7696b27e48fc002250171f6ea1352cc4af5fa244da5bddc1d619d7269d1d383e",
-      "sourceSha256": "361849ef8ff6b80692bda475d7edbc0393817bfd3cc62ad376e2aa59efde1d7c",
+      "sha256": "27778b6522044321ad76cbc423c9362dfd989eb56e73606a472262039764969d",
+      "sourceSha256": "302044506d49d097ff386fb0fcabdcb1932b86a47f59457679f5ea14cae1e021",
       "textures": [
         {
-          "bytes": 8082,
+          "bytes": 6736,
           "height": 576,
           "mimeType": "image/webp",
           "name": "LeagueBanDashboard",
-          "sha256": "a15f06514ca977d81e0d7a86a460ee853d66b858d3cba8312399abfece586144",
+          "sha256": "8db329fcbd60ed2467edd27ae467e735c7a2cb97ff1648f8742ff52161f46009",
           "width": 1024
         },
         {
-          "bytes": 6772,
+          "bytes": 5754,
           "height": 576,
           "mimeType": "image/webp",
           "name": "LeagueMatchHistory",
-          "sha256": "08d3fc66d0bf85c4ac78b920df3e5badcd0bd3e58a7229d5d9841b884119cc32",
+          "sha256": "60819e8f3a4e7b7934e930a39bc11f7a108746cc66ef70bbee1d25da515bdcff",
           "width": 1024
         }
       ],
@@ -92,7 +92,7 @@
         "EmptyAction",
         "Hat propellerAction.002"
       ],
-      "bytes": 33660,
+      "bytes": 33528,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "KHR_mesh_quantization"
@@ -104,13 +104,13 @@
       "materials": 6,
       "nodes": 7,
       "primitives": 7,
-      "sha256": "08c432dd6461ed13874f3f9958f27de7036f2fd9be9fe52ef3c337630dada248",
-      "sourceSha256": "62f4dd4810bdf41b4f42364f70d31fccad22890804f6b4b8c7090eb109907ff8",
+      "sha256": "4bebf30b703e5a4d0f231e2f4659e2942880ea318e1e694b26c88a152e7fe668",
+      "sourceSha256": "b8ad587f032cd379ec2f0e71439b574ce50e6ea252eb46605f95c2540b118076",
       "textures": [],
       "triangles": 1380,
       "url": "/models/crane-throwing-plane.glb",
       "validatorWarningCodes": [],
-      "vertices": 2340
+      "vertices": 2338
     },
     "crane-workout": {
       "animations": [
@@ -142,7 +142,7 @@
     },
     "froggie-display": {
       "animations": [],
-      "bytes": 68976,
+      "bytes": 56624,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "EXT_texture_webp",
@@ -156,15 +156,15 @@
       "materials": 7,
       "nodes": 14,
       "primitives": 13,
-      "sha256": "8b29eaeb3e5d5102acff4be98a1202da1effee7425cb83987cf2dc135d9c9339",
+      "sha256": "45cf2e6b85189f73f5cf6c731a2128808c327c4d63f8b6bb19ad20e888aa276f",
       "sourceSha256": "dff7f50f9e2aa8dd426a28b99a435dc691214d9ef994dd781dd1fd09f81feb2c",
       "textures": [
         {
-          "bytes": 47152,
+          "bytes": 34794,
           "height": 576,
           "mimeType": "image/webp",
           "name": "FroggieGameplay",
-          "sha256": "49694aed1251ab3b8b7b092e690cfc5c31f1cd955701b2fb54e0b96afc465ec8",
+          "sha256": "679adb297bceab10f49ea2a7252193538edff6dd37a28ac51b5ba2bd7a0d53cd",
           "width": 1024
         }
       ],
@@ -177,7 +177,7 @@
       "animations": [
         "RocketAction"
       ],
-      "bytes": 258356,
+      "bytes": 257608,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "KHR_mesh_quantization"
@@ -189,8 +189,8 @@
       "materials": 7,
       "nodes": 5,
       "primitives": 7,
-      "sha256": "c6de5326f68a3d966a5ef909961c49d3cb69c58f325d840934350bc12cd0becc",
-      "sourceSha256": "15858eb87ba0ab8dfdd2c69041474bdf7de455fbea003f03cbdbec272994a1ac",
+      "sha256": "79edcb43817ba537d166c19e5359b175d73ef585e85d868f1091afd4f62c8510",
+      "sourceSha256": "37e433e4f0e420c4e6ea393911f3f5968364f76f777b6d9315412dcd1cf1ff49",
       "textures": [],
       "triangles": 9348,
       "url": "/models/rocket.glb",
