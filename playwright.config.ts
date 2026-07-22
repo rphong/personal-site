@@ -6,6 +6,7 @@ const serverUrl = `http://${serverHostname}:${serverPort}`;
 
 export default defineConfig({
   testDir: "./tests/browser",
+  workers: 1,
   snapshotPathTemplate:
     "{testDir}/visual-regression.spec.ts-snapshots/{arg}{ext}",
   testIgnore: process.env.POSTER_CAPTURE_MODE

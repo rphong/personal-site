@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.use({
-  viewport: { width: 1200, height: 900 },
+  viewport: { width: 1200, height: 1200 },
 });
 
 test("short home pages reach the navigation island without moving content", async ({

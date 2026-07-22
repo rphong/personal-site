@@ -47,7 +47,7 @@
     "three": "0.185.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/vite-plugin": "1.46.0",
     "@gltf-transform/cli": "4.4.1",
     "@gltf-transform/core": "4.4.1",
     "@gltf-transform/extensions": "4.4.1",
@@ -72,9 +72,15 @@
     "tsx": "4.20.6",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
-    "vite": "8.0.13",
+    "vite": "8.1.5",
     "vitest": "4.1.10",
-    "wrangler": "4.92.0"
+    "wrangler": "4.113.0"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.22",
+      "sharp": "$sharp"
+    }
   },
   "type": "module"
 }

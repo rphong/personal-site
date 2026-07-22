@@ -18,7 +18,7 @@ async function verifyRouteHero(
   const hero = page.locator(`[data-scene-id="${route.sceneId}"]`);
   const title = hero.getByRole("heading", { level: 1, name: route.title });
   const cue = hero.getByRole("link", { name: "Scroll down" });
-  const runtime = page.locator(".scene-runtime");
+  const runtime = hero.locator("[data-scene-runtime-host]");
 
   await expect(hero).toHaveClass(/page-hero--layered/);
   await expect(title).toBeVisible();
@@ -30,10 +30,12 @@ async function verifyRouteHero(
   });
   await expect(runtime.locator(".scene-runtime__canvas")).toBeVisible();
 
-  const stacking = await page.evaluate(() => ({
-    cue: getComputedStyle(document.querySelector(".scroll-cue")!).zIndex,
-    runtime: getComputedStyle(document.querySelector(".scene-runtime")!).zIndex,
-    title: getComputedStyle(document.querySelector(".page-hero__copy")!).zIndex,
+  const stacking = await hero.evaluate((element) => ({
+    cue: getComputedStyle(element.querySelector(".scroll-cue")!).zIndex,
+    runtime: getComputedStyle(
+      element.querySelector("[data-scene-runtime-host]")!,
+    ).zIndex,
+    title: getComputedStyle(element.querySelector(".page-hero__copy")!).zIndex,
   }));
   expect(stacking).toEqual({ cue: "2", runtime: "1", title: "0" });
 
