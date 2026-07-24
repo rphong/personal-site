@@ -378,6 +378,7 @@ function DemandRenderer({
   adoptionVersion = 0,
   debugActive = true,
   health,
+  sceneDefinition,
   sceneId,
   onFirstFrame,
   onFailure,
@@ -386,6 +387,7 @@ function DemandRenderer({
   "adoptionVersion" | "debugActive" | "onFirstFrame" | "onFailure"
 > & {
   readonly health: ContextHealth;
+  readonly sceneDefinition: SceneDefinition;
   readonly sceneId: SceneDefinition["id"];
 }) {
   const reported = useRef(false);
@@ -395,6 +397,7 @@ function DemandRenderer({
   const renderedScene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
+  const setSize = useThree((state) => state.setSize);
 
   useLayoutEffect(() => {
     if (!debugActive) return;
@@ -464,10 +467,28 @@ function DemandRenderer({
 
   useLayoutEffect(() => {
     // The model's preceding layout effect has already cloned and sampled its
-    // static pose. Render that frame before the browser can paint, and repeat
-    // once whenever a pooled canvas is adopted into a route section.
+    // static pose. A pooled canvas still carries the pool's renderer size until
+    // R3F's ResizeObserver runs, so reconcile its assigned wrapper and camera
+    // synchronously before the first visible adoption frame.
+    const container = renderer.domElement.parentElement;
+    const bounds = container?.getBoundingClientRect();
+    if (bounds && bounds.width > 0 && bounds.height > 0) {
+      setSize(bounds.width, bounds.height, bounds.top, bounds.left);
+      applyCameraFrame(
+        camera,
+        cameraFrameForWidth(sceneDefinition, bounds.width),
+      );
+    }
     renderFrame(renderer, renderedScene, camera);
-  }, [adoptionVersion, camera, renderFrame, renderedScene, renderer]);
+  }, [
+    adoptionVersion,
+    camera,
+    renderFrame,
+    renderedScene,
+    renderer,
+    sceneDefinition,
+    setSize,
+  ]);
 
   useFrame(({ gl, scene, camera }) => {
     renderFrame(gl as WebGLRenderer, scene, camera);
@@ -501,6 +522,7 @@ function ModelLayer({
         adoptionVersion={props.adoptionVersion}
         debugActive={props.debugActive}
         health={health}
+        sceneDefinition={props.scene}
         sceneId={props.scene.id}
         onFirstFrame={props.onFirstFrame}
         onFailure={props.onFailure}

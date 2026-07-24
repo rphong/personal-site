@@ -909,6 +909,109 @@ test("pools previous-route residents and re-adopts their exact live canvases acr
   }
 });
 
+test("synchronizes a pooled canvas before its first visible adoption frame", async ({
+  page,
+}) => {
+  await installRuntimeProbe(page);
+  await fulfillPosters(page);
+  const models = await fulfillModels(page);
+
+  try {
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error("Runtime viewport is unavailable");
+    await page.goto("/experience");
+    await page.addStyleTag({
+      content: `
+        [data-scene-id="experience-hero"] > .scene-stage {
+          width: 600px !important;
+          height: 500px !important;
+        }
+      `,
+    });
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+    const experienceHost = residentHost(page, "experience-hero");
+    await expect(experienceHost.locator("canvas")).toHaveCSS("width", "600px");
+    await expect(experienceHost.locator("canvas")).toHaveCSS("height", "500px");
+
+    await page.getByRole("link", { name: "Home", exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
+    const pooledExperience = page.locator(
+      '[data-scene-resident-pool] [data-scene-owner-id="experience-hero"]',
+    );
+    await expect(pooledExperience.locator("canvas")).toHaveCSS(
+      "width",
+      `${viewport.width}px`,
+    );
+    await expect(pooledExperience.locator("canvas")).toHaveCSS(
+      "height",
+      `${viewport.height}px`,
+    );
+
+    // The Home activation replaces the global debug port, so the frames below
+    // begin with this retained Experience renderer's re-adoption.
+    await page.getByRole("link", { name: "Experience", exact: true }).click();
+    await expect(page).toHaveURL(/\/experience$/);
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            window.__sceneRuntimeDebug?.sceneId === "experience-hero" &&
+            window.__sceneRuntimeDebug.frames.some(
+              ({ stageState }) => stageState === "assigned",
+            ),
+        ),
+      )
+      .toBe(true);
+
+    const assignedFrames = await page.evaluate(
+      () =>
+        window.__sceneRuntimeDebug?.frames
+          .filter(({ stageState }) => stageState === "assigned")
+          .map(
+            ({
+              bufferHeight,
+              bufferWidth,
+              cameraAspect,
+              cameraFov,
+              cameraPosition,
+              cssHeight,
+              cssWidth,
+            }) => ({
+              bufferHeight,
+              bufferWidth,
+              cameraAspect,
+              cameraFov,
+              cameraPosition,
+              cssHeight,
+              cssWidth,
+            }),
+          ) ?? [],
+    );
+    expect(assignedFrames.length).toBeGreaterThan(0);
+    for (const frame of assignedFrames) {
+      expect(frame).toEqual({
+        bufferHeight: 500,
+        bufferWidth: 600,
+        cameraAspect: 1.2,
+        cameraFov: 40,
+        cameraPosition: [5.2, 4.1, 9.6],
+        cssHeight: 500,
+        cssWidth: 600,
+      });
+    }
+  } finally {
+    await disposeFixture(models);
+  }
+});
+
 for (const route of [
   "/",
   "/experience",

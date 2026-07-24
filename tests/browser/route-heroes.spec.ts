@@ -28,7 +28,7 @@ async function verifyRouteHero(
         (element) => getComputedStyle(element).webkitTextStrokeWidth,
       ),
     )
-    .toBe("1px");
+    .toBe("0px");
   await expect(cue).toBeVisible();
   await expect(cue).toHaveAttribute("href", "#page-content");
   await expect(hero.locator(".eyebrow, .page-hero__summary")).toHaveCount(0);

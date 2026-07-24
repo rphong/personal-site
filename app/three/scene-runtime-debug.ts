@@ -6,6 +6,9 @@ import type {
 import type { SceneId } from "./types";
 
 export interface SceneRuntimeDebugFrame {
+  readonly cameraAspect: number | null;
+  readonly cameraFov: number | null;
+  readonly cameraPosition: readonly [number, number, number] | null;
   readonly at: number;
   readonly bufferHeight: number;
   readonly bufferWidth: number;
@@ -20,6 +23,7 @@ export interface SceneRuntimeDebugFrame {
   readonly rootName: string | null;
   readonly sceneId: SceneId;
   readonly shadowMapEnabled: boolean;
+  readonly stageState: string | null;
   readonly yaw: number | null;
 }
 
@@ -113,8 +117,20 @@ export function recordSceneRuntimeDebugFrame(
   const rootName = `scene-root:${sceneId}`;
   const root = scene.getObjectByName(rootName);
   const canvas = renderer.domElement;
+  const camera = port.camera;
   port.frames.push({
     at: performance.now(),
+    cameraAspect:
+      camera && "aspect" in camera && typeof camera.aspect === "number"
+        ? camera.aspect
+        : null,
+    cameraFov:
+      camera && "fov" in camera && typeof camera.fov === "number"
+        ? camera.fov
+        : null,
+    cameraPosition: camera
+      ? [camera.position.x, camera.position.y, camera.position.z]
+      : null,
     bufferHeight: canvas.height,
     bufferWidth: canvas.width,
     calls: renderer.info.render.calls,
@@ -128,6 +144,9 @@ export function recordSceneRuntimeDebugFrame(
     rootName: root?.name ?? null,
     sceneId,
     shadowMapEnabled: renderer.shadowMap.enabled,
+    stageState:
+      canvas.closest<HTMLElement>("[data-scene-pool-state]")?.dataset
+        .scenePoolState ?? null,
     yaw: root?.rotation.y ?? null,
   });
   if (port.frames.length > 256) port.frames.splice(0, port.frames.length - 256);

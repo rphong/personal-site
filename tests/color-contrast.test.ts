@@ -59,13 +59,11 @@ describe("route color contrast", () => {
     expect(contrast(accent, background)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it.each(routes)("%s hero halo keeps the large heading legible", (_, selector) => {
+  it.each(routes)("%s hero fill keeps the large heading legible", (_, selector) => {
     const route = cssRule(selector);
     const background = variable(route, "route-background");
     const accent = variable(route, "route-accent");
-    const paleHeading = variable(route, "route-pale-heading");
 
     expect(contrast(accent, background)).toBeGreaterThanOrEqual(3);
-    expect(contrast(paleHeading, accent)).toBeGreaterThanOrEqual(3);
   });
 });
