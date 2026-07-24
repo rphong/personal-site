@@ -17,11 +17,18 @@ async function verifyRouteHero(
 
   const hero = page.locator(`[data-scene-id="${route.sceneId}"]`);
   const title = hero.getByRole("heading", { level: 1, name: route.title });
-  const cue = hero.getByRole("link", { name: "Scroll down" });
+  const cue = hero.getByRole("link", { name: "Scroll to page content" });
   const runtime = hero.locator("[data-scene-runtime-host]");
 
   await expect(hero).toHaveClass(/page-hero--layered/);
   await expect(title).toBeVisible();
+  await expect
+    .poll(() =>
+      title.evaluate(
+        (element) => getComputedStyle(element).webkitTextStrokeWidth,
+      ),
+    )
+    .toBe("1px");
   await expect(cue).toBeVisible();
   await expect(cue).toHaveAttribute("href", "#page-content");
   await expect(hero.locator(".eyebrow, .page-hero__summary")).toHaveCount(0);

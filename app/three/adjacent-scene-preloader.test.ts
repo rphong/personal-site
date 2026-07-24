@@ -14,65 +14,75 @@ describe("reconcileScenePreloads", () => {
     expect(source).not.toMatch(/scene-loader|@react-three|Meshopt|window|document/);
   });
 
-  it("warms current and requested models once for runtime preparation", () => {
+  it("lets residents own current loading and adds only next after readiness", () => {
     const cache: ModelCachePort = {
       preload: vi.fn(),
-      clear: vi.fn(),
     };
 
-    const warmed = reconcileScenePreloads(
+    const homeCurrent = reconcileScenePreloads(
       "home-hero",
       new Set(),
       cache,
-      [
-        "/models/crane.glb",
-        "/models/crane-workout.glb",
-        "/models/rocket.glb",
-      ],
+      false,
     );
-    expect([...warmed]).toEqual([
-      "/models/crane.glb",
-      "/models/crane-workout.glb",
-      "/models/rocket.glb",
-    ]);
-    expect(cache.preload).toHaveBeenCalledTimes(3);
-    expect(cache.preload).toHaveBeenCalledWith("/models/crane.glb");
-    expect(cache.preload).toHaveBeenCalledWith(
-      "/models/crane-workout.glb",
-    );
-    expect(cache.preload).toHaveBeenCalledWith("/models/rocket.glb");
-
-    reconcileScenePreloads(
-      "contact-hero",
-      warmed,
-      cache,
-      ["/models/crane-workout.glb", "/models/rocket.glb"],
-    );
-    expect(cache.preload).toHaveBeenCalledTimes(3);
-    expect(cache.clear).not.toHaveBeenCalled();
-  });
-
-  it("retains warm entries through poster-only scene activation", () => {
-    const cache: ModelCachePort = {
-      preload: vi.fn(),
-      clear: vi.fn(),
-    };
-    const previous = new Set([
-      "/models/crane.glb",
-      "/models/rocket.glb",
-    ]);
-
-    expect(
-      reconcileScenePreloads("eog-poster", previous, cache, []),
-    ).toEqual(previous);
+    expect([...homeCurrent]).toEqual([]);
     expect(cache.preload).not.toHaveBeenCalled();
-    expect(cache.clear).not.toHaveBeenCalled();
+
+    const homeIdle = reconcileScenePreloads(
+      "home-hero",
+      homeCurrent,
+      cache,
+      true,
+    );
+    expect([...homeIdle]).toEqual(["/models/crane-workout.glb"]);
+    expect(cache.preload).toHaveBeenCalledOnce();
+    expect(cache.preload).toHaveBeenLastCalledWith(
+      "/models/crane-workout.glb",
+    );
+
+    const experienceCurrent = reconcileScenePreloads(
+      "experience-hero",
+      homeIdle,
+      cache,
+      false,
+    );
+    expect([...experienceCurrent]).toEqual([
+      "/models/crane-workout.glb",
+    ]);
+
+    const experienceIdle = reconcileScenePreloads(
+      "experience-hero",
+      experienceCurrent,
+      cache,
+      true,
+    );
+    expect([...experienceIdle]).toEqual([
+      "/models/crane-workout.glb",
+      "/models/crane-throwing-plane.glb",
+    ]);
+    expect(cache.preload).toHaveBeenLastCalledWith(
+      "/models/crane-throwing-plane.glb",
+    );
   });
 
-  it("clears all retained model entries when 3D is disabled", () => {
+  it("retains the bounded session cache through poster-only activation", () => {
     const cache: ModelCachePort = {
       preload: vi.fn(),
-      clear: vi.fn(),
+    };
+    const previous = new Set([
+      "/models/crane.glb",
+      "/models/rocket.glb",
+    ]);
+
+    expect(reconcileScenePreloads("eog-poster", previous, cache, false)).toEqual(
+      previous,
+    );
+    expect(cache.preload).not.toHaveBeenCalled();
+  });
+
+  it("resets policy state when 3D is disabled", () => {
+    const cache: ModelCachePort = {
+      preload: vi.fn(),
     };
     const previous = new Set([
       "/models/crane.glb",
@@ -80,10 +90,9 @@ describe("reconcileScenePreloads", () => {
       "/models/rocket.glb",
     ]);
 
-    expect(reconcileScenePreloads(null, previous, cache, [])).toEqual(
+    expect(reconcileScenePreloads(null, previous, cache, false)).toEqual(
       new Set(),
     );
-    expect(cache.clear).toHaveBeenCalledTimes(3);
     expect(cache.preload).not.toHaveBeenCalled();
   });
 });

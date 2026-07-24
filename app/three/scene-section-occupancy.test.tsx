@@ -2,7 +2,7 @@ import { act, render, waitFor } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneCanvasPortProps } from "./scene-canvas";
-import { liveSceneFrameWarmupPhase } from "./initial-document-loading-screen";
+import { clearPreparedSceneModel } from "./scene-model";
 import { getSceneDefinition, LIVE_SCENE_IDS } from "./scene-registry";
 import {
   SceneRuntimeContext,
@@ -22,6 +22,14 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("./adjacent-scene-preloader", () => ({
   AdjacentScenePreloader: () => null,
+}));
+
+vi.mock("./scene-loader", () => ({
+  clearSceneModel: vi.fn(),
+}));
+
+vi.mock("./scene-model", () => ({
+  clearPreparedSceneModel: vi.fn(),
 }));
 
 vi.mock("./scene-canvas-boundary", () => ({
@@ -136,6 +144,7 @@ describe("section-owned live scene occupants", () => {
     completeCanvases = true;
     failedCanvasSceneId = null;
     canvasPorts.clear();
+    vi.mocked(clearPreparedSceneModel).mockClear();
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -146,89 +155,76 @@ describe("section-owned live scene occupants", () => {
     ["/projects", "projects-hero"],
     ["/contact", "contact-hero"],
   ] as const)(
-    "renders every live scene into a retained resident during %s warmup",
+    "creates residents only for live sections on the initial %s route",
     async (route, activeSceneId) => {
       pathname = route;
-      const view = render(
-        <Harness activeSceneId={activeSceneId}>
-          <Section sceneId={activeSceneId} />
-        </Harness>,
-      );
-
-      await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
       const currentRouteSceneIds = LIVE_SCENE_IDS.filter(
         (sceneId) => getSceneDefinition(sceneId).route === route,
       );
-      expect(
-        Array.from(canvasPorts.keys()).slice(0, currentRouteSceneIds.length),
-      ).toEqual([
-        activeSceneId,
-        ...currentRouteSceneIds.filter((sceneId) => sceneId !== activeSceneId),
-      ]);
+      const view = render(
+        <Harness activeSceneId={activeSceneId}>
+          {currentRouteSceneIds.map((sceneId) => (
+            <Section key={sceneId} sceneId={sceneId} />
+          ))}
+        </Harness>,
+      );
+
+      await waitFor(() =>
+        expect(canvasPorts.size).toBe(currentRouteSceneIds.length),
+      );
+      expect(Array.from(canvasPorts.keys())).toEqual(currentRouteSceneIds);
       await waitFor(() =>
         expect(
           view.container.querySelectorAll(
             '[data-scene-runtime-host][data-three-status="ready"]',
           ),
-        ).toHaveLength(LIVE_SCENE_IDS.length),
+        ).toHaveLength(currentRouteSceneIds.length),
       );
 
       for (const sceneId of LIVE_SCENE_IDS) {
         const stage = view.container.querySelector<HTMLElement>(
           `.scene-stage--resident[data-scene-owner-id="${sceneId}"]`,
         );
+        if (!currentRouteSceneIds.includes(sceneId)) {
+          expect(stage).not.toBeInTheDocument();
+          continue;
+        }
         expect(stage).toBeInTheDocument();
         expect(stage?.querySelector("canvas")).toHaveAttribute(
           "data-fake-scene-canvas",
           sceneId,
         );
-        expect(stage).toHaveAttribute(
-          "data-scene-pool-state",
-          sceneId === activeSceneId ? "assigned" : "pooled",
-        );
+        expect(stage).toHaveAttribute("data-scene-pool-state", "assigned");
       }
     },
   );
 
-  it.each([
-    ["/projects", "projects-hero", "contact-hero"],
-    ["/contact", "contact-hero", "froggie-adventures"],
-  ] as const)(
-    "settles a mobile-sized %s warmup when an inactive eighth context is refused",
-    async (route, activeSceneId, failedSceneId) => {
-      vi.stubGlobal("innerWidth", 390);
-      pathname = route;
-      failedCanvasSceneId = failedSceneId;
-      const view = render(
-        <Harness activeSceneId={activeSceneId}>
-          <Section sceneId={activeSceneId} />
-        </Harness>,
-      );
+  it("does not create contexts for out-of-route live sections in the DOM", async () => {
+    pathname = "/";
+    const view = render(
+      <Harness activeSceneId="home-hero">
+        <Section sceneId="home-hero" />
+        <Section sceneId="projects-hero" />
+        <Section sceneId="contact-hero" />
+      </Harness>,
+    );
 
-      await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
-      await waitFor(() =>
-        expect(
-          view.container.querySelector(
-            `[data-scene-for="${failedSceneId}"][data-scene-runtime-host]`,
-          ),
-        ).toHaveAttribute("data-three-status", "error"),
-      );
-
-      expect(window.innerWidth).toBe(390);
-      expect(Array.from(canvasPorts.keys())[0]).toBe(activeSceneId);
-      expect(liveSceneFrameWarmupPhase(view.container)).toBe("fallback");
-      expect(
-        view.container.querySelector(
-          `[data-scene-for="${activeSceneId}"][data-scene-runtime-host]`,
-        ),
-      ).toHaveAttribute("data-three-status", "ready");
-      expect(
-        view.container.querySelector(
-          `[data-scene-for="${failedSceneId}"] picture.scene-runtime__poster`,
-        ),
-      ).toBeInTheDocument();
-    },
-  );
+    await waitFor(() => expect(canvasPorts.size).toBe(1));
+    expect(Array.from(canvasPorts.keys())).toEqual(["home-hero"]);
+    expect(
+      view.container.querySelectorAll(".scene-stage--resident"),
+    ).toHaveLength(1);
+    expect(
+      view.container.querySelector(
+        'section[data-scene-id="projects-hero"] > .scene-stage--resident',
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      view.container.querySelector(
+        'section[data-scene-id="contact-hero"] > .scene-stage--resident',
+      ),
+    ).not.toBeInTheDocument();
+  });
 
   it("gives every live section a permanent correct-scene canvas and excludes poster scenes", async () => {
     const view = render(
@@ -243,14 +239,14 @@ describe("section-owned live scene occupants", () => {
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(LIVE_SCENE_IDS.length),
+      ).toHaveLength(3),
     );
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(
           '[data-scene-occupant="canvas"][data-scene-frame-state="ready"]',
         ),
-      ).toHaveLength(LIVE_SCENE_IDS.length),
+      ).toHaveLength(3),
     );
 
     for (const sceneId of [
@@ -285,7 +281,7 @@ describe("section-owned live scene occupants", () => {
     ).toHaveLength(1);
   });
 
-  it("fits all seven live scenes below the eight-context ceiling and caps a ninth resident", async () => {
+  it("caps live sections at four connected residents", async () => {
     pathname = "/scene-capture";
     const view = render(
       <Harness activeSceneId="experience-hero">
@@ -294,36 +290,32 @@ describe("section-owned live scene occupants", () => {
         <Section marker="three" sceneId="nasa-rocket" />
         <Section marker="four" sceneId="projects-hero" />
         <Section marker="five" sceneId="league-ban" />
-        <Section marker="six" sceneId="froggie-adventures" />
-        <Section marker="seven" sceneId="home-hero" />
-        <Section marker="eight" sceneId="experience-hero" />
-        <Section marker="nine" sceneId="experience-intro" />
       </Harness>,
     );
 
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(8),
+      ).toHaveLength(4),
     );
     expect(
       view.container.querySelector(
-        'section[data-test-marker="nine"] > .scene-stage--resident',
+        'section[data-test-marker="five"] > .scene-stage--resident',
       ),
     ).not.toBeInTheDocument();
     expect(
       view.container.querySelectorAll(".scene-stage--resident canvas"),
-    ).toHaveLength(8);
+    ).toHaveLength(4);
     expect(
       view.container.querySelector("[data-scene-resident-pool]"),
-    ).toHaveAttribute("data-scene-context-cap", "8");
+    ).toHaveAttribute("data-scene-context-cap", "4");
   });
 
-  it("evicts the least-recently-seen pooled resident before exceeding eight contexts", async () => {
+  it("evicts the least-recently-seen pooled resident before exceeding four contexts", async () => {
     pathname = "/scene-capture";
     const view = render(
       <Harness activeSceneId="experience-hero">
-        {Array.from({ length: 8 }, (_, index) => (
+        {Array.from({ length: 4 }, (_, index) => (
           <Section
             key={index}
             marker={`resident-${index}`}
@@ -335,7 +327,7 @@ describe("section-owned live scene occupants", () => {
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(8),
+      ).toHaveLength(4),
     );
     const originalStages = Array.from(
       view.container.querySelectorAll<HTMLElement>(".scene-stage--resident"),
@@ -364,7 +356,7 @@ describe("section-owned live scene occupants", () => {
     ).toBe(true);
     expect(
       view.container.querySelectorAll(".scene-stage--resident"),
-    ).toHaveLength(8);
+    ).toHaveLength(4);
   });
 
   it("evicts by recent activation rather than original adoption order", async () => {
@@ -372,12 +364,8 @@ describe("section-owned live scene occupants", () => {
     const initialScenes = [
       ["home", "home-hero"],
       ["projects-old", "projects-hero"],
-      ["league", "league-ban"],
-      ["froggie", "froggie-adventures"],
       ["experience", "experience-hero"],
       ["intro", "experience-intro"],
-      ["nasa", "nasa-rocket"],
-      ["projects-new", "projects-hero"],
     ] as const;
     const sections = initialScenes.map(([marker, sceneId]) => (
       <Section key={marker} marker={marker} sceneId={sceneId} />
@@ -393,7 +381,7 @@ describe("section-owned live scene occupants", () => {
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(8),
+      ).toHaveLength(4),
     );
     const homeStage = stageFor("home")!;
     const oldestProjectStage = stageFor("projects-old")!;
@@ -418,10 +406,49 @@ describe("section-owned live scene occupants", () => {
       expect(stageFor("nasa-two")).toBeInTheDocument();
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(8);
+      ).toHaveLength(4);
     });
     expect(oldestProjectStage.isConnected).toBe(false);
     expect(homeStage.isConnected).toBe(true);
+    expect(clearPreparedSceneModel).toHaveBeenCalledWith("projects-hero");
+  });
+
+  it("keeps a shared model source while another resident still owns its URL", async () => {
+    pathname = "/scene-capture";
+    const view = render(
+      <Harness activeSceneId="contact-hero">
+        <Section sceneId="experience-hero" />
+        <Section sceneId="contact-hero" />
+        <Section sceneId="home-hero" />
+        <Section sceneId="projects-hero" />
+      </Harness>,
+    );
+
+    await waitFor(() =>
+      expect(
+        view.container.querySelectorAll(".scene-stage--resident"),
+      ).toHaveLength(4),
+    );
+
+    view.rerender(
+      <Harness activeSceneId="contact-hero">
+        <Section sceneId="contact-hero" />
+        <Section sceneId="nasa-rocket" />
+      </Harness>,
+    );
+
+    await waitFor(() =>
+      expect(
+        view.container.querySelector(
+          'section[data-scene-id="nasa-rocket"] > .scene-stage--resident',
+        ),
+      ).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(clearPreparedSceneModel).toHaveBeenCalledWith(
+        "experience-hero",
+      ),
+    );
   });
 
   it("keeps duplicate-scene sections on independent stable residents", async () => {
@@ -534,7 +561,7 @@ describe("section-owned live scene occupants", () => {
       </Harness>,
     );
 
-    await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
+    await waitFor(() => expect(canvasPorts.size).toBe(3));
     act(() => canvasPorts.get("experience-intro")?.onFailure("decode"));
     act(() => canvasPorts.get("nasa-rocket")?.onContextLost());
 
@@ -574,7 +601,7 @@ describe("section-owned live scene occupants", () => {
       </Harness>,
     );
 
-    await waitFor(() => expect(canvasPorts.size).toBe(LIVE_SCENE_IDS.length));
+    await waitFor(() => expect(canvasPorts.size).toBe(3));
     const failedVersion = canvasPorts.get("experience-intro")?.activationVersion;
     act(() => canvasPorts.get("experience-intro")?.onFailure("fetch"));
     await waitFor(() =>
@@ -735,7 +762,7 @@ describe("section-owned live scene occupants", () => {
     await waitFor(() =>
       expect(
         view.container.querySelectorAll(".scene-stage--resident"),
-      ).toHaveLength(LIVE_SCENE_IDS.length),
+      ).toHaveLength(3),
     );
     const originalStages = new Map(
       Array.from(

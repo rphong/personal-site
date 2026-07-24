@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { getSceneDefinition } from "./scene-registry";
 import { useSceneGltf } from "./scene-loader";
 import {
+  clearPreparedSceneModel,
   clearPreparedSceneModels,
   SceneModel,
 } from "./scene-model";
@@ -68,7 +69,7 @@ describe("SceneModel", () => {
     expect((secondSource.children[0] as Mesh).geometry).toBe(attachedGeometry);
     await secondRenderer.unmount();
 
-    clearPreparedSceneModels();
+    clearPreparedSceneModel("home-hero");
     expect(attachedDispose).toHaveBeenCalledOnce();
     expect(geometryDispose.mock.calls.length).toBeGreaterThan(replayDisposals);
     expect(sourceDispose).not.toHaveBeenCalled();

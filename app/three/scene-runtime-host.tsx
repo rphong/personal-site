@@ -19,8 +19,8 @@ import { clearSceneModel } from "./scene-loader";
 import {
   getSceneDefinition,
   isSceneId,
-  LIVE_SCENE_IDS,
 } from "./scene-registry";
+import { clearPreparedSceneModel } from "./scene-model";
 import { ScenePoster } from "./scene-poster";
 import { SceneRotationArea } from "./scene-rotation-area";
 import { useSceneRuntime } from "./scene-runtime-context";
@@ -400,27 +400,10 @@ export function SceneRuntimeHostView({
   );
 }
 
-export const MAX_CONNECTED_LIVE_SCENES = 8;
-
-const INITIAL_DOCUMENT_WARMUP_SCENES = LIVE_SCENE_IDS.map((sceneId) =>
-  getSceneDefinition(sceneId),
-);
-
-function prioritizedInitialDocumentWarmupScenes(
-  pathname: string,
-  activeSceneId: SceneId,
-) {
-  const active = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
-    (scene) => scene.id === activeSceneId,
-  );
-  const currentRoute = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
-    (scene) => scene.id !== activeSceneId && scene.route === pathname,
-  );
-  const speculative = INITIAL_DOCUMENT_WARMUP_SCENES.filter(
-    (scene) => scene.id !== activeSceneId && scene.route !== pathname,
-  );
-  return [...active, ...currentRoute, ...speculative];
-}
+// Three live sections fit the largest route; one extra resident preserves the
+// most recently used scene for a smooth back-navigation without approaching
+// mobile browsers' WebGL context limits.
+export const MAX_CONNECTED_LIVE_SCENES = 4;
 
 interface ResidentStage {
   readonly activationVersion: number;
@@ -454,15 +437,14 @@ function useResidentStages(
   pathname: string,
   activeSceneId: SceneId,
   poolElement: HTMLDivElement | null,
-  warmAllScenes: boolean,
 ) {
   const [stages, setStages] = useState<readonly ResidentStage[]>([]);
   const residents = useRef<ResidentStage[]>([]);
+  const pendingEvictions = useRef<ResidentStage[]>([]);
   const nextStageIdentity = useRef(0);
   const lastSeenClock = useRef(0);
   const pathnameRef = useRef(pathname);
   const activeSceneIdRef = useRef(activeSceneId);
-  const warmAllScenesRef = useRef(warmAllScenes);
   const lastActiveSceneId = useRef<SceneId | null>(null);
   const syncStagesRef = useRef<(() => void) | null>(null);
 
@@ -491,7 +473,7 @@ function useResidentStages(
           (candidate) => candidate !== eviction,
         );
         eviction.stage.dataset.scenePoolState = "evicted";
-        eviction.stage.remove();
+        pendingEvictions.current.push(eviction);
       }
 
       const activationVersion = nextStageIdentity.current;
@@ -520,26 +502,6 @@ function useResidentStages(
 
     const syncStages = () => {
       const currentPathname = pathnameRef.current;
-
-      // On any public route's initial document, seed the active scene first,
-      // then the rest of the current route before speculative scenes. This
-      // preserves a live current page when the browser refuses a later WebGL
-      // context. Every successful model still performs a real render behind
-      // the loader and its exact canvas is later adopted by its route section.
-      if (warmAllScenesRef.current) {
-        for (const scene of prioritizedInitialDocumentWarmupScenes(
-          currentPathname,
-          activeSceneIdRef.current,
-        )) {
-          if (
-            !residents.current.some(
-              (resident) => resident.scene.id === scene.id,
-            )
-          ) {
-            createResident(scene);
-          }
-        }
-      }
 
       const sections = Array.from(
         document.querySelectorAll<HTMLElement>(
@@ -640,16 +602,44 @@ function useResidentStages(
       syncStagesRef.current = null;
       observer.disconnect();
       for (const resident of residents.current) resident.stage.remove();
+      for (const resident of pendingEvictions.current) resident.stage.remove();
       residents.current = [];
+      pendingEvictions.current = [];
     };
   }, [poolElement]);
+
+  useEffect(() => {
+    if (pendingEvictions.current.length === 0) return;
+    const committedStageKeys = new Set(stages.map(({ key }) => key));
+    const evictions = pendingEvictions.current.filter(
+      ({ key }) => !committedStageKeys.has(key),
+    );
+    pendingEvictions.current = pendingEvictions.current.filter(({ key }) =>
+      committedStageKeys.has(key),
+    );
+    if (evictions.length === 0) return;
+    const evictedSceneIds = new Set(evictions.map(({ scene }) => scene.id));
+
+    for (const eviction of evictions) eviction.stage.remove();
+    for (const sceneId of evictedSceneIds) {
+      if (
+        !residents.current.some(
+          (candidate) => candidate.scene.id === sceneId,
+        )
+      ) {
+        clearPreparedSceneModel(sceneId);
+      }
+    }
+    // Source GLTFs are a seven-item, host-lifetime cache. Retaining them avoids
+    // re-fetch/decode churn while React Three Fiber finishes Canvas teardown;
+    // prepared runtime clones above remain bounded with the resident LRU.
+  }, [stages]);
 
   useLayoutEffect(() => {
     pathnameRef.current = pathname;
     activeSceneIdRef.current = activeSceneId;
-    warmAllScenesRef.current = warmAllScenes;
     syncStagesRef.current?.();
-  }, [activeSceneId, pathname, poolElement, warmAllScenes]);
+  }, [activeSceneId, pathname, poolElement]);
 
   return stages;
 }
@@ -757,15 +747,10 @@ export function SceneRuntimeHost() {
   });
   const canvasEnabled =
     runtime.sceneActivationAllowed && preferredStatus === "loading";
-  const warmAllScenes =
-    canvasEnabled &&
-    runtime.activeScene.requiredLive &&
-    runtime.activeScene.route === pathname;
   const stages = useResidentStages(
     pathname,
     runtime.activeSceneId,
     poolElement,
-    warmAllScenes,
   );
 
   const activeStatusChanged = useCallback(
@@ -787,7 +772,7 @@ export function SceneRuntimeHost() {
       />
       <AdjacentScenePreloader
         activeSceneId={runtime.activeSceneId}
-        enabled={canvasEnabled}
+        enabled={preferredStatus === "loading"}
         ready={runtime.status === "ready"}
       />
       {stages.map(

@@ -1,11 +1,5 @@
 "use client";
 
-import {
-  motion,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-} from "framer-motion";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { routes, type RouteKey } from "../content/site-content";
@@ -47,10 +41,8 @@ export function shouldUseNavigationIsland({
 }
 
 export function SiteNav({ activeRoute }: SiteNavProps) {
-  const prefersReducedMotion = useReducedMotion();
   const headerRef = useRef<HTMLElement>(null);
   const [isIsland, setIsIsland] = useState(false);
-  const { scrollY } = useScroll();
 
   const updateHeaderMode = useCallback(() => {
     const header = headerRef.current;
@@ -88,10 +80,18 @@ export function SiteNav({ activeRoute }: SiteNavProps) {
     );
   }, []);
 
-  useMotionValueEvent(scrollY, "change", updateHeaderMode);
-
   useEffect(() => {
+    let scrollFrame: number | null = null;
+    const updateAfterScroll = () => {
+      if (scrollFrame !== null) return;
+      scrollFrame = window.requestAnimationFrame(() => {
+        scrollFrame = null;
+        updateHeaderMode();
+      });
+    };
+
     updateHeaderMode();
+    window.addEventListener("scroll", updateAfterScroll, { passive: true });
     window.addEventListener("resize", updateHeaderMode);
 
     const hero = document.querySelector<HTMLElement>(".page-hero");
@@ -103,7 +103,9 @@ export function SiteNav({ activeRoute }: SiteNavProps) {
     if (hero) resizeObserver?.observe(hero);
 
     return () => {
+      window.removeEventListener("scroll", updateAfterScroll);
       window.removeEventListener("resize", updateHeaderMode);
+      if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame);
       resizeObserver?.disconnect();
     };
   }, [activeRoute, updateHeaderMode]);
@@ -114,39 +116,7 @@ export function SiteNav({ activeRoute }: SiteNavProps) {
       data-island={isIsland ? "true" : "false"}
       ref={headerRef}
     >
-      <motion.div
-        animate={
-          isIsland
-            ? {
-                borderRadius: "999px",
-                boxShadow:
-                  "0 1rem 2.5rem rgb(40 40 40 / 0.2), 0 0.2rem 0.65rem rgb(40 40 40 / 0.12)",
-              }
-            : {
-                borderRadius: "0px",
-                boxShadow:
-                  "0 0rem 0rem rgb(40 40 40 / 0), 0 0rem 0rem rgb(40 40 40 / 0)",
-              }
-        }
-        aria-hidden="true"
-        className="site-nav__surface"
-        initial={false}
-        layout={prefersReducedMotion ? false : true}
-        transition={
-          prefersReducedMotion
-            ? { duration: 0 }
-            : {
-                borderRadius: { duration: 0.24, ease: "easeOut" },
-                boxShadow: { duration: 0.24, ease: "easeOut" },
-                layout: {
-                  type: "spring",
-                  stiffness: 380,
-                  damping: 34,
-                  mass: 0.72,
-                },
-              }
-        }
-      />
+      <div aria-hidden="true" className="site-nav__surface" />
       <nav aria-label="Primary navigation" className="site-nav__inner">
         {routes.map((route) => (
           <Link
@@ -155,19 +125,15 @@ export function SiteNav({ activeRoute }: SiteNavProps) {
             href={route.href}
             key={route.key}
           >
-            {route.label}
-            {activeRoute === route.key ? (
-              <motion.span
-                aria-hidden="true"
-                className="site-nav__indicator"
-                layoutId="site-nav-indicator"
-                transition={
-                  prefersReducedMotion
-                    ? { duration: 0 }
-                    : { type: "spring", stiffness: 420, damping: 34 }
-                }
-              />
-            ) : null}
+            <span className="site-nav__label">
+              {route.label}
+              {activeRoute === route.key ? (
+                <span
+                  aria-hidden="true"
+                  className="site-nav__indicator"
+                />
+              ) : null}
+            </span>
           </Link>
         ))}
       </nav>

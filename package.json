@@ -8,13 +8,15 @@
   "scripts": {
     "dev": "node scripts/run-vinext.mjs dev",
     "build": "node scripts/assets/validate.mjs && node scripts/run-vinext.mjs build",
+    "build:production": "npm run validate:production && npm run build && npm run verify:production-dist",
     "start": "node scripts/run-vinext.mjs start",
-    "deploy:cloudflare": "wrangler deploy --config dist/server/wrangler.json",
     "test": "npm run test:unit && npm run test:html",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp --ignore-pattern .tmp --ignore-pattern .worktrees",
+    "typecheck": "tsc --noEmit",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "test:browser": "playwright test tests/browser/three-runtime.spec.ts",
+    "test:browser": "playwright test tests/browser/three-runtime.spec.ts tests/browser/navigation-island.spec.ts tests/browser/route-heroes.spec.ts",
+    "test:browser:ui": "playwright test tests/browser/navigation-island.spec.ts tests/browser/route-heroes.spec.ts",
     "test:performance": "node scripts/assets/validate.mjs && node scripts/run-vinext.mjs build && playwright test --config=playwright.performance.config.ts",
     "test:runtime": "npm run test:unit && npm run test:browser",
     "posters:browser": "node scripts/posters/browser.mjs",
@@ -23,6 +25,7 @@
     "test:posters": "node --test \"tests/posters/**/*.test.mjs\"",
     "test:html": "npm run build && node --test tests/rendered-html.test.mjs",
     "validate:production": "tsx scripts/validate-production.ts",
+    "verify:production-dist": "tsx scripts/verify-production-dist.ts",
     "assets:bootstrap": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/assets/bootstrap-blender.ps1",
     "assets:preflight": "node scripts/assets/preflight.mjs",
     "assets:textures": "node scripts/assets/render-source-textures.mjs",
@@ -37,17 +40,15 @@
     "test:assets": "node --test --test-concurrency=1 \"tests/assets/**/*.test.mjs\""
   },
   "dependencies": {
-    "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.6.1",
-    "framer-motion": "^12.42.2",
     "meshoptimizer": "1.1.1",
-    "next": "16.2.6",
+    "next": "16.2.11",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "three": "0.185.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.46.0",
+    "@cloudflare/vite-plugin": "1.47.0",
     "@gltf-transform/cli": "4.4.1",
     "@gltf-transform/core": "4.4.1",
     "@gltf-transform/extensions": "4.4.1",
@@ -56,7 +57,6 @@
     "@react-three/test-renderer": "9.1.0",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
-    "@testing-library/user-event": "14.6.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
@@ -64,7 +64,7 @@
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.2.11",
     "gltf-validator": "2.0.0-dev.3.10",
     "jsdom": "29.1.1",
     "react-server-dom-webpack": "19.2.6",
@@ -74,12 +74,12 @@
     "vinext": "0.0.50",
     "vite": "8.1.5",
     "vitest": "4.1.10",
-    "wrangler": "4.113.0"
+    "wrangler": "4.114.0"
   },
   "overrides": {
+    "sharp": "$sharp",
     "next": {
-      "postcss": "8.5.22",
-      "sharp": "$sharp"
+      "postcss": "8.5.22"
     }
   },
   "type": "module"

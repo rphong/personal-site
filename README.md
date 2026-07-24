@@ -15,7 +15,7 @@ behind scrolling content.
 
 ## Requirements
 
-- Node.js 22.13.0 or newer
+- Node.js 22.15.0 or newer (or Node.js 24+)
 - npm using the committed `package-lock.json`
 
 ## Local preview
@@ -32,30 +32,40 @@ they render `noindex, nofollow`, omit canonical URLs, disallow crawlers in
 ## Verification
 
 ```powershell
+npm run typecheck
 npm run test:unit
 npm run lint
 npm run test:html
+npm run test:browser:ui
+npm run test:performance
 ```
 
 `npm run test:html` creates the Cloudflare-compatible Vinext build and checks
 the meaningful initial HTML for every route without relying on JavaScript or
-WebGL.
+WebGL. The browser UI lane covers mobile navigation, smooth scrolling, hero
+layering, and poster/live modes. The performance lane is the production-build
+lab budget.
 
 ## Production gate
 
 ```powershell
 $env:SITE_ENV = "production"
-$env:SITE_URL = "https://richardphong.example"
-npm run validate:production
+$env:SITE_URL = "https://richard-phong-personal.richard-phong424.chatgpt.site"
+npm run build:production
 ```
 
-The foundation intentionally fails this gate until Richard supplies the two
-owner-written Home details and the 3D asset slice replaces reference exports
-with deterministic posters and validated required GLBs. The canonical résumé is
+The production build validates the origin and assets, rebuilds from source, and
+then verifies that the generated Worker is a production artifact with scene
+capture disabled and matching Sites metadata. The canonical résumé is
 published unchanged at `/Richard-Phong-Resume.pdf`.
 
 ## Sites
 
-`.openai/hosting.json` remains the Sites capability declaration. The project
-uses the existing Vinext Vite plugin and Cloudflare Worker entry point; it does
-not use D1, R2, authentication, a CMS, or a contact form.
+`.openai/hosting.json` declares the existing Sites project. Sites is the
+canonical release path; the repository intentionally has no unguarded direct
+Wrangler deploy script. The project uses Vinext and a Cloudflare Worker entry
+point, without D1, R2, authentication, a CMS, or a contact form.
+
+Worker health, production performance, dashboard locations, Wrangler commands,
+and Cloudflare MCP options are documented in
+[`docs/observability.md`](docs/observability.md).

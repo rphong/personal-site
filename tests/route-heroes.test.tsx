@@ -34,12 +34,9 @@ describe("route heroes", () => {
       ).toBeInTheDocument();
       expect(hero?.querySelector(".eyebrow")).toBeNull();
       expect(hero?.querySelector(".page-hero__summary")).toBeNull();
-      expect(screen.queryByText(route.eyebrow)).not.toBeInTheDocument();
-      expect(screen.queryByText(route.heroSummary)).not.toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Scroll down" })).toHaveAttribute(
-        "href",
-        "#page-content",
-      );
+      expect(
+        screen.getByRole("link", { name: "Scroll to page content" }),
+      ).toHaveAttribute("href", "#page-content");
     },
   );
 });

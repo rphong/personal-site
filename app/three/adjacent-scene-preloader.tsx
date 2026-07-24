@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { SCENE_DEFINITIONS } from "./scene-registry";
 import {
   acquireSceneModelHostLease,
-  clearSceneModel,
+  clearAllSceneModels,
   preloadSceneModel,
   releaseSceneModelHostLease,
 } from "./scene-loader";
@@ -12,42 +11,19 @@ import {
   reconcileScenePreloads,
   type ModelCachePort,
 } from "./scene-preload-policy";
-import {
-  clearPreparedSceneModels,
-  prepareSceneModel,
-} from "./scene-model";
+import { clearPreparedSceneModels } from "./scene-model";
 import type { SceneId } from "./types";
-
-const LIVE_SCENES = Object.values(SCENE_DEFINITIONS).filter(
-  (scene) => scene.requiredLive,
-);
-const LIVE_SCENE_MODEL_URLS = [
-  ...new Set(LIVE_SCENES.map((scene) => scene.modelUrl)),
-];
-
-async function preloadAndPrepareSceneModel(url: string) {
-  const gltf = await preloadSceneModel(url);
-  for (const scene of LIVE_SCENES) {
-    if (scene.modelUrl === url) prepareSceneModel(scene, gltf);
-  }
-}
-
-export async function warmLiveSceneModels(): Promise<void> {
-  await Promise.allSettled(
-    LIVE_SCENE_MODEL_URLS.map(preloadAndPrepareSceneModel),
-  );
-}
 
 const browserModelCache: ModelCachePort = {
   preload: (url) => {
-    void preloadAndPrepareSceneModel(url).catch(() => undefined);
+    void preloadSceneModel(url).catch(() => undefined);
   },
-  clear: clearSceneModel,
 };
 
 export function AdjacentScenePreloader({
   activeSceneId,
   enabled,
+  ready,
 }: {
   readonly activeSceneId: SceneId;
   readonly enabled: boolean;
@@ -56,14 +32,40 @@ export function AdjacentScenePreloader({
   const allowed = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!enabled) {
+      clearAllSceneModels();
+      clearPreparedSceneModels();
+      allowed.current = new Set();
+      return;
+    }
+
     allowed.current = reconcileScenePreloads(
-      enabled ? activeSceneId : null,
+      activeSceneId,
       allowed.current,
       browserModelCache,
-      enabled ? LIVE_SCENE_MODEL_URLS : [],
+      false,
     );
-    if (!enabled) clearPreparedSceneModels();
-  }, [activeSceneId, enabled]);
+    if (!ready) return;
+
+    const preloadNext = () => {
+      allowed.current = reconcileScenePreloads(
+        activeSceneId,
+        allowed.current,
+        browserModelCache,
+        true,
+      );
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(preloadNext, {
+        timeout: 1_500,
+      });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(preloadNext, 500);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeSceneId, enabled, ready]);
 
   useEffect(() => {
     const lease = acquireSceneModelHostLease();

@@ -106,11 +106,27 @@ describe("deployment metadata", () => {
     expect(metadata.openGraph?.url?.toString()).toBe(
       "https://richardphong.dev/experience",
     );
+    expect(metadata.openGraph?.images).toEqual([
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Richard Phong — Software developer",
+      },
+    ]);
     expect(metadata.twitter).toMatchObject({
       card: "summary_large_image",
       title: "Experience | Richard Phong",
       description:
         "Software engineering experience at NASA, EOG Resources, and Paycom.",
+      images: [
+        {
+          url: "/og.png",
+          width: 1200,
+          height: 630,
+          alt: "Richard Phong — Software developer",
+        },
+      ],
     });
   });
 

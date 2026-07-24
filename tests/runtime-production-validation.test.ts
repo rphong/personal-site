@@ -5,22 +5,13 @@ import {
   requiredPublicAssets,
 } from "../lib/production-validation";
 
-const completedOwnerFields = {
-  nonWorkInterest: "I spend time on a specific activity Richard has approved.",
-  technicalCuriosity:
-    "I am exploring a technical curiosity Richard has approved.",
-};
-
 describe("runtime production validation wiring", () => {
-  it("removes the foundation-only hard stop after owner/config checks pass", () => {
+  it("accepts a complete production configuration", () => {
     expect(
-      collectProductionConfigErrors(
-        {
-          SITE_ENV: "production",
-          SITE_URL: "https://richardphong.example",
-        },
-        completedOwnerFields,
-      ),
+      collectProductionConfigErrors({
+        SITE_ENV: "production",
+        SITE_URL: "https://richardphong.example",
+      }),
     ).toEqual([]);
   });
 

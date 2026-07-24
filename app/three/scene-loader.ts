@@ -129,6 +129,11 @@ export function clearSceneModel(url: string): void {
   recordSceneResourceDebug("clear", sceneCache.size, url);
 }
 
+export function clearAllSceneModels(): void {
+  sceneCache.clearAll();
+  recordSceneResourceDebug("clear-all", sceneCache.size);
+}
+
 export function acquireSceneModelHostLease(): symbol {
   const lease = sceneCache.acquireHostLease();
   recordSceneResourceDebug("host-acquire", sceneCache.size);
@@ -139,9 +144,4 @@ export function releaseSceneModelHostLease(lease: symbol): boolean {
   const released = sceneCache.releaseHostLease(lease);
   if (released) recordSceneResourceDebug("host-release", sceneCache.size);
   return released;
-}
-
-export function clearAllSceneModels(): void {
-  sceneCache.clearAll();
-  recordSceneResourceDebug("clear-all", sceneCache.size);
 }

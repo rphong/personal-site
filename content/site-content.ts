@@ -2,26 +2,14 @@ import type { SceneId } from "../app/three/types";
 
 export type RouteKey = "home" | "experience" | "projects" | "contact";
 
-export type RoutePalette = {
-  readonly background: string;
-  readonly accent: string;
-  readonly paleHeading: string;
-};
-
 export type RouteDefinition = {
   readonly key: RouteKey;
   readonly href: string;
   readonly label: string;
   readonly title: string;
   readonly description: string;
-  readonly eyebrow: string;
-  readonly heroSummary: string;
   readonly heroSceneId: SceneId;
-  readonly order: number;
-  readonly palette: RoutePalette;
 };
-
-export const OWNER_INPUT_SENTINEL = "OWNER_INPUT_REQUIRED:";
 
 export const routes = [
   {
@@ -31,16 +19,7 @@ export const routes = [
     title: "Richard Phong",
     description:
       "Software developer Richard Phong shares his experience, projects, and interactive web experiments.",
-    eyebrow: "Personal home",
-    heroSummary:
-      "Software developer, curious builder, and collector of projects with a little personality.",
     heroSceneId: "home-hero",
-    order: 0,
-    palette: {
-      background: "#9ECCC0",
-      accent: "#135946",
-      paleHeading: "#FFFFFF",
-    },
   },
   {
     key: "experience",
@@ -49,16 +28,7 @@ export const routes = [
     title: "Experience",
     description:
       "Software engineering experience at NASA, EOG Resources, and Paycom.",
-    eyebrow: "Work, in my own words",
-    heroSummary:
-      "Three chapters shaped by high-stakes tools, technical data, and software people depend on.",
     heroSceneId: "experience-hero",
-    order: 1,
-    palette: {
-      background: "#DFA9B5",
-      accent: "#722939",
-      paleHeading: "#FBE5EA",
-    },
   },
   {
     key: "projects",
@@ -67,16 +37,7 @@ export const routes = [
     title: "Projects",
     description:
       "Selected projects by Richard Phong, including League Ban Site and Froggie Adventures.",
-    eyebrow: "Built for the fun of it",
-    heroSummary:
-      "A pair of formative projects remembered for curiosity, collaboration, and flair.",
     heroSceneId: "projects-hero",
-    order: 2,
-    palette: {
-      background: "#AFD4E1",
-      accent: "#285D71",
-      paleHeading: "#EDF7FB",
-    },
   },
   {
     key: "contact",
@@ -85,16 +46,7 @@ export const routes = [
     title: "Contact",
     description:
       "Contact Richard Phong by email, LinkedIn, GitHub, or phone, and download his résumé.",
-    eyebrow: "Say hello",
-    heroSummary:
-      "The direct routes to my inbox, work, code, résumé, and phone.",
     heroSceneId: "contact-hero",
-    order: 3,
-    palette: {
-      background: "#C9BAE4",
-      accent: "#4B2E7E",
-      paleHeading: "#EDE6FA",
-    },
   },
 ] as const satisfies readonly RouteDefinition[];
 
@@ -116,18 +68,9 @@ export function routeKeyFromPathname(pathname: string): RouteKey {
   return "home";
 }
 
-export function routeDirection(from: RouteKey, to: RouteKey): -1 | 0 | 1 {
-  return Math.sign(routeByKey[to].order - routeByKey[from].order) as -1 | 0 | 1;
-}
-
-export type OwnerHomeFields = {
-  readonly nonWorkInterest: string;
-  readonly technicalCuriosity: string;
-};
-
 export const home = {
   introduction:
-    "I studied computer science at the University of Houston. In my free time I like poking at whatever corner of the field will have me — building games, tinkering with robotics, fussing over frontends, and following whatever I get curious about next.",
+    "I studied computer science at the University of Houston. In my free time, I work on games, robots, websites, and whatever else catches my interest.",
   experienceLink: {
     label: "What I've been up to →",
     href: "/experience",
@@ -155,27 +98,7 @@ export const home = {
       linkLabel: "Codeforces ↗",
     },
   ],
-  nonWorkInterest:
-    "Games have a habit of turning into side projects for me, from League Ban Site to Froggie Adventures.",
-  technicalCuriosity:
-    "This site is my current experiment in bringing Blender-built 3D scenes to the web while keeping each page fast and usable.",
-  ownerDraftMessage:
-    "Richard will replace these two marked lines with his own words before production.",
 } as const;
-
-export function getOwnerGatedFields(fields: OwnerHomeFields) {
-  return (
-    [
-      ["home.nonWorkInterest", fields.nonWorkInterest],
-      ["home.technicalCuriosity", fields.technicalCuriosity],
-    ] as const
-  )
-    .filter(
-      ([, value]) =>
-        value.trim().length === 0 || value.includes(OWNER_INPUT_SENTINEL),
-    )
-    .map(([field]) => field);
-}
 
 export type RoleEntry = {
   readonly title: string;

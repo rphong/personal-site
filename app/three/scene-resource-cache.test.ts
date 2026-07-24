@@ -109,6 +109,84 @@ describe("SceneResourceCache", () => {
     expect(loader.load).toHaveBeenCalledTimes(3);
   });
 
+  it("hands a speculative request to a resident without starting another load", async () => {
+    const pending = deferred<{ id: string }>();
+    let signal: AbortSignal | undefined;
+    const loader: SceneResourceLoader<{ id: string }> = {
+      load: vi.fn((_url, nextSignal) => {
+        signal = nextSignal;
+        return pending.promise;
+      }),
+      dispose: vi.fn(),
+    };
+    const cache = new SceneResourceCache(loader);
+
+    const preload = cache.preload("/models/a.glb");
+    const resident = cache.activate(
+      "/models/a.glb",
+      "scene-a:activation-1",
+    );
+    expect(resident).toBe(preload);
+
+    expect(cache.size).toBe(1);
+    expect(signal?.aborted).toBe(false);
+
+    const value = { id: "resident" };
+    pending.resolve(value);
+    await expect(resident).resolves.toBe(value);
+
+    cache.clear("/models/a.glb");
+    expect(cache.size).toBe(0);
+    expect(loader.dispose).toHaveBeenCalledWith(value);
+  });
+
+  it("retains a decoded resident source once after a completed preload", async () => {
+    const pending = deferred<{ id: string }>();
+    const loader: SceneResourceLoader<{ id: string }> = {
+      load: vi.fn(() => pending.promise),
+      dispose: vi.fn(),
+    };
+    const cache = new SceneResourceCache(loader);
+    const lease = cache.acquireHostLease();
+    const preload = cache.preload("/models/a.glb");
+    const value = { id: "decoded" };
+    pending.resolve(value);
+    await expect(preload).resolves.toBe(value);
+
+    expect(
+      cache.activate("/models/a.glb", "scene-a:activation-1"),
+    ).toBe(preload);
+    for (let index = 0; index < 20; index += 1) {
+      expect(
+        cache.activate("/models/a.glb", `scene-a:activation-${index + 2}`),
+      ).toBe(preload);
+    }
+    expect(cache.size).toBe(1);
+    expect(loader.load).toHaveBeenCalledOnce();
+
+    expect(cache.releaseHostLease(lease)).toBe(true);
+    expect(cache.size).toBe(0);
+    expect(loader.dispose).toHaveBeenCalledWith(value);
+  });
+
+  it("returns the existing rejected promise to speculative callers", async () => {
+    const failure = new Error("active failed");
+    const loader: SceneResourceLoader<{ id: string }> = {
+      load: vi.fn(() => Promise.reject(failure)),
+      dispose: vi.fn(),
+    };
+    const cache = new SceneResourceCache(loader);
+    const activation = cache.activate(
+      "/models/a.glb",
+      "scene-a:activation-1",
+    );
+    await expect(activation).rejects.toBe(failure);
+
+    expect(cache.preload("/models/a.glb")).toBe(activation);
+    cache.clear("/models/a.glb");
+    expect(cache.size).toBe(0);
+  });
+
   it("keeps rejected activation ownership independent for concurrent URLs", async () => {
     const failures = new Map([
       ["a", new Error("a failed")],

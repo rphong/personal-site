@@ -1,17 +1,13 @@
 import { access } from "node:fs/promises";
 import path from "node:path";
 import {
-  getOwnerGatedFields,
-  home,
-  type OwnerHomeFields,
-} from "../content/site-content";
-import {
   resolveDeployment,
   type RuntimeEnvironment,
 } from "./deployment";
 
 export const requiredPublicAssets = [
   "public/Richard-Phong-Resume.pdf",
+  "public/og.png",
   "public/models/assets-manifest.json",
   "public/posters/poster-manifest.json",
   "public/posters/home-hero-desktop.webp",
@@ -38,7 +34,6 @@ export const requiredPublicAssets = [
 
 export function collectProductionConfigErrors(
   env: RuntimeEnvironment,
-  ownerFields: OwnerHomeFields = home,
 ): string[] {
   const errors: string[] = [];
 
@@ -55,12 +50,6 @@ export function collectProductionConfigErrors(
       );
     }
   }
-
-  errors.push(
-    ...getOwnerGatedFields(ownerFields).map(
-      (field) => `Owner copy is still gated: ${field}.`,
-    ),
-  );
 
   return errors;
 }
@@ -82,15 +71,13 @@ export async function collectMissingAssetErrors(
 
 export async function collectProductionValidationErrors({
   env = process.env,
-  ownerFields = home,
   root = process.cwd(),
 }: {
   env?: RuntimeEnvironment;
-  ownerFields?: OwnerHomeFields;
   root?: string;
 } = {}): Promise<string[]> {
   const [configErrors, assetErrors] = await Promise.all([
-    Promise.resolve(collectProductionConfigErrors(env, ownerFields)),
+    Promise.resolve(collectProductionConfigErrors(env)),
     collectMissingAssetErrors(root),
   ]);
   return [...configErrors, ...assetErrors];

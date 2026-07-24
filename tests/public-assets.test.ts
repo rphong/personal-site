@@ -85,6 +85,19 @@ function absolutePath(relativePath: string): string {
 }
 
 describe("final public assets", () => {
+  it("ships a correctly sized social preview", async () => {
+    const socialCard = absolutePath("public/og.png");
+    const [metadata, file] = await Promise.all([
+      sharp(socialCard).metadata(),
+      stat(socialCard),
+    ]);
+
+    expect(metadata.format).toBe("png");
+    expect(metadata.width).toBe(1200);
+    expect(metadata.height).toBe(630);
+    expect(file.size).toBeLessThan(2_000_000);
+  });
+
   it.each(immutableAssets)(
     "preserves $relativePath byte-for-byte",
     async ({ relativePath, bytes, sha256 }) => {

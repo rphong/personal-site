@@ -1,18 +1,21 @@
-import { render } from "@testing-library/react";
+import { act, render } from "@testing-library/react";
 import { StrictMode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { AdjacentScenePreloader } from "./adjacent-scene-preloader";
 import {
   acquireSceneModelHostLease,
-  clearSceneModel,
+  clearAllSceneModels,
   preloadSceneModel,
   releaseSceneModelHostLease,
 } from "./scene-loader";
-import { SCENE_DEFINITIONS } from "./scene-registry";
-import {
-  clearPreparedSceneModels,
-  prepareSceneModel,
-} from "./scene-model";
+import { clearPreparedSceneModels } from "./scene-model";
 
 const leaseState = vi.hoisted(() => ({ current: null as symbol | null }));
 
@@ -22,7 +25,7 @@ vi.mock("./scene-loader", () => ({
     leaseState.current = lease;
     return lease;
   }),
-  clearSceneModel: vi.fn(),
+  clearAllSceneModels: vi.fn(),
   preloadSceneModel: vi.fn(() =>
     Promise.resolve({ scene: {}, animations: [] }),
   ),
@@ -35,54 +38,65 @@ vi.mock("./scene-loader", () => ({
 
 vi.mock("./scene-model", () => ({
   clearPreparedSceneModels: vi.fn(),
-  prepareSceneModel: vi.fn(),
 }));
-
-const liveModelUrls = [
-  ...new Set(
-    Object.values(SCENE_DEFINITIONS).flatMap((scene) =>
-      scene.requiredLive ? [scene.modelUrl] : [],
-    ),
-  ),
-];
 
 describe("AdjacentScenePreloader", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     leaseState.current = null;
     vi.mocked(acquireSceneModelHostLease).mockClear();
-    vi.mocked(clearSceneModel).mockClear();
+    vi.mocked(clearAllSceneModels).mockClear();
     vi.mocked(preloadSceneModel).mockClear();
     vi.mocked(releaseSceneModelHostLease).mockClear();
     vi.mocked(clearPreparedSceneModels).mockClear();
-    vi.mocked(prepareSceneModel).mockClear();
   });
 
-  it("warms and prepares every live scene once after the first paint", async () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("lets the current resident load normally and idles only its next model", () => {
     render(
       <StrictMode>
         <AdjacentScenePreloader
           activeSceneId="home-hero"
           enabled
-          ready
+          ready={false}
         />
       </StrictMode>,
     );
 
-    const actual = vi
-      .mocked(preloadSceneModel)
-      .mock.calls.map(([url]) => url)
-      .sort();
-    expect(actual).toEqual([...liveModelUrls].sort());
+    expect(preloadSceneModel).not.toHaveBeenCalled();
 
-    await Promise.resolve();
-    expect(prepareSceneModel).toHaveBeenCalledTimes(
-      Object.values(SCENE_DEFINITIONS).filter(
-        (scene) => scene.requiredLive,
-      ).length,
+    act(() => vi.advanceTimersByTime(500));
+    expect(preloadSceneModel).not.toHaveBeenCalled();
+  });
+
+  it("preloads exactly one adjacent model after the active scene is ready", () => {
+    const view = render(
+      <AdjacentScenePreloader
+        activeSceneId="home-hero"
+        enabled
+        ready={false}
+      />,
+    );
+
+    view.rerender(
+      <AdjacentScenePreloader
+        activeSceneId="home-hero"
+        enabled
+        ready
+      />,
+    );
+    act(() => vi.advanceTimersByTime(499));
+    expect(preloadSceneModel).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(preloadSceneModel).toHaveBeenCalledOnce();
+    expect(preloadSceneModel).toHaveBeenCalledWith(
+      "/models/crane-workout.glb",
     );
   });
 
-  it("retains warmed models across live and poster-only activations", () => {
+  it("reconciles retained URLs across live and poster-only activations", () => {
     const view = render(
       <AdjacentScenePreloader
         activeSceneId="home-hero"
@@ -90,11 +104,11 @@ describe("AdjacentScenePreloader", () => {
         ready
       />,
     );
-    const preloadCount = vi.mocked(preloadSceneModel).mock.calls.length;
+    act(() => vi.advanceTimersByTime(500));
 
     view.rerender(
       <AdjacentScenePreloader
-        activeSceneId="experience-intro"
+        activeSceneId="experience-hero"
         enabled
         ready={false}
       />,
@@ -107,19 +121,22 @@ describe("AdjacentScenePreloader", () => {
       />,
     );
 
-    expect(preloadSceneModel).toHaveBeenCalledTimes(preloadCount);
-    expect(clearSceneModel).not.toHaveBeenCalled();
+    expect(preloadSceneModel).toHaveBeenCalledOnce();
   });
 
-  it("warms during loading and clears every retained model only when disabled", async () => {
+  it("clears every resident and speculative model when disabled", async () => {
     const view = render(
       <AdjacentScenePreloader
         activeSceneId="projects-hero"
         enabled
-        ready={false}
+        ready
       />,
     );
-    expect(preloadSceneModel).toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(500));
+    expect(preloadSceneModel).toHaveBeenCalledOnce();
+    expect(preloadSceneModel).toHaveBeenCalledWith(
+      "/models/crane-on-league.glb",
+    );
 
     view.rerender(
       <AdjacentScenePreloader
@@ -128,9 +145,7 @@ describe("AdjacentScenePreloader", () => {
         ready={false}
       />,
     );
-    expect(
-      new Set(vi.mocked(clearSceneModel).mock.calls.map(([url]) => url)),
-    ).toEqual(new Set(liveModelUrls));
+    expect(clearAllSceneModels).toHaveBeenCalledOnce();
     expect(clearPreparedSceneModels).toHaveBeenCalledOnce();
 
     view.unmount();

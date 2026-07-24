@@ -24,8 +24,12 @@ export function PageHero({
       <div className="page-hero__copy">
         <h1>{title}</h1>
       </div>
-      <a className="scroll-cue" href="#page-content">
-        Scroll down
+      <a
+        aria-label="Scroll to page content"
+        className="scroll-cue"
+        href="#page-content"
+      >
+        <span aria-hidden="true" className="scroll-cue__chevron" />
       </a>
     </SceneSection>
   );

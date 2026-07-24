@@ -86,3 +86,105 @@ test("short home pages reach the navigation island without moving content", asyn
   });
   await expect(header).toHaveAttribute("data-island", "false");
 });
+
+test.describe("mobile navigation island", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+  });
+
+  test("keeps the active underline on its label and smooth-scrolls when allowed", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("personal-site:three-enabled", "off");
+    });
+    await page.goto("/");
+    await expect(page.locator("[data-initial-loading-screen]")).toHaveCount(0);
+
+    expect(
+      await page.evaluate(
+        () => getComputedStyle(document.documentElement).scrollBehavior,
+      ),
+    ).toBe("smooth");
+
+    await page.evaluate(() => {
+      const testWindow = window as Window & {
+        __navigationScrollSamples?: number[];
+      };
+      testWindow.__navigationScrollSamples = [window.scrollY];
+      window.addEventListener(
+        "scroll",
+        () => testWindow.__navigationScrollSamples?.push(window.scrollY),
+        { passive: true },
+      );
+    });
+
+    await page
+      .getByRole("link", { name: "Scroll to page content" })
+      .click();
+    await expect(page).toHaveURL(/#page-content$/);
+
+    const expectedOffset = await page.evaluate(
+      () =>
+        document
+          .querySelector<HTMLElement>(".site-nav")!
+          .getBoundingClientRect().height,
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document
+              .querySelector<HTMLElement>("#page-content")!
+              .getBoundingClientRect().top,
+        ),
+      )
+      .toBeCloseTo(expectedOffset, 0);
+
+    expect(
+      await page.evaluate(() => {
+        const testWindow = window as Window & {
+          __navigationScrollSamples?: number[];
+        };
+        const finalY = window.scrollY;
+        return testWindow.__navigationScrollSamples?.some(
+          (sample) => sample > 0 && sample < finalY - 1,
+        );
+      }),
+    ).toBe(true);
+
+    const header = page.locator(".site-nav");
+    await expect(header).toHaveAttribute("data-island", "true");
+
+    const geometry = await page.evaluate(() => {
+      const activeLink = document.querySelector<HTMLElement>(
+        '.site-nav__link[aria-current="page"]',
+      )!;
+      const label = activeLink.querySelector<HTMLElement>(".site-nav__label")!;
+      const indicator = activeLink.querySelector<HTMLElement>(
+        ".site-nav__indicator",
+      )!;
+      const surface = document.querySelector<HTMLElement>(".site-nav__surface")!;
+
+      return {
+        indicator: indicator.getBoundingClientRect().toJSON(),
+        label: label.getBoundingClientRect().toJSON(),
+        surface: surface.getBoundingClientRect().toJSON(),
+      };
+    });
+
+    expect(geometry.indicator.left).toBeCloseTo(geometry.label.left, 0);
+    expect(geometry.indicator.right).toBeCloseTo(geometry.label.right, 0);
+    expect(geometry.indicator.top).toBeGreaterThanOrEqual(geometry.surface.top);
+    expect(geometry.indicator.bottom).toBeLessThanOrEqual(
+      geometry.surface.bottom,
+    );
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    expect(
+      await page.evaluate(
+        () => getComputedStyle(document.documentElement).scrollBehavior,
+      ),
+    ).toBe("auto");
+  });
+});

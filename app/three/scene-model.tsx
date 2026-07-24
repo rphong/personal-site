@@ -114,10 +114,16 @@ export function prepareSceneModel(
 }
 
 export function clearPreparedSceneModels() {
-  for (const prepared of preparedSceneModels.values()) {
-    disposePreparedSceneModel(prepared);
+  for (const sceneId of [...preparedSceneModels.keys()]) {
+    clearPreparedSceneModel(sceneId);
   }
-  preparedSceneModels.clear();
+}
+
+export function clearPreparedSceneModel(sceneId: SceneId) {
+  const prepared = preparedSceneModels.get(sceneId);
+  if (!prepared) return;
+  preparedSceneModels.delete(sceneId);
+  disposePreparedSceneModel(prepared);
 }
 
 function createRuntimeSceneAttachment(

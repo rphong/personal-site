@@ -20,6 +20,18 @@ const localBindingConfig = {
   vars: {
     SCENE_CAPTURE: process.env.SCENE_CAPTURE ?? "0",
     SITE_ENV: process.env.SITE_ENV ?? "",
+    SITE_URL: process.env.SITE_URL ?? "",
+  },
+  observability: {
+    enabled: true,
+    logs: {
+      enabled: true,
+      invocation_logs: false,
+      head_sampling_rate: 1,
+    },
+    traces: {
+      enabled: false,
+    },
   },
   d1_databases: d1
     ? [

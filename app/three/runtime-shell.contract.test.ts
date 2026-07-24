@@ -38,14 +38,16 @@ describe("persistent runtime shell", () => {
     expect(host).toContain("SceneCanvasBoundary");
     expect(host).toContain("createPortal(");
     expect(host).toContain("scene-stage--resident");
-    expect(host).toContain("MAX_CONNECTED_LIVE_SCENES = 8");
+    expect(host).toContain("MAX_CONNECTED_LIVE_SCENES = 4");
     expect(host).toContain('attributeFilter: ["data-required-live", "data-scene-id"]');
     expect(host).toContain('resident.stage.dataset.scenePoolState = "pooled"');
     expect(host).toContain("left.lastSeen - right.lastSeen");
     expect(host).toContain("poolElement.append(resident.stage)");
     expect(host).toContain("resident.adoptionVersion += 1");
     expect(host).toContain("data-scene-resident-pool");
-    expect(host).toContain("runtime.activeScene.route === pathname");
+    expect(host).not.toMatch(
+      /INITIAL_DOCUMENT_WARMUP|warmAllScenes|LIVE_SCENE_IDS/,
+    );
     expect(host).not.toContain('currentPathname === "/"');
     expect(host).toContain("const becameActive = active && !wasActive.current");
     expect(host).toMatch(
@@ -62,10 +64,8 @@ describe("persistent runtime shell", () => {
       source("components/site-shell.tsx"),
     ]);
     expect(layout.match(/<SceneProvider>/g)).toHaveLength(1);
-    expect(layout.match(/<InitialDocumentLoadingScreen\s*\/>/g)).toHaveLength(1);
-    expect(layout.indexOf("<InitialDocumentLoadingScreen />")).toBeLessThan(
-      layout.indexOf("<SiteShell>"),
-    );
+    expect(layout).not.toContain("InitialDocumentLoadingScreen");
+    expect(layout.match(/<SiteShell>/g)).toHaveLength(1);
     expect(provider.match(/<SceneRuntimeBoundary\s*\/>/g)).toHaveLength(1);
     expect(provider.match(/<ThreePreferenceToggle\s*\/>/g)).toHaveLength(1);
     expect(provider.indexOf("{children}")).toBeLessThan(
@@ -169,9 +169,6 @@ describe("persistent runtime shell", () => {
     expect(css).toMatch(
       /body:has\(\.page-hero--layered\[data-scene-active="true"\]\) \.scene-runtime,[\s\S]*?\.chapter > \.scene-stage \.scene-runtime\s*\{[^}]*background:\s*transparent/,
     );
-    expect(cssRule(css, ".model-free-surface")).toMatch(
-      /background:\s*var\(--surface\)/,
-    );
     const toggle = cssRule(css, ".three-preference-toggle");
     expect(toggle).toMatch(/z-index:\s*100/);
     expect(toggle).toMatch(/color:\s*#505050/);
@@ -204,6 +201,7 @@ describe("persistent runtime shell", () => {
     );
     expect(host).toContain("clearSceneModel(scene.modelUrl)");
     expect(host).toContain("<AdjacentScenePreloader");
+    expect(host).toContain('enabled={preferredStatus === "loading"}');
     expect(canvas).not.toContain("AdjacentScenePreloader");
   });
 });

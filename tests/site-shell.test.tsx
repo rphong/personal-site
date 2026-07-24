@@ -39,11 +39,11 @@ describe("site shell", () => {
       "page",
     );
     expect(navigation.querySelectorAll(".site-nav__indicator")).toHaveLength(1);
-    expect(
-      screen
-        .getByRole("link", { name: "Projects" })
-        .querySelector(".site-nav__indicator"),
-    ).toBeInTheDocument();
+    const activeIndicator = screen
+      .getByRole("link", { name: "Projects" })
+      .querySelector(".site-nav__indicator");
+    expect(activeIndicator).toBeInTheDocument();
+    expect(activeIndicator?.parentElement).toHaveClass("site-nav__label");
     expect(container.firstElementChild).toHaveAttribute(
       "data-route",
       "projects",
@@ -169,6 +169,16 @@ describe("site shell", () => {
     expect(css).toMatch(
       /\.site-nav__inner\s*\{[^}]*justify-content:\s*center/,
     );
+    expect(css).toMatch(
+      /\.site-nav__label\s*\{[^}]*position:\s*relative;[^}]*display:\s*inline-block/,
+    );
+    expect(css).toMatch(
+      /\.site-nav__link\s*\{[^}]*color:\s*var\(--text-strong\)/,
+    );
+    expect(css).toMatch(/html\s*\{[^}]*scroll-behavior:\s*smooth/);
+    expect(css).toMatch(
+      /\.content-surface\s*\{[^}]*scroll-margin-top:\s*var\(--nav-height\)/,
+    );
     expect(css).toMatch(/\.skip-link:focus-visible\s*\{[\s\S]*transform:\s*none/);
     expect(css).toMatch(/\.scene-stage\s*\{[\s\S]*height:\s*100svh/);
     expect(css).toMatch(/\.page-hero\s*\{[\s\S]*min-height:\s*calc\(100svh/);
@@ -183,6 +193,12 @@ describe("site shell", () => {
     );
     expect(css).toMatch(
       /\.page-hero--layered h1\s*\{[^}]*color:\s*var\(--route-pale-heading\)/,
+    );
+    expect(css).toMatch(
+      /\.page-hero--layered h1\s*\{[^}]*-webkit-text-stroke:\s*1px var\(--route-accent\)/,
+    );
+    expect(css).toMatch(
+      /@supports not \(-webkit-text-stroke:\s*1px #000000\)\s*\{[\s\S]*?\.page-hero--layered h1\s*\{[^}]*color:\s*var\(--route-accent\)/,
     );
     expect(css).toMatch(
       /\.page-hero--layered h1\s*\{[^}]*white-space:\s*nowrap/,

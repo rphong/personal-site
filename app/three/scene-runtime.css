@@ -206,12 +206,6 @@ body:has(.chapter[data-scene-active="true"]) .scene-runtime,
   z-index: auto;
 }
 
-.model-free-surface {
-  position: relative;
-  z-index: 2;
-  background: var(--surface);
-}
-
 .chapter-model-space {
   pointer-events: none;
 }

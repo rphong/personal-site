@@ -21,9 +21,14 @@ describe("home page", () => {
     expect(screen.getByText("Hello")).toBeInTheDocument();
     expect(container.querySelector('[data-scene-id="home-hero"]')).not.toBeNull();
     expect(container.querySelector(".page-hero--layered")).not.toBeNull();
-    expect(screen.getByRole("link", { name: "Scroll down" })).toHaveAttribute(
-      "href",
-      "#page-content",
+    const scrollCue = screen.getByRole("link", {
+      name: "Scroll to page content",
+    });
+    expect(scrollCue).toHaveAttribute("href", "#page-content");
+    expect(scrollCue).not.toHaveTextContent(/scroll down/i);
+    expect(scrollCue.querySelector(".scroll-cue__chevron")).toHaveAttribute(
+      "aria-hidden",
+      "true",
     );
     expect(container.querySelector(".owner-gate")).toBeNull();
     expect(container).not.toHaveTextContent(

@@ -34,12 +34,6 @@ export interface SceneRotation {
   readonly pitch: number;
 }
 
-export interface SceneFrameSnapshot {
-  readonly dataUrl: string;
-  readonly route: SiteRoute;
-  readonly sceneId: LiveSceneId;
-}
-
 export interface RotationLimits {
   readonly yaw: readonly [min: number, max: number];
   readonly pitch: readonly [min: number, max: number];

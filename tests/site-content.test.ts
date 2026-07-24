@@ -4,69 +4,27 @@ import {
   contact,
   experience,
   footer,
-  getOwnerGatedFields,
   home,
-  OWNER_INPUT_SENTINEL,
   projects,
-  routeDirection,
   routeKeyFromPathname,
   routes,
 } from "../content/site-content";
 
 describe("site content", () => {
-  it("defines the approved routes and palettes", () => {
+  it("defines the approved routes", () => {
     expect(routes.map(({ key, href }) => [key, href])).toEqual([
       ["home", "/"],
       ["experience", "/experience"],
       ["projects", "/projects"],
       ["contact", "/contact"],
     ]);
-    expect(routes.map(({ order }) => order)).toEqual([0, 1, 2, 3]);
-    expect(routes.map(({ key, palette }) => [key, palette])).toEqual([
-      [
-        "home",
-        {
-          background: "#9ECCC0",
-          accent: "#135946",
-          paleHeading: "#FFFFFF",
-        },
-      ],
-      [
-        "experience",
-        {
-          background: "#DFA9B5",
-          accent: "#722939",
-          paleHeading: "#FBE5EA",
-        },
-      ],
-      [
-        "projects",
-        {
-          background: "#AFD4E1",
-          accent: "#285D71",
-          paleHeading: "#EDF7FB",
-        },
-      ],
-      [
-        "contact",
-        {
-          background: "#C9BAE4",
-          accent: "#4B2E7E",
-          paleHeading: "#EDE6FA",
-        },
-      ],
-    ]);
   });
 
-  it("derives route keys and navigation direction", () => {
+  it("derives route keys from paths", () => {
     expect(routeKeyFromPathname("/")).toBe("home");
     expect(routeKeyFromPathname("/experience/nasa")).toBe("experience");
     expect(routeKeyFromPathname("/projects/")).toBe("projects");
     expect(routeKeyFromPathname("/unknown")).toBe("home");
-
-    expect(routeDirection("home", "projects")).toBe(1);
-    expect(routeDirection("contact", "experience")).toBe(-1);
-    expect(routeDirection("projects", "projects")).toBe(0);
   });
 
   it("keeps companies and roles in the approved order", () => {
@@ -131,8 +89,7 @@ describe("site content", () => {
     });
   });
 
-  it("defines the owner-supplied home intro and rabbit holes", () => {
-    expect(getOwnerGatedFields(home)).toEqual([]);
+  it("defines the home intro and rabbit holes", () => {
     expect(home.introduction).toMatch(/University of Houston/);
     expect(home.experienceLink).toEqual({
       label: "What I've been up to →",
@@ -145,35 +102,5 @@ describe("site content", () => {
       ["02", "Games", "/projects"],
       ["03", "Contests", "https://codeforces.com/profile/richardp"],
     ]);
-    expect(JSON.stringify(home)).not.toContain(OWNER_INPUT_SENTINEL);
-  });
-
-  it("reports every home field that still needs owner input", () => {
-    expect(
-      getOwnerGatedFields({
-        nonWorkInterest: OWNER_INPUT_SENTINEL,
-        technicalCuriosity: OWNER_INPUT_SENTINEL,
-      }),
-    ).toEqual(["home.nonWorkInterest", "home.technicalCuriosity"]);
-
-    expect(
-      getOwnerGatedFields({
-        nonWorkInterest: "",
-        technicalCuriosity:
-          "Draft copy still contains OWNER_INPUT_REQUIRED: inside it.",
-      }),
-    ).toEqual(["home.nonWorkInterest", "home.technicalCuriosity"]);
-
-    expect(
-      getOwnerGatedFields({
-        nonWorkInterest: "   ",
-        technicalCuriosity:
-          "I keep learning how graphics tools reach the web.",
-      }),
-    ).toEqual(["home.nonWorkInterest"]);
-
-    expect(home.ownerDraftMessage).toBe(
-      "Richard will replace these two marked lines with his own words before production.",
-    );
   });
 });

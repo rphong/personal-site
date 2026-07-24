@@ -45,6 +45,12 @@ export function createPageMetadata(
   }
 
   const canonical = new URL(route.href, deployment.siteUrl);
+  const socialImage = {
+    url: "/og.png",
+    width: 1200,
+    height: 630,
+    alt: "Richard Phong — Software developer",
+  } as const;
 
   return {
     ...base,
@@ -58,11 +64,13 @@ export function createPageMetadata(
       title,
       description: route.description,
       url: canonical,
+      images: [socialImage],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: route.description,
+      images: [socialImage],
     },
   };
 }

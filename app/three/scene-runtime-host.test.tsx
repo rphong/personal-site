@@ -19,6 +19,7 @@ vi.mock("./runtime-events", () => ({
 
 vi.mock("./scene-loader", () => ({
   acquireSceneModelHostLease: vi.fn(() => Symbol("host-lease")),
+  clearAllSceneModels: vi.fn(),
   clearSceneModel: vi.fn(),
   preloadSceneModel: vi.fn(),
   releaseSceneModelHostLease: vi.fn(),

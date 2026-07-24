@@ -18,7 +18,7 @@ function abortError() {
 
 export class SceneResourceCache<T> {
   readonly #entries = new Map<string, SceneResourceEntry<T>>();
-  readonly #activeOwners = new Map<string, string>();
+  readonly #activeOwners = new Map<string, Set<string>>();
   #hostLease: symbol | null = null;
 
   constructor(private readonly loader: SceneResourceLoader<T>) {}
@@ -41,11 +41,24 @@ export class SceneResourceCache<T> {
   }
 
   activate(url: string, owner: string): Promise<T> {
-    if (this.#activeOwners.get(url) !== owner) {
-      if (this.#entries.get(url)?.status === "rejected") {
-        this.clear(url);
+    let owners = this.#activeOwners.get(url);
+    const existing = this.#entries.get(url);
+    if (existing?.status === "resolved") {
+      if (!owners) this.#activeOwners.set(url, new Set([owner]));
+      return existing.promise;
+    }
+    const newOwner = !owners?.has(owner);
+    if (newOwner) {
+      if (existing?.status === "rejected") {
+        this.deleteEntry(url);
+        owners = new Set();
+        this.#activeOwners.set(url, owners);
       }
-      this.#activeOwners.set(url, owner);
+      if (!owners) {
+        owners = new Set();
+        this.#activeOwners.set(url, owners);
+      }
+      owners.add(owner);
     }
     return this.load(url);
   }
@@ -80,16 +93,23 @@ export class SceneResourceCache<T> {
         }
         entry.value = value;
         entry.status = "resolved";
+        const owners = this.#activeOwners.get(url);
+        if (owners && owners.size > 1) {
+          const firstOwner = owners.values().next().value;
+          if (firstOwner !== undefined) {
+            this.#activeOwners.set(url, new Set([firstOwner]));
+          }
+        }
         return value;
       },
       (error: unknown) => {
         const stale =
           controller.signal.aborted || this.#entries.get(url) !== entry;
         const active = this.#activeOwners.has(url);
-        if (this.#entries.get(url) === entry && !active) {
-          this.#entries.delete(url);
-        } else if (this.#entries.get(url) === entry) {
+        if (this.#entries.get(url) === entry && active) {
           entry.status = "rejected";
+        } else if (this.#entries.get(url) === entry) {
+          this.#entries.delete(url);
         }
         throw stale ? abortError() : error;
       },
@@ -107,17 +127,21 @@ export class SceneResourceCache<T> {
   }
 
   clear(url: string): void {
-    const entry = this.#entries.get(url);
     this.#activeOwners.delete(url);
+    this.deleteEntry(url);
+  }
+
+  clearAll(): void {
+    for (const url of [...this.#entries.keys()]) this.deleteEntry(url);
+    this.#activeOwners.clear();
+  }
+
+  private deleteEntry(url: string): void {
+    const entry = this.#entries.get(url);
     if (!entry) return;
     this.#entries.delete(url);
     entry.controller.abort();
     if (entry.value !== undefined) this.safeDispose(entry.value);
-  }
-
-  clearAll(): void {
-    for (const url of [...this.#entries.keys()]) this.clear(url);
-    this.#activeOwners.clear();
   }
 
   private safeDispose(value: T): void {
