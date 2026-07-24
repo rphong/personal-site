@@ -27,7 +27,7 @@ jobs:
         env:
           SCENE_CAPTURE: "0"
           SITE_ENV: production
-          SITE_URL: https://richard-phong-personal.richard-phong424.chatgpt.site
+          SITE_URL: https://personal-site.richard-phong424.workers.dev
 
   browser-runtime:
     runs-on: ubuntu-latest

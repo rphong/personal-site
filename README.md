@@ -51,7 +51,7 @@ lab budget.
 
 ```powershell
 $env:SITE_ENV = "production"
-$env:SITE_URL = "https://richard-phong-personal.richard-phong424.chatgpt.site"
+$env:SITE_URL = "https://personal-site.richard-phong424.workers.dev"
 npm run verify:release
 ```
 
@@ -61,12 +61,26 @@ rebuilding from source, and verifying that the generated Worker is a production
 artifact with scene capture disabled and matching Sites metadata. The canonical
 résumé is published unchanged at `/Richard-Phong-Resume.pdf`.
 
+## Cloudflare deployment
+
+The public production site is deployed from `main` to
+`personal-site.richard-phong424.workers.dev`. Cloudflare Workers Builds runs:
+
+```powershell
+npm run build
+npm run deploy:cloudflare
+```
+
+The deploy entrypoint rebuilds with the production origin before invoking
+Wrangler, so both local releases and Cloudflare's Git-connected builds publish
+indexable metadata, canonical URLs, `robots.txt`, and the sitemap consistently.
+
 ## Sites
 
-`.openai/hosting.json` declares the existing Sites project. Sites is the
-canonical release path; the repository intentionally has no unguarded direct
-Wrangler deploy script. The project uses Vinext and a Cloudflare Worker entry
-point, without D1, R2, authentication, a CMS, or a contact form.
+`.openai/hosting.json` declares the existing private Sites project used as a
+managed preview. The public Cloudflare Worker is the canonical release target.
+The project uses Vinext and a Cloudflare Worker entry point, without D1, R2,
+authentication, a CMS, or a contact form.
 
 Worker health, production performance, dashboard locations, Wrangler commands,
 and Cloudflare MCP options are documented in

@@ -9,6 +9,7 @@
     "dev": "node scripts/run-vinext.mjs dev",
     "build": "node scripts/assets/validate.mjs && node scripts/run-vinext.mjs build",
     "build:production": "npm run validate:production && npm run build && npm run verify:production-dist",
+    "deploy:cloudflare": "node scripts/deploy-cloudflare.mjs",
     "verify:release": "npm run posters:check && npm run build:production",
     "start": "node scripts/run-vinext.mjs start",
     "test": "npm run test:unit && npm run test:html",
