@@ -1,11 +1,21 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Component, type ReactNode } from "react";
+import { Component, useEffect, type ReactNode } from "react";
+import {
+  sceneRuntimeTraceEnabled,
+  subscribeSceneRuntimeTraceEnable,
+} from "./scene-runtime-trace-core";
+import { prepareSceneRuntimeTrace } from "./scene-runtime-trace-loader";
 
 const DynamicSceneRuntimeHost = dynamic(
-  () =>
-    import("./scene-runtime-host").then((module) => module.SceneRuntimeHost),
+  async () => {
+    const hostModule = import("./scene-runtime-host");
+    if (sceneRuntimeTraceEnabled()) {
+      await prepareSceneRuntimeTrace();
+    }
+    return (await hostModule).SceneRuntimeHost;
+  },
   {
     ssr: false,
     loading: () => null,
@@ -28,6 +38,14 @@ class RuntimeSiblingErrorBoundary extends Component<
 }
 
 export function SceneRuntimeBoundary() {
+  useEffect(
+    () =>
+      subscribeSceneRuntimeTraceEnable(() => {
+        void prepareSceneRuntimeTrace();
+      }),
+    [],
+  );
+
   return (
     <RuntimeSiblingErrorBoundary>
       <DynamicSceneRuntimeHost />

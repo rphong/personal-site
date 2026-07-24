@@ -84,24 +84,6 @@ img {
   background: var(--route-background);
 }
 
-.site-shell[data-route="experience"] {
-  --route-background: #dfa9b5;
-  --route-accent: #722939;
-  --route-pale-heading: #fbe5ea;
-}
-
-.site-shell[data-route="projects"] {
-  --route-background: #afd4e1;
-  --route-accent: #285d71;
-  --route-pale-heading: #edf7fb;
-}
-
-.site-shell[data-route="contact"] {
-  --route-background: #c9bae4;
-  --route-accent: #4b2e7e;
-  --route-pale-heading: #ede6fa;
-}
-
 .scene-stage {
   position: absolute;
   top: calc(-1 * var(--nav-height));
@@ -358,41 +340,44 @@ img {
 }
 
 /* Route words (Experience/Projects/Contact) breathe; the home wordmark stays tight. */
-.site-shell:not([data-route="home"]) .page-hero--layered:not(.page-hero--editorial) h1 {
+.page-hero--layered:not([data-scene-id="home-hero"]):not(
+    .page-hero--editorial
+  )
+  h1 {
   letter-spacing: 0;
 }
 
-.site-shell[data-route="experience"] .page-hero--layered .page-hero__copy {
+.page-hero--layered[data-scene-id="experience-hero"] .page-hero__copy {
   top: 36.5%;
 }
 
-.site-shell[data-route="projects"] .page-hero--layered .page-hero__copy {
+.page-hero--layered[data-scene-id="projects-hero"] .page-hero__copy {
   top: 35%;
 }
 
-.site-shell[data-route="experience"]
-  .page-hero--layered:not(.page-hero--editorial)
+.page-hero--layered[data-scene-id="experience-hero"]:not(
+    .page-hero--editorial
+  )
   h1 {
   font-size: clamp(4.5rem, 18.4vw, 23rem);
 }
 
-.site-shell[data-route="projects"]
-  .page-hero--layered:not(.page-hero--editorial)
+.page-hero--layered[data-scene-id="projects-hero"]:not(
+    .page-hero--editorial
+  )
   h1 {
   font-size: clamp(4.5rem, 20.5vw, 26rem);
 }
 
-.site-shell[data-route="home"] .page-hero__copy {
+.page-hero--layered[data-scene-id="home-hero"] .page-hero__copy {
   top: 64.5%;
 }
 
-/* Live models sit in front of the giant word (per mock); every non-ready
-   fallback keeps the word above the poster layers. */
-.page-hero--layered
-  > .scene-stage--resident[data-scene-pool-state="assigned"]:has(
-    .scene-runtime[data-three-status="ready"]
-  ) {
-  z-index: 2;
+/* Keep every route-hero model representation in the poster's stacking plane.
+   The stage can move from adopting to assigned one React commit before the
+   runtime moves from loading to ready, so status-specific selectors flicker. */
+.page-hero--layered > .scene-stage--resident {
+  z-index: 1;
 }
 
 .page-hero--layered.page-hero--editorial h1 {
@@ -619,9 +604,6 @@ body:has(.scene-runtime[data-poster-ready="true"])
   section.experience-chapter--poster[data-scene-active="true"]
   > .scene-section__poster,
 body:has(.scene-runtime[data-three-status="ready"])
-  section.experience-chapter--poster[data-scene-active="true"]
-  > .scene-section__poster,
-body:has(.scene-runtime[data-transition-poster="suppressed"])
   section.experience-chapter--poster[data-scene-active="true"]
   > .scene-section__poster {
   visibility: visible;
@@ -902,7 +884,7 @@ body:has(.scene-runtime[data-three-status="error"])
     padding-inline: var(--page-gutter);
   }
 
-  .site-shell[data-route="home"] .page-hero__copy {
+  .page-hero--layered[data-scene-id="home-hero"] .page-hero__copy {
     top: 63%;
   }
 
@@ -915,23 +897,25 @@ body:has(.scene-runtime[data-three-status="error"])
     white-space: normal;
   }
 
-  .site-shell[data-route="experience"] .page-hero h1 {
+  .page-hero[data-scene-id="experience-hero"] h1 {
     font-size: clamp(3rem, 15.5vw, 6.5rem);
   }
 
-  .site-shell[data-route="experience"] .page-hero--layered .page-hero__copy,
-  .site-shell[data-route="projects"] .page-hero--layered .page-hero__copy {
+  .page-hero--layered[data-scene-id="experience-hero"] .page-hero__copy,
+  .page-hero--layered[data-scene-id="projects-hero"] .page-hero__copy {
     top: 11%;
   }
 
-  .site-shell[data-route="experience"]
-    .page-hero--layered:not(.page-hero--editorial)
+  .page-hero--layered[data-scene-id="experience-hero"]:not(
+      .page-hero--editorial
+    )
     h1 {
     font-size: clamp(4rem, 20.5vw, 7rem);
   }
 
-  .site-shell[data-route="projects"]
-    .page-hero--layered:not(.page-hero--editorial)
+  .page-hero--layered[data-scene-id="projects-hero"]:not(
+      .page-hero--editorial
+    )
     h1 {
     font-size: clamp(4rem, 22.5vw, 6.5rem);
   }
@@ -1073,6 +1057,6 @@ body:has(.scene-runtime[data-three-status="error"])
   *::before,
   *::after {
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
   }
 }

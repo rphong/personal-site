@@ -29,7 +29,7 @@ jobs:
           SITE_ENV: production
           SITE_URL: https://richard-phong-personal.richard-phong424.chatgpt.site
 
-  browser-ui:
+  browser-runtime:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -39,4 +39,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser:ui
+      - run: npm run test:browser
+      - run: npm run posters:check
+
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.15.0
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:performance

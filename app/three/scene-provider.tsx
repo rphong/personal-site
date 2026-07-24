@@ -23,7 +23,10 @@ import {
 import { useThreePreference } from "./three-preference";
 import { ThreePreferenceToggle } from "./three-preference-toggle";
 import { SceneDebugPanel } from "./scene-debug-panel";
-import { traceSceneRuntime } from "./scene-runtime-trace";
+import {
+  sceneRuntimeTraceEnabled,
+  traceSceneRuntime,
+} from "./scene-runtime-trace-core";
 import { applySceneTuning } from "./scene-tuning";
 import type {
   SceneId,
@@ -104,21 +107,6 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
   const [state, setState] = useState<RuntimeState>(() =>
     createRouteState(pathname, 0),
   );
-  const [activeSectionElement, setActiveSectionElement] =
-    useState<HTMLElement | null>(null);
-  const [sceneStageElement, setSceneStageElement] =
-    useState<HTMLElement | null>(null);
-  const sceneStageElementRef = useRef<HTMLElement | null>(null);
-  const activeRegistrationRef = useRef({
-    pathname: state.pathname,
-    sceneId: state.activeSceneId,
-  });
-  useLayoutEffect(() => {
-    activeRegistrationRef.current = {
-      pathname: state.pathname,
-      sceneId: state.activeSceneId,
-    };
-  }, [state.activeSceneId, state.pathname]);
   const [debugTuning, setDebugTuningState] = useState<{
     readonly sceneId: SceneId;
     readonly tuning: SceneTuning;
@@ -136,6 +124,7 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       activationAllowed: state.activationAllowed,
       activationVersion: state.activationVersion,
       pathname,
+      rotation: state.rotation,
       status: state.status,
     });
   }, [
@@ -143,6 +132,7 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     state.activeSceneId,
     state.activationAllowed,
     state.activationVersion,
+    state.rotation,
     state.status,
   ]);
 
@@ -152,20 +142,25 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
   const activateScene = useCallback((sceneId: SceneId) => {
     const currentPathname = pathnameRef.current;
     const scene = getSceneDefinition(sceneId);
+    traceSceneRuntime("provider:activate-request", {
+      currentPathname,
+      sceneId,
+      sceneRoute: scene.route,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    });
     if (
       currentPathname !== "/scene-capture" &&
       scene.route !== currentPathname
     ) {
+      traceSceneRuntime("provider:activate-rejected", {
+        currentPathname,
+        reason: "route-mismatch",
+        sceneId,
+        sceneRoute: scene.route,
+      });
       return;
     }
-    const matchingElement = [...registrations.current.entries()].find(
-      ([, registration]) =>
-        registration.sceneId === sceneId &&
-        registration.pathname === currentPathname,
-    )?.[0];
-    setActiveSectionElement(
-      matchingElement instanceof HTMLElement ? matchingElement : null,
-    );
     setState((current) => {
       if (current.pathname !== currentPathname) return current;
       if (
@@ -215,6 +210,29 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
         const registration = candidates[0]
           ? registrations.current.get(candidates[0].target)
           : null;
+        if (sceneRuntimeTraceEnabled()) {
+          traceSceneRuntime("provider:intersection", {
+            candidates: candidates.map((entry) => ({
+              boundingClientRect: {
+                height: entry.boundingClientRect.height,
+                left: entry.boundingClientRect.left,
+                top: entry.boundingClientRect.top,
+                width: entry.boundingClientRect.width,
+              },
+              intersectionRatio: entry.intersectionRatio,
+              sceneId:
+                registrations.current.get(entry.target)?.sceneId ?? null,
+            })),
+            entries: entries.map((entry) => ({
+              intersectionRatio: entry.intersectionRatio,
+              isIntersecting: entry.isIntersecting,
+              sceneId:
+                registrations.current.get(entry.target)?.sceneId ?? null,
+            })),
+            pathname: pathnameRef.current,
+            selectedSceneId: registration?.sceneId ?? null,
+          });
+        }
         if (registration) activateScene(registration.sceneId);
       },
       {
@@ -230,36 +248,30 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     (sceneId: SceneId, element: HTMLElement) => {
       registrations.current.set(element, { sceneId, pathname });
       ensureObserver()?.observe(element);
-      const activeRegistration = activeRegistrationRef.current;
-      if (
-        activeRegistration.pathname === pathname &&
-        activeRegistration.sceneId === sceneId
-      ) {
-        setActiveSectionElement(element);
+      if (sceneRuntimeTraceEnabled()) {
+        const rect = element.getBoundingClientRect();
+        traceSceneRuntime("provider:section-register", {
+          pathname,
+          rect: {
+            height: rect.height,
+            width: rect.width,
+            x: rect.x,
+            y: rect.y,
+          },
+          sceneId,
+        });
       }
-
       return () => {
+        traceSceneRuntime("provider:section-unregister", {
+          pathname,
+          sceneId,
+        });
         observer.current?.unobserve(element);
         registrations.current.delete(element);
-        setActiveSectionElement((current) =>
-          current === element ? null : current,
-        );
       };
     },
     [ensureObserver, pathname],
   );
-
-  const registerSceneStage = useCallback((element: HTMLElement | null) => {
-    sceneStageElementRef.current = element;
-    setSceneStageElement(element);
-  }, []);
-
-  useLayoutEffect(() => {
-    const stage = sceneStageElementRef.current;
-    if (!stage || !activeSectionElement) return;
-    activeSectionElement.append(stage);
-    stage.dataset.sceneOwnerId = state.activeSceneId;
-  }, [activeSectionElement, sceneStageElement, state.activeSceneId]);
 
   useEffect(
     () => () => {
@@ -291,6 +303,12 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
 
   const rotateBy = useCallback(
     (deltaX: number, deltaY: number, allowPitch: boolean) => {
+      traceSceneRuntime("provider:rotation-request", {
+        allowPitch,
+        deltaX,
+        deltaY,
+        sceneId: activationSceneId,
+      });
       setState((current) => {
         if (
           current.pathname !== activationPathname ||
@@ -351,8 +369,6 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     () => ({
       activeSceneId: state.activeSceneId,
       activeScene,
-      activeSectionElement,
-      sceneStageElement,
       activationVersion: state.activationVersion,
       sceneActivationAllowed: state.activationAllowed,
       status,
@@ -362,7 +378,6 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
       threeSupported: preference.supported,
       activateScene,
       registerSection,
-      registerSceneStage,
       setStatus,
       rotateBy,
       setThreeEnabled,
@@ -370,14 +385,11 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
     }),
     [
       activeScene,
-      activeSectionElement,
-      sceneStageElement,
       activateScene,
       preference.enabled,
       preference.initialized,
       preference.supported,
       registerSection,
-      registerSceneStage,
       rotateBy,
       setStatus,
       setThreeEnabled,

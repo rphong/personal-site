@@ -89,8 +89,6 @@ function runtimeValue(
   return {
     activeScene,
     activeSceneId,
-    activeSectionElement: null,
-    sceneStageElement: null,
     activationVersion: 1,
     sceneActivationAllowed: true,
     status,
@@ -100,7 +98,6 @@ function runtimeValue(
     threeSupported: true,
     activateScene: vi.fn(),
     registerSection: vi.fn(() => vi.fn()),
-    registerSceneStage: vi.fn(),
     rotateBy: vi.fn(),
     setStatus,
     setThreeEnabled: vi.fn(),
@@ -815,8 +812,5 @@ describe("section-owned live scene occupants", () => {
         ),
       ).toBe(stage);
     }
-    expect(
-      view.container.querySelector(".scene-runtime__transition-frame"),
-    ).not.toBeInTheDocument();
   });
 });

@@ -48,7 +48,22 @@ describe("site shell", () => {
       "data-route",
       "projects",
     );
-    expect(container.querySelectorAll("[data-scene-stage]")).toHaveLength(1);
+    expect(
+      (container.firstElementChild as HTMLElement).style.getPropertyValue(
+        "--route-background",
+      ),
+    ).toBe("#afd4e1");
+    expect(
+      (container.firstElementChild as HTMLElement).style.getPropertyValue(
+        "--route-accent",
+      ),
+    ).toBe("#285d71");
+    expect(
+      (container.firstElementChild as HTMLElement).style.getPropertyValue(
+        "--route-pale-heading",
+      ),
+    ).toBe("#edf7fb");
+    expect(container.querySelectorAll("[data-scene-stage]")).toHaveLength(0);
     expect(container.querySelector("#main-content")).toHaveAttribute(
       "tabindex",
       "-1",
@@ -195,9 +210,9 @@ describe("site shell", () => {
       /\.page-hero--layered h1\s*\{[^}]*color:\s*var\(--route-pale-heading\)/,
     );
     expect(css).toMatch(/--route-pale-heading:\s*#ffffff/);
-    expect(css).toMatch(/--route-pale-heading:\s*#fbe5ea/);
-    expect(css).toMatch(/--route-pale-heading:\s*#edf7fb/);
-    expect(css).toMatch(/--route-pale-heading:\s*#ede6fa/);
+    expect(css).not.toMatch(
+      /\.site-shell\[data-route=[^\]]+\]\s*\{[^}]*--route-/,
+    );
     expect(css).not.toMatch(
       /\.page-hero--layered h1\s*\{[^}]*-webkit-text-stroke/,
     );
@@ -209,8 +224,12 @@ describe("site shell", () => {
       /@media\s*\(max-width:\s*767px\)\s*\{[\s\S]*?\.content-grid\s*\{[^}]*grid-template-columns:\s*1fr;/,
     );
     expect(css).toMatch(
-      /\.site-shell\[data-route="experience"\]\s+\.page-hero h1\s*\{[^}]*font-size:\s*clamp\(3rem,\s*15\.5vw,\s*6\.5rem\)/,
+      /\.page-hero\[data-scene-id="experience-hero"\]\s+h1\s*\{[^}]*font-size:\s*clamp\(3rem,\s*15\.5vw,\s*6\.5rem\)/,
     );
+    expect(css).toMatch(
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?transition-duration:\s*0s\s*!important/,
+    );
+    expect(css).not.toMatch(/transition-duration:\s*0\.01ms/);
     expect(css).toMatch(
       /@media\s*\(max-width:\s*767px\)\s*\{[\s\S]*?\.site-footer\s*\{[^}]*padding-bottom:\s*calc\(5rem \+ env\(safe-area-inset-bottom\)\)/,
     );

@@ -18,13 +18,17 @@ import {
 import {
   ACESFilmicToneMapping,
   Box3,
+  type BufferGeometry,
   Color,
   LinearSRGBColorSpace,
+  Matrix4,
   PerspectiveCamera,
+  Quaternion,
   type RectAreaLight,
   SRGBColorSpace,
   WebGLRenderer,
   type Camera,
+  type Object3D,
   type Scene,
   Vector3,
   type WebGLRendererParameters,
@@ -40,11 +44,21 @@ import {
   recordSceneRuntimeDebugFrame,
 } from "./scene-runtime-debug";
 import {
+  captureSceneRuntimeTraceMoment,
+  compareSceneRenderTraceCoherence,
   sceneRuntimeTraceEnabled,
   sceneTraceIdentity,
+  subscribeSceneRuntimeTraceEnable,
   traceSceneRuntime,
-  traceSceneStageSnapshot,
-} from "./scene-runtime-trace";
+  type SceneRenderTraceIdentity,
+} from "./scene-runtime-trace-core";
+import {
+  getLoadedSceneAlphaCaptureModule,
+  getLoadedSceneRuntimeTraceModule,
+  prepareSceneRuntimeTrace,
+  type SceneAlphaCaptureModule,
+  type SceneRuntimeTraceModule,
+} from "./scene-runtime-trace-loader";
 import type {
   SceneDefinition,
   SceneFailureReason,
@@ -52,6 +66,24 @@ import type {
 } from "./types";
 
 RectAreaLightUniformsLib.init();
+
+function snapshotSceneCanvasDom(canvas: HTMLCanvasElement) {
+  return (
+    getLoadedSceneRuntimeTraceModule()?.snapshotSceneCanvasDom(canvas) ?? null
+  );
+}
+
+function traceSceneStageSnapshot(
+  ...args: Parameters<SceneRuntimeTraceModule["traceSceneStageSnapshot"]>
+) {
+  getLoadedSceneRuntimeTraceModule()?.traceSceneStageSnapshot(...args);
+}
+
+function captureSceneAlphaTraceFrame(
+  ...args: Parameters<SceneAlphaCaptureModule["captureSceneAlphaTraceFrame"]>
+) {
+  getLoadedSceneAlphaCaptureModule()?.captureSceneAlphaTraceFrame(...args);
+}
 
 export interface SceneCanvasPortProps {
   readonly scene: SceneDefinition;
@@ -62,7 +94,7 @@ export interface SceneCanvasPortProps {
   readonly loadEnabled: boolean;
   readonly preloadReady: boolean;
   readonly debugActive?: boolean;
-  readonly onFirstFrame: (transitionFrame?: string) => void;
+  readonly onFirstFrame: () => void;
   readonly onFailure: (reason: SceneFailureReason) => void;
   readonly onContextLost: () => void;
   readonly onContextRestored: () => void;
@@ -93,6 +125,16 @@ const WEBGL2_ATTRIBUTES = {
 
 export const ACTIVE_SCENE_DPR: [number, number] = [1, 1.5];
 export const INACTIVE_SCENE_DPR = 0.75;
+
+export function createDisabledSceneEventManager() {
+  // Scene interaction is owned by SceneRotationArea outside the R3F tree.
+  // Leaving the default manager enabled lets Canvas's async configure task
+  // reconnect to a wrapper that may already be unmounted during rapid toggles.
+  return {
+    enabled: false,
+    priority: 0,
+  };
+}
 
 export function createWebGL2Renderer(
   defaults: SceneRendererDefaults,
@@ -189,13 +231,38 @@ function createUnavailableRenderer(
 
 function ResponsiveCamera({ scene }: { readonly scene: SceneDefinition }) {
   const camera = useThree((state) => state.camera);
+  const renderer = useThree((state) => state.gl) as WebGLRenderer;
+  const height = useThree((state) => state.size.height);
   const width = useThree((state) => state.size.width);
   const invalidate = useThree((state) => state.invalidate);
 
   useLayoutEffect(() => {
-    applyCameraFrame(camera, cameraFrameForWidth(scene, width));
+    const frame = cameraFrameForEnvironment(scene, width);
+    const tracing = sceneRuntimeTraceEnabled();
+    const before = tracing ? traceCamera(camera, frame) : null;
+    applyCameraFrame(
+      camera,
+      frame,
+      height > 0 ? width / height : undefined,
+    );
+    camera.updateMatrixWorld();
+    if (tracing) {
+      traceSceneRuntime("camera:responsive-layout", {
+        after: traceCamera(camera, frame),
+        before,
+        canvasDom: snapshotSceneCanvasDom(renderer.domElement),
+        canvasSize: {
+          height: renderer.domElement.clientHeight,
+          width: renderer.domElement.clientWidth,
+        },
+        expectedFrame: traceCameraFrame(frame),
+        mode: frame === scene.mobile ? "mobile" : "desktop",
+        r3fSize: { height, width },
+        sceneId: scene.id,
+      });
+    }
     invalidate();
-  }, [camera, invalidate, scene, width]);
+  }, [camera, height, invalidate, renderer, scene, width]);
 
   return null;
 }
@@ -204,16 +271,55 @@ function cameraFrameForWidth(scene: SceneDefinition, width: number) {
   return width <= 767 ? scene.mobile : scene.desktop;
 }
 
+function cameraModeForViewport() {
+  if (typeof window.matchMedia !== "function") return null;
+  return window.matchMedia("(max-width: 767px)").matches
+    ? "mobile"
+    : "desktop";
+}
+
+function cameraFrameForEnvironment(
+  scene: SceneDefinition,
+  fallbackWidth: number,
+) {
+  const viewportMode = cameraModeForViewport();
+  if (viewportMode === "mobile") return scene.mobile;
+  if (viewportMode === "desktop") return scene.desktop;
+  return cameraFrameForWidth(scene, fallbackWidth);
+}
+
 function applyCameraFrame(
   camera: Camera,
   frame: SceneDefinition["desktop"],
+  aspect?: number,
 ): void {
   camera.position.set(...frame.cameraPosition);
   camera.lookAt(...frame.cameraTarget);
   if (camera instanceof PerspectiveCamera) {
     camera.fov = frame.fov;
+    if (aspect !== undefined && Number.isFinite(aspect) && aspect > 0) {
+      camera.aspect = aspect;
+    }
     camera.updateProjectionMatrix();
   }
+}
+
+function synchronizeCameraForCanvas(
+  camera: Camera,
+  scene: SceneDefinition,
+  canvas: HTMLCanvasElement,
+  fallbackSize?: Readonly<{ height: number; width: number }>,
+) {
+  const width =
+    canvas.clientWidth > 0 ? canvas.clientWidth : fallbackSize?.width ?? 0;
+  const height =
+    canvas.clientHeight > 0
+      ? canvas.clientHeight
+      : fallbackSize?.height ?? 0;
+  const frame = cameraFrameForEnvironment(scene, width);
+  applyCameraFrame(camera, frame, height > 0 ? width / height : undefined);
+  camera.updateMatrixWorld();
+  return frame === scene.mobile ? "mobile" : "desktop";
 }
 
 function SceneRendererSettings({
@@ -330,8 +436,10 @@ function ContextLifecycle({
   health,
   onContextLost,
   onContextRestored,
+  sceneId,
 }: Pick<SceneCanvasPortProps, "onContextLost" | "onContextRestored"> & {
   readonly health: ContextHealth;
+  readonly sceneId: SceneDefinition["id"];
 }) {
   const gl = useThree((state) => state.gl) as WebGLRenderer;
   const invalidate = useThree((state) => state.invalidate);
@@ -347,10 +455,22 @@ function ContextLifecycle({
     const canvas = gl.domElement;
     const lost = (event: Event) => {
       event.preventDefault();
+      if (sceneRuntimeTraceEnabled()) {
+        traceSceneRuntime("canvas:webgl-context-lost", {
+          canvasDom: snapshotSceneCanvasDom(canvas),
+          sceneId,
+        });
+      }
       health.markLost();
       callbacks.reportLost();
     };
     const restored = () => {
+      if (sceneRuntimeTraceEnabled()) {
+        traceSceneRuntime("canvas:webgl-context-restored", {
+          canvasDom: snapshotSceneCanvasDom(canvas),
+          sceneId,
+        });
+      }
       health.markRestored();
       callbacks.reportRestored();
       invalidate();
@@ -361,7 +481,7 @@ function ContextLifecycle({
       canvas.removeEventListener("webglcontextlost", lost);
       canvas.removeEventListener("webglcontextrestored", restored);
     };
-  }, [callbacks, gl, health, invalidate]);
+  }, [callbacks, gl, health, invalidate, sceneId]);
 
   return null;
 }
@@ -382,35 +502,253 @@ export function sceneModelIsAttached(
   return Boolean(instance?.children.length);
 }
 
-function traceCamera(camera: Camera) {
+function traceRounded(value: number) {
+  return Math.round(value * 100_000) / 100_000;
+}
+
+function traceNumberArray(values: ArrayLike<number>) {
+  return Array.from(values, traceRounded);
+}
+
+function traceVector(vector: Vector3) {
+  return [
+    traceRounded(vector.x),
+    traceRounded(vector.y),
+    traceRounded(vector.z),
+  ];
+}
+
+function traceCameraFrame(frame: SceneDefinition["desktop"]) {
   return {
-    aspect:
-      "aspect" in camera && typeof camera.aspect === "number"
-        ? camera.aspect
-        : null,
-    far:
-      "far" in camera && typeof camera.far === "number" ? camera.far : null,
-    fov:
-      "fov" in camera && typeof camera.fov === "number" ? camera.fov : null,
-    near:
-      "near" in camera && typeof camera.near === "number"
-        ? camera.near
-        : null,
-    position: [camera.position.x, camera.position.y, camera.position.z],
+    cameraPosition: traceNumberArray(frame.cameraPosition),
+    cameraTarget: traceNumberArray(frame.cameraTarget),
+    fov: traceRounded(frame.fov),
   };
 }
 
-function traceModelScreenBounds(
+function traceCamera(
+  camera: Camera,
+  expectedFrame?: SceneDefinition["desktop"],
+) {
+  const worldMatrix = camera.matrixWorld.elements;
+  const direction = new Vector3(
+    -worldMatrix[8],
+    -worldMatrix[9],
+    -worldMatrix[10],
+  ).normalize();
+  return {
+    aspect:
+      "aspect" in camera && typeof camera.aspect === "number"
+        ? traceRounded(camera.aspect)
+        : null,
+    far:
+      "far" in camera && typeof camera.far === "number"
+        ? traceRounded(camera.far)
+        : null,
+    fov:
+      "fov" in camera && typeof camera.fov === "number"
+        ? traceRounded(camera.fov)
+        : null,
+    matrix: traceNumberArray(camera.matrix.elements),
+    matrixWorld: traceNumberArray(camera.matrixWorld.elements),
+    matrixWorldInverse: traceNumberArray(camera.matrixWorldInverse.elements),
+    near:
+      "near" in camera && typeof camera.near === "number"
+        ? traceRounded(camera.near)
+        : null,
+    position: traceVector(camera.position),
+    projectionMatrix: traceNumberArray(camera.projectionMatrix.elements),
+    projectionMatrixInverse: traceNumberArray(
+      camera.projectionMatrixInverse.elements,
+    ),
+    quaternion: [
+      traceRounded(camera.quaternion.x),
+      traceRounded(camera.quaternion.y),
+      traceRounded(camera.quaternion.z),
+      traceRounded(camera.quaternion.w),
+    ],
+    rotation: [
+      traceRounded(camera.rotation.x),
+      traceRounded(camera.rotation.y),
+      traceRounded(camera.rotation.z),
+      camera.rotation.order,
+    ],
+    up: traceVector(camera.up),
+    worldDirection: traceVector(direction),
+    zoom:
+      "zoom" in camera && typeof camera.zoom === "number"
+        ? traceRounded(camera.zoom)
+        : null,
+    expectedFrame: expectedFrame ? traceCameraFrame(expectedFrame) : null,
+  };
+}
+
+type TraceCameraSnapshot = ReturnType<typeof traceCamera>;
+
+const traceGeometryBounds = new WeakMap<BufferGeometry, Box3>();
+
+function observationalGeometryBounds(geometry: BufferGeometry) {
+  const cached = traceGeometryBounds.get(geometry);
+  if (cached) return cached;
+  if (geometry.boundingBox) {
+    const bounds = geometry.boundingBox.clone();
+    traceGeometryBounds.set(geometry, bounds);
+    return bounds;
+  }
+  const position = geometry.getAttribute("position");
+  if (!position || position.itemSize < 3 || position.count === 0) {
+    return null;
+  }
+  const bounds = new Box3().makeEmpty();
+  const point = new Vector3();
+  for (let index = 0; index < position.count; index += 1) {
+    point.set(
+      position.getX(index),
+      position.getY(index),
+      position.getZ(index),
+    );
+    bounds.expandByPoint(point);
+  }
+  if (bounds.isEmpty()) return null;
+  traceGeometryBounds.set(geometry, bounds);
+  return bounds;
+}
+
+function observationalWorldBounds(object: Object3D | null) {
+  if (!object) return null;
+  const bounds = new Box3().makeEmpty();
+  object.traverse((child) => {
+    const geometry = (
+      child as Object3D & { readonly geometry?: BufferGeometry }
+    ).geometry;
+    if (!geometry?.isBufferGeometry) return;
+    const localBounds = observationalGeometryBounds(geometry);
+    if (!localBounds) return;
+    bounds.union(localBounds.clone().applyMatrix4(child.matrixWorld));
+  });
+  return bounds.isEmpty() ? null : bounds;
+}
+
+function traceBounds(bounds: Box3 | null) {
+  if (!bounds) return null;
+  const center = new Vector3();
+  const size = new Vector3();
+  bounds.getCenter(center);
+  bounds.getSize(size);
+  return {
+    center: traceVector(center),
+    max: traceVector(bounds.max),
+    min: traceVector(bounds.min),
+    size: traceVector(size),
+  };
+}
+
+function traceObjectState(
+  object: Object3D | null,
+  bounds: Box3 | null = null,
+) {
+  if (!object) return null;
+  const worldPosition = new Vector3();
+  const worldQuaternion = new Quaternion();
+  const worldScale = new Vector3();
+  object.matrixWorld.decompose(
+    worldPosition,
+    worldQuaternion,
+    worldScale,
+  );
+  return {
+    children: object.children.slice(0, 24).map((child) => ({
+      childCount: child.children.length,
+      name: child.name,
+      type: child.type,
+      uuid: child.uuid,
+      visible: child.visible,
+    })),
+    local: {
+      matrix: traceNumberArray(object.matrix.elements),
+      position: traceVector(object.position),
+      quaternion: [
+        traceRounded(object.quaternion.x),
+        traceRounded(object.quaternion.y),
+        traceRounded(object.quaternion.z),
+        traceRounded(object.quaternion.w),
+      ],
+      rotation: [
+        traceRounded(object.rotation.x),
+        traceRounded(object.rotation.y),
+        traceRounded(object.rotation.z),
+        object.rotation.order,
+      ],
+      scale: traceVector(object.scale),
+    },
+    matrixAutoUpdate: object.matrixAutoUpdate,
+    matrixWorld: traceNumberArray(object.matrixWorld.elements),
+    name: object.name,
+    parent: object.parent
+      ? {
+          name: object.parent.name,
+          type: object.parent.type,
+          uuid: object.parent.uuid,
+        }
+      : null,
+    type: object.type,
+    uuid: object.uuid,
+    visible: object.visible,
+    world: {
+      bounds: traceBounds(bounds),
+      position: traceVector(worldPosition),
+      quaternion: [
+        traceRounded(worldQuaternion.x),
+        traceRounded(worldQuaternion.y),
+        traceRounded(worldQuaternion.z),
+        traceRounded(worldQuaternion.w),
+      ],
+      scale: traceVector(worldScale),
+    },
+  };
+}
+
+function traceModelState(
   scene: Scene,
   sceneId: SceneDefinition["id"],
-  camera: Camera,
+  modelBounds: Box3 | null = null,
+) {
+  const root = scene.getObjectByName(`scene-root:${sceneId}`);
+  const instance = scene.getObjectByName(`scene-instance:${sceneId}`);
+  return {
+    instance: traceObjectState(instance ?? null, modelBounds),
+    root: traceObjectState(root ?? null),
+    sceneChildren: scene.children.map((child) => ({
+      childCount: child.children.length,
+      name: child.name,
+      type: child.type,
+      uuid: child.uuid,
+      visible: child.visible,
+    })),
+  };
+}
+
+function traceModelWorldBounds(
+  scene: Scene,
+  sceneId: SceneDefinition["id"],
+) {
+  return observationalWorldBounds(
+    scene.getObjectByName(`scene-instance:${sceneId}`) ?? null,
+  );
+}
+
+function traceModelScreenBounds(
+  bounds: Box3 | null,
+  camera: Pick<
+    TraceCameraSnapshot,
+    "matrixWorldInverse" | "projectionMatrix"
+  >,
   canvas: HTMLCanvasElement,
 ) {
-  const instance = scene.getObjectByName(`scene-instance:${sceneId}`);
-  if (!instance) return null;
-  const bounds = new Box3().setFromObject(instance);
-  if (bounds.isEmpty()) return null;
+  if (!bounds) return null;
 
+  const matrixWorldInverse = new Matrix4().fromArray(camera.matrixWorldInverse);
+  const projectionMatrix = new Matrix4().fromArray(camera.projectionMatrix);
   const corners = [
     new Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
     new Vector3(bounds.min.x, bounds.min.y, bounds.max.z),
@@ -420,25 +758,67 @@ function traceModelScreenBounds(
     new Vector3(bounds.max.x, bounds.min.y, bounds.max.z),
     new Vector3(bounds.max.x, bounds.max.y, bounds.min.z),
     new Vector3(bounds.max.x, bounds.max.y, bounds.max.z),
-  ].map((corner) => corner.project(camera));
+  ].map((corner) =>
+    corner.applyMatrix4(matrixWorldInverse).applyMatrix4(projectionMatrix),
+  );
   const minX = Math.min(...corners.map(({ x }) => x));
   const maxX = Math.max(...corners.map(({ x }) => x));
   const minY = Math.min(...corners.map(({ y }) => y));
   const maxY = Math.max(...corners.map(({ y }) => y));
+  const canvasRect = canvas.getBoundingClientRect();
+  const localMinX = ((minX + 1) / 2) * canvas.clientWidth;
+  const localMaxX = ((maxX + 1) / 2) * canvas.clientWidth;
+  const localMinY = ((1 - maxY) / 2) * canvas.clientHeight;
+  const localMaxY = ((1 - minY) / 2) * canvas.clientHeight;
+  const viewportMinX = canvasRect.left + ((minX + 1) / 2) * canvasRect.width;
+  const viewportMaxX = canvasRect.left + ((maxX + 1) / 2) * canvasRect.width;
+  const viewportMinY = canvasRect.top + ((1 - maxY) / 2) * canvasRect.height;
+  const viewportMaxY = canvasRect.top + ((1 - minY) / 2) * canvasRect.height;
 
   return {
-    height: ((maxY - minY) / 2) * canvas.clientHeight,
-    maxX: ((maxX + 1) / 2) * canvas.clientWidth,
-    maxY: ((1 - minY) / 2) * canvas.clientHeight,
-    minX: ((minX + 1) / 2) * canvas.clientWidth,
-    minY: ((1 - maxY) / 2) * canvas.clientHeight,
-    width: ((maxX - minX) / 2) * canvas.clientWidth,
+    canvasRect: {
+      height: traceRounded(canvasRect.height),
+      width: traceRounded(canvasRect.width),
+      x: traceRounded(canvasRect.x),
+      y: traceRounded(canvasRect.y),
+    },
+    centerX: traceRounded((localMinX + localMaxX) / 2),
+    centerY: traceRounded((localMinY + localMaxY) / 2),
+    height: traceRounded(localMaxY - localMinY),
+    local: {
+      centerX: traceRounded((localMinX + localMaxX) / 2),
+      centerY: traceRounded((localMinY + localMaxY) / 2),
+      maxX: traceRounded(localMaxX),
+      maxY: traceRounded(localMaxY),
+      minX: traceRounded(localMinX),
+      minY: traceRounded(localMinY),
+    },
+    maxX: traceRounded(localMaxX),
+    maxY: traceRounded(localMaxY),
+    minX: traceRounded(localMinX),
+    minY: traceRounded(localMinY),
+    ndc: {
+      maxX: traceRounded(maxX),
+      maxY: traceRounded(maxY),
+      minX: traceRounded(minX),
+      minY: traceRounded(minY),
+    },
+    viewport: {
+      centerX: traceRounded((viewportMinX + viewportMaxX) / 2),
+      centerY: traceRounded((viewportMinY + viewportMaxY) / 2),
+      height: traceRounded(viewportMaxY - viewportMinY),
+      maxX: traceRounded(viewportMaxX),
+      maxY: traceRounded(viewportMaxY),
+      minX: traceRounded(viewportMinX),
+      minY: traceRounded(viewportMinY),
+      width: traceRounded(viewportMaxX - viewportMinX),
+    },
+    width: traceRounded(localMaxX - localMinX),
   };
 }
 
 function presentRenderedAdoption(
   canvas: HTMLCanvasElement,
-  sceneId: SceneDefinition["id"],
   adoptionVersion: number,
 ) {
   const stage = canvas.closest<HTMLElement>("[data-scene-resident-stage]");
@@ -447,17 +827,45 @@ function presentRenderedAdoption(
     stage.dataset.scenePoolState !== "adopting" ||
     stage.dataset.sceneAdoptionVersion !== String(adoptionVersion)
   ) {
-    return false;
+    return null;
   }
 
   stage.dataset.sceneRenderedAdoptionVersion = String(adoptionVersion);
   stage.dataset.scenePoolState = "assigned";
-  traceSceneStageSnapshot(
-    "canvas:adoption-presented",
-    stage,
-    sceneTraceIdentity(sceneId, adoptionVersion),
+  return stage;
+}
+
+function snapshotSceneRenderIdentity(
+  canvas: HTMLCanvasElement,
+  path: string,
+): SceneRenderTraceIdentity {
+  const stage = canvas.closest<HTMLElement>("[data-scene-resident-stage]");
+  const section = stage?.parentElement?.closest<HTMLElement>(
+    "[data-scene-id]",
   );
-  return true;
+  return {
+    adoptionVersion: stage?.dataset.sceneAdoptionVersion ?? null,
+    canvasConnected: canvas.isConnected,
+    ownerSceneId: stage?.dataset.sceneOwnerId ?? null,
+    path,
+    poolKey: stage?.dataset.scenePoolKey ?? null,
+    poolState: stage?.dataset.scenePoolState ?? null,
+    renderedAdoptionVersion:
+      stage?.dataset.sceneRenderedAdoptionVersion ?? null,
+    sectionSceneId: section?.dataset.sceneId ?? null,
+    stageConnected: stage?.isConnected ?? false,
+  };
+}
+
+type SceneRenderReason = "adoption-layout" | "demand-frame";
+
+function reportSceneTraceFailure(error: unknown) {
+  window.setTimeout(() => {
+    console.warn(
+      "[scene-runtime-trace] telemetry assembly failed",
+      error,
+    );
+  }, 0);
 }
 
 function DemandRenderer({
@@ -487,6 +895,22 @@ function DemandRenderer({
   const invalidate = useThree((state) => state.invalidate);
   const setSize = useThree((state) => state.setSize);
 
+  useEffect(() => {
+    let active = true;
+    const prepare = () => {
+      void prepareSceneRuntimeTrace()
+        .then(() => {
+          if (active) invalidate();
+        })
+        .catch(reportSceneTraceFailure);
+    };
+    const unsubscribe = subscribeSceneRuntimeTraceEnable(prepare);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [invalidate]);
+
   useLayoutEffect(() => {
     if (!debugActive) return;
     connectSceneRuntimeDebug(
@@ -500,34 +924,114 @@ function DemandRenderer({
   }, [camera, debugActive, invalidate, renderedScene, renderer, sceneId]);
 
   const renderFrame = useCallback(
-    (gl: WebGLRenderer, scene: typeof renderedScene, activeCamera: Camera) => {
-      if (
-        failed.current ||
-        !sceneModelIsAttached(scene, sceneId) ||
-        health.isLost() ||
-        rendererContextIsLost(gl)
-      ) {
+    (
+      gl: WebGLRenderer,
+      scene: typeof renderedScene,
+      activeCamera: Camera,
+      renderReason: SceneRenderReason,
+    ) => {
+      const tracing = sceneRuntimeTraceEnabled();
+      const modelAttached = sceneModelIsAttached(scene, sceneId);
+      const healthLost = health.isLost();
+      const contextLost = healthLost ? true : rendererContextIsLost(gl);
+      const rootSize = getRootState().size;
+      const renderWidth =
+        gl.domElement.clientWidth > 0
+          ? gl.domElement.clientWidth
+          : rootSize.width;
+      const expectedFrame = cameraFrameForEnvironment(
+        sceneDefinition,
+        renderWidth,
+      );
+      const cameraBeforeSynchronization = tracing
+        ? traceCamera(activeCamera, expectedFrame)
+        : null;
+      const skipReasons = [
+        failed.current ? "renderer-failed" : null,
+        !modelAttached ? "model-detached" : null,
+        healthLost ? "health-lost" : null,
+        contextLost ? "context-lost" : null,
+      ].filter((reason): reason is string => reason !== null);
+      if (skipReasons.length > 0) {
+        if (tracing) {
+          traceSceneRuntime("canvas:render-skipped", {
+            ...sceneTraceIdentity(sceneId, adoptionVersion),
+            camera: cameraBeforeSynchronization,
+            canvasDom: snapshotSceneCanvasDom(gl.domElement),
+            expectedFrame: traceCameraFrame(expectedFrame),
+            model: modelAttached
+              ? traceModelState(scene, sceneId)
+              : null,
+            renderReason,
+            r3fSize: rootSize,
+            skipReasons,
+          });
+        }
         return;
       }
 
+      const cameraFrame = synchronizeCameraForCanvas(
+        activeCamera,
+        sceneDefinition,
+        gl.domElement,
+        rootSize,
+      );
+      const viewportCameraMode = cameraModeForViewport();
       const generation = health.getGeneration();
       const frameBefore = gl.info.render.frame;
-      const tracing = sceneRuntimeTraceEnabled();
-      if (tracing) {
-        traceSceneRuntime("canvas:render-before", {
-          ...sceneTraceIdentity(sceneId, adoptionVersion),
-          buffer: {
-            height: gl.domElement.height,
-            width: gl.domElement.width,
-          },
-          camera: traceCamera(activeCamera),
-          css: {
-            height: gl.domElement.clientHeight,
-            width: gl.domElement.clientWidth,
-          },
-          rendererFrame: frameBefore,
-        });
-      }
+      const renderBeforeMoment = tracing
+        ? captureSceneRuntimeTraceMoment()
+        : null;
+      const renderBeforeDetails = tracing
+        ? {
+            ...sceneTraceIdentity(sceneId, adoptionVersion),
+            buffer: {
+              height: gl.domElement.height,
+              width: gl.domElement.width,
+            },
+            camera: traceCamera(activeCamera, expectedFrame),
+            cameraBeforeSynchronization,
+            cameraFrame,
+            cameraModeMatchesViewport:
+              viewportCameraMode === null
+                ? null
+                : cameraFrame === viewportCameraMode,
+            expectedFrame: traceCameraFrame(expectedFrame),
+            model: traceModelState(scene, sceneId),
+            pixelRatio: gl.getPixelRatio(),
+            renderReason,
+            rendererFrame: frameBefore,
+            r3fSize: { ...rootSize },
+          }
+        : null;
+      let renderBeforeTraceEmitted = false;
+      const emitRenderBeforeTrace = () => {
+        if (
+          renderBeforeTraceEmitted ||
+          !renderBeforeDetails ||
+          !renderBeforeMoment
+        ) {
+          return;
+        }
+        renderBeforeTraceEmitted = true;
+        try {
+          traceSceneRuntime(
+            "canvas:render-before",
+            renderBeforeDetails,
+            renderBeforeMoment,
+          );
+        } catch (error) {
+          reportSceneTraceFailure(error);
+        }
+      };
+      let presentedStage: HTMLElement | null = null;
+      let presentedMoment: ReturnType<
+        typeof captureSceneRuntimeTraceMoment
+      > | null = null;
+      let renderAfterMoment: ReturnType<
+        typeof captureSceneRuntimeTraceMoment
+      > | null = null;
+      let renderedIdentity: SceneRenderTraceIdentity | null = null;
       try {
         gl.render(scene, activeCamera);
         if (
@@ -536,36 +1040,31 @@ function DemandRenderer({
           rendererContextIsLost(gl) ||
           gl.info.render.frame <= frameBefore
         ) {
+          emitRenderBeforeTrace();
           return;
         }
 
         recordSceneRuntimeDebugFrame(gl, scene, sceneId);
-        if (tracing) {
-          traceSceneRuntime("canvas:render-after", {
-            ...sceneTraceIdentity(sceneId, adoptionVersion),
-            buffer: {
-              height: gl.domElement.height,
-              width: gl.domElement.width,
-            },
-            camera: traceCamera(activeCamera),
-            css: {
-              height: gl.domElement.clientHeight,
-              width: gl.domElement.clientWidth,
-            },
-            modelScreenBounds: traceModelScreenBounds(
-              scene,
-              sceneId,
-              activeCamera,
-              gl.domElement,
-            ),
-            rendererFrame: gl.info.render.frame,
-          });
-        }
         if (
-          presentedAdoptionVersion.current !== adoptionVersion &&
-          presentRenderedAdoption(gl.domElement, sceneId, adoptionVersion)
+          presentedAdoptionVersion.current !== adoptionVersion
         ) {
-          presentedAdoptionVersion.current = adoptionVersion;
+          presentedStage = presentRenderedAdoption(
+            gl.domElement,
+            adoptionVersion,
+          );
+          if (presentedStage) {
+            presentedAdoptionVersion.current = adoptionVersion;
+            presentedMoment = tracing
+              ? captureSceneRuntimeTraceMoment()
+              : null;
+          }
+        }
+        if (tracing) {
+          renderAfterMoment = captureSceneRuntimeTraceMoment();
+          renderedIdentity = snapshotSceneRenderIdentity(
+            gl.domElement,
+            renderAfterMoment.path,
+          );
         }
 
         const now = performance.now();
@@ -588,12 +1087,211 @@ function DemandRenderer({
           reported.current = true;
           onFirstFrame();
         }
-      } catch {
+        if (tracing) {
+          // The default framebuffer remains readable until this task yields.
+          // Resolve it only after the adoption state and first-frame callback
+          // have advanced, so trace-only setup cannot delay that handoff.
+          captureSceneAlphaTraceFrame(gl, {
+            adoptionVersion,
+            contextGeneration: generation,
+            renderReason,
+            rendererFrame: gl.info.render.frame,
+            sceneId,
+          });
+        }
+      } catch (error) {
         failed.current = true;
         onFailure("unknown");
+        emitRenderBeforeTrace();
+        if (tracing) {
+          try {
+            traceSceneRuntime("canvas:render-error", {
+              ...sceneTraceIdentity(sceneId, adoptionVersion),
+              camera: traceCamera(activeCamera, expectedFrame),
+              canvasDom: snapshotSceneCanvasDom(gl.domElement),
+              error: error instanceof Error ? error.message : String(error),
+              model: traceModelState(
+                scene,
+                sceneId,
+                traceModelWorldBounds(scene, sceneId),
+              ),
+              renderReason,
+            });
+          } catch (traceError) {
+            reportSceneTraceFailure(traceError);
+          }
+        }
+        return;
+      }
+
+      emitRenderBeforeTrace();
+      if (tracing && renderAfterMoment && renderedIdentity) {
+        try {
+          const cameraAfterRender = traceCamera(activeCamera, expectedFrame);
+          const renderedFrame = gl.info.render.frame;
+          const renderedRootSize = { ...rootSize };
+          const renderedTelemetrySequence = traceSceneRuntime(
+            "canvas:render-after",
+            {
+              ...sceneTraceIdentity(sceneId, adoptionVersion),
+              auditScheduled: true,
+              buffer: {
+                height: gl.domElement.height,
+                width: gl.domElement.width,
+              },
+              camera: cameraAfterRender,
+              cameraBeforeSynchronization,
+              cameraFrame,
+              cameraModeMatchesViewport:
+                viewportCameraMode === null
+                  ? null
+                  : cameraFrame === viewportCameraMode,
+              expectedFrame: traceCameraFrame(expectedFrame),
+              pixelRatio: gl.getPixelRatio(),
+              renderIdentity: renderedIdentity,
+              renderReason,
+              rendererFrame: renderedFrame,
+              r3fSize: renderedRootSize,
+            },
+            renderAfterMoment,
+          );
+          const renderedStage = gl.domElement.closest<HTMLElement>(
+            "[data-scene-resident-stage]",
+          );
+          if (renderedStage && renderedTelemetrySequence !== null) {
+            renderedStage.dataset.sceneLastRenderSequence = String(
+              renderedTelemetrySequence,
+            );
+          }
+          const auditScheduledAt = performance.now();
+          requestAnimationFrame(() => {
+            const auditAnimationFrameAt = performance.now();
+            window.setTimeout(() => {
+              try {
+                if (presentedStage) {
+                  traceSceneStageSnapshot(
+                    "canvas:adoption-presented",
+                    presentedStage,
+                    sceneTraceIdentity(sceneId, adoptionVersion),
+                    presentedMoment ?? undefined,
+                  );
+                }
+                const modelBoundsAfterRender = traceModelWorldBounds(
+                  scene,
+                  sceneId,
+                );
+                const modelScreenBounds = traceModelScreenBounds(
+                  modelBoundsAfterRender,
+                  cameraAfterRender,
+                  gl.domElement,
+                );
+                const modelScreenBoundsBeforeSynchronization =
+                  cameraBeforeSynchronization
+                    ? traceModelScreenBounds(
+                        modelBoundsAfterRender,
+                        cameraBeforeSynchronization,
+                        gl.domElement,
+                      )
+                    : null;
+                const auditAt = performance.now();
+                const rendererFrameAtAudit = gl.info.render.frame;
+                const auditIdentity = snapshotSceneRenderIdentity(
+                  gl.domElement,
+                  window.location.pathname,
+                );
+                const auditCoherence =
+                  compareSceneRenderTraceCoherence(
+                    renderedIdentity,
+                    auditIdentity,
+                    renderedFrame,
+                    rendererFrameAtAudit,
+                  );
+                traceSceneRuntime(
+                  "canvas:render-audit",
+                  {
+                    ...sceneTraceIdentity(sceneId, adoptionVersion),
+                    auditCoherence,
+                    auditCoherentWithRenderedFrame:
+                      auditCoherence.coherent,
+                    auditIdentity,
+                    auditMatchesRenderedFrame:
+                      auditCoherence.rendererFrameMatches,
+                    auditTiming: {
+                      afterAnimationFrameMs: traceRounded(
+                        auditAt - auditAnimationFrameAt,
+                      ),
+                      afterRenderMs: traceRounded(
+                        auditAt - auditScheduledAt,
+                      ),
+                      animationFrameAt: traceRounded(
+                        auditAnimationFrameAt,
+                      ),
+                      auditAt: traceRounded(auditAt),
+                      scheduledAt: traceRounded(auditScheduledAt),
+                    },
+                    buffer: {
+                      height: gl.domElement.height,
+                      width: gl.domElement.width,
+                    },
+                    camera: cameraAfterRender,
+                    cameraBeforeSynchronization,
+                    cameraFrame,
+                    cameraModeMatchesViewport:
+                      viewportCameraMode === null
+                        ? null
+                        : cameraFrame === viewportCameraMode,
+                    canvasDom: snapshotSceneCanvasDom(gl.domElement),
+                    css: {
+                      height: gl.domElement.clientHeight,
+                      width: gl.domElement.clientWidth,
+                    },
+                    expectedFrame: traceCameraFrame(expectedFrame),
+                    model: traceModelState(
+                      scene,
+                      sceneId,
+                      modelBoundsAfterRender,
+                    ),
+                    modelScreenBounds,
+                    modelScreenBoundsBeforeSynchronization,
+                    pixelRatio: gl.getPixelRatio(),
+                    renderAfterSequence: renderedTelemetrySequence,
+                    renderIdentity: renderedIdentity,
+                    renderedStageStillCurrent: Boolean(
+                      renderedStage &&
+                        renderedStage.isConnected &&
+                        gl.domElement.isConnected &&
+                        auditCoherence.auditIdentityValid &&
+                        renderedStage ===
+                          gl.domElement.closest(
+                            "[data-scene-resident-stage]",
+                          ),
+                    ),
+                    renderReason,
+                    rendererFrame: renderedFrame,
+                    rendererFrameAtAudit,
+                    r3fSize: renderedRootSize,
+                  },
+                  renderAfterMoment,
+                );
+              } catch (error) {
+                reportSceneTraceFailure(error);
+              }
+            }, 0);
+          });
+        } catch (error) {
+          reportSceneTraceFailure(error);
+        }
       }
     },
-    [adoptionVersion, health, onFailure, onFirstFrame, sceneId],
+    [
+      adoptionVersion,
+      getRootState,
+      health,
+      onFailure,
+      onFirstFrame,
+      sceneDefinition,
+      sceneId,
+    ],
   );
 
   useLayoutEffect(() => {
@@ -616,7 +1314,7 @@ function DemandRenderer({
           ...sceneTraceIdentity(sceneId, adoptionVersion),
           camera: traceCamera(camera),
           cameraFrame:
-            cameraFrameForWidth(
+            cameraFrameForEnvironment(
               sceneDefinition,
               container?.getBoundingClientRect().width ?? 0,
             ) === sceneDefinition.mobile
@@ -633,7 +1331,8 @@ function DemandRenderer({
       setSize(bounds.width, bounds.height, bounds.top, bounds.left);
       applyCameraFrame(
         camera,
-        cameraFrameForWidth(sceneDefinition, bounds.width),
+        cameraFrameForEnvironment(sceneDefinition, bounds.width),
+        bounds.width / bounds.height,
       );
     }
     if (stage) {
@@ -644,7 +1343,7 @@ function DemandRenderer({
           ...sceneTraceIdentity(sceneId, adoptionVersion),
           camera: traceCamera(camera),
           cameraFrame:
-            cameraFrameForWidth(sceneDefinition, bounds?.width ?? 0) ===
+            cameraFrameForEnvironment(sceneDefinition, bounds?.width ?? 0) ===
             sceneDefinition.mobile
               ? "mobile"
               : "desktop",
@@ -662,7 +1361,12 @@ function DemandRenderer({
         },
       );
     }
-    renderFrame(renderer, renderedScene, camera);
+    renderFrame(
+      renderer,
+      renderedScene,
+      camera,
+      "adoption-layout",
+    );
     if (stage) {
       traceSceneStageSnapshot(
         "canvas:adoption-layout-rendered",
@@ -690,7 +1394,12 @@ function DemandRenderer({
   ]);
 
   useFrame(({ gl, scene, camera }) => {
-    renderFrame(gl as WebGLRenderer, scene, camera);
+    renderFrame(
+      gl as WebGLRenderer,
+      scene,
+      camera,
+      "demand-frame",
+    );
   }, 1);
 
   return null;
@@ -743,6 +1452,7 @@ export function SceneCanvasContents(props: SceneCanvasPortProps) {
         health={health}
         onContextLost={props.onContextLost}
         onContextRestored={props.onContextRestored}
+        sceneId={props.scene.id}
       />
       <SceneErrorBoundary resetKey={resetKey} onError={props.onFailure}>
         <ModelLayer
@@ -838,12 +1548,31 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
     rendererFailed,
   ]);
   const initializeCamera = useCallback(
-    ({ camera, size }: RootState) => {
+    ({ camera, gl, size }: RootState) => {
       // Canvas otherwise renders once from its desktop-only camera prop before
       // ResponsiveCamera's layout effect can apply the measured breakpoint.
       // Configure the complete registry frame during root creation so even the
       // first possible WebGL render matches the poster and later live frames.
-      applyCameraFrame(camera, cameraFrameForWidth(props.scene, size.width));
+      const frame = cameraFrameForEnvironment(props.scene, size.width);
+      const tracing = sceneRuntimeTraceEnabled();
+      const before = tracing ? traceCamera(camera, frame) : null;
+      applyCameraFrame(
+        camera,
+        frame,
+        size.height > 0 ? size.width / size.height : undefined,
+      );
+      camera.updateMatrixWorld();
+      if (tracing && gl instanceof WebGLRenderer) {
+        traceSceneRuntime("camera:root-created", {
+          after: traceCamera(camera, frame),
+          before,
+          canvasDom: snapshotSceneCanvasDom(gl.domElement),
+          expectedFrame: traceCameraFrame(frame),
+          mode: frame === props.scene.mobile ? "mobile" : "desktop",
+          r3fSize: size,
+          sceneId: props.scene.id,
+        });
+      }
     },
     [props.scene],
   );
@@ -864,6 +1593,7 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
         fov: props.scene.desktop.fov,
       }}
       gl={rendererFactory}
+      events={createDisabledSceneEventManager}
       onCreated={initializeCamera}
     >
       <SceneCanvasGate availability={availability} props={props} />

@@ -55,8 +55,6 @@ function runtimeValue(
   return {
     activeScene,
     activeSceneId,
-    activeSectionElement: null,
-    sceneStageElement: null,
     activationVersion: 0,
     sceneActivationAllowed: true,
     status: activeScene.requiredLive ? "loading" : "poster",
@@ -66,7 +64,6 @@ function runtimeValue(
     threeSupported: true,
     activateScene: vi.fn(),
     registerSection,
-    registerSceneStage: vi.fn(),
     rotateBy: vi.fn(),
     setStatus: vi.fn(),
     setThreeEnabled: vi.fn(),

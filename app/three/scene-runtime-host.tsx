@@ -25,11 +25,15 @@ import { ScenePoster } from "./scene-poster";
 import { SceneRotationArea } from "./scene-rotation-area";
 import { useSceneRuntime } from "./scene-runtime-context";
 import {
+  sceneRuntimeTraceEnabled,
   sceneTraceIdentity,
   traceSceneRuntime,
-  traceSceneStageSnapshot,
-  traceSceneStageTimeline,
-} from "./scene-runtime-trace";
+} from "./scene-runtime-trace-core";
+import {
+  getLoadedSceneRuntimeTraceModule,
+  warmSceneRuntimeTraceModule,
+  type SceneRuntimeTraceModule,
+} from "./scene-runtime-trace-loader";
 import type {
   LiveSceneDefinition,
   LiveSceneId,
@@ -41,6 +45,41 @@ import type {
 } from "./types";
 
 const LIVE_LOAD_TIMEOUT_MS = 10_000;
+const POSTER_TRACE_IDLE_TIMEOUT_MS = 250;
+
+function traceSceneStageSnapshot(
+  ...args: Parameters<SceneRuntimeTraceModule["traceSceneStageSnapshot"]>
+) {
+  const traceModule = getLoadedSceneRuntimeTraceModule();
+  if (traceModule) {
+    traceModule.traceSceneStageSnapshot(...args);
+    return;
+  }
+  warmSceneRuntimeTraceModule();
+}
+
+function traceSceneStageTimeline(
+  ...args: Parameters<SceneRuntimeTraceModule["traceSceneStageTimeline"]>
+) {
+  const traceModule = getLoadedSceneRuntimeTraceModule();
+  if (traceModule) {
+    traceModule.traceSceneStageTimeline(...args);
+    return;
+  }
+  warmSceneRuntimeTraceModule();
+}
+
+function schedulePosterTraceAfterPaint(callback: () => void) {
+  window.requestAnimationFrame(() => {
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(callback, {
+        timeout: POSTER_TRACE_IDLE_TIMEOUT_MS,
+      });
+      return;
+    }
+    window.setTimeout(callback, 0);
+  });
+}
 
 interface ActivationDescriptor {
   readonly token: string;
@@ -141,8 +180,40 @@ export function SceneRuntimeHostView({
           activePosterToken.current === candidateToken &&
           image.isConnected
         ) {
-          tracePoster("poster:decoded");
           setPosterReadyToken(candidateToken);
+          if (!sceneRuntimeTraceEnabled()) return;
+          warmSceneRuntimeTraceModule();
+
+          const stage = image.closest<HTMLElement>(
+            ".scene-stage--resident",
+          );
+          if (!stage) return;
+          const expectedAdoptionVersion = String(adoptionVersion);
+          const expectedPoolKey = stage.dataset.scenePoolKey ?? null;
+          schedulePosterTraceAfterPaint(() => {
+            if (
+              activePosterToken.current !== candidateToken ||
+              !image.isConnected ||
+              image.closest(".scene-stage--resident") !== stage ||
+              stage.dataset.sceneAdoptionVersion !== expectedAdoptionVersion ||
+              stage.dataset.sceneOwnerId !== scene.id ||
+              (stage.dataset.scenePoolKey ?? null) !== expectedPoolKey
+            ) {
+              return;
+            }
+            const traceModule = getLoadedSceneRuntimeTraceModule();
+            if (!traceModule) {
+              warmSceneRuntimeTraceModule();
+              return;
+            }
+            tracePoster("poster:decoded");
+            traceModule.traceScenePosterAlphaBounds(image, stage, {
+              activationVersion,
+              adoptionVersion,
+              poolKey: expectedPoolKey,
+              sceneId: scene.id,
+            });
+          });
         }
       };
 
@@ -156,7 +227,7 @@ export function SceneRuntimeHostView({
         // Keep the section-owned poster visible when decoding fails.
       });
     },
-    [activationToken, activationVersion, scene.id],
+    [activationToken, activationVersion, adoptionVersion, scene.id],
   );
 
   useLayoutEffect(() => {
@@ -368,8 +439,6 @@ export function SceneRuntimeHostView({
       data-scene-active={active ? "true" : "false"}
       data-scene-for={scene.id}
       data-poster-ready={posterReady ? "true" : "false"}
-      data-transition-frame="none"
-      data-transition-poster="retired"
       style={{ "--scene-background": scene.background } as CSSProperties}
     >
       {showPoster ? (

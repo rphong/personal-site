@@ -7,6 +7,7 @@ import { collectProductionDistErrors } from "../lib/production-dist";
 const temporaryRoots: string[] = [];
 
 async function createFixture({
+  headSamplingRate = 1,
   sceneCapture = "0",
   siteEnv = "production",
   siteUrl = "https://richard.example",
@@ -26,7 +27,11 @@ async function createFixture({
     },
     observability: {
       enabled: true,
-      logs: { enabled: true, invocation_logs: false },
+      logs: {
+        enabled: true,
+        head_sampling_rate: headSamplingRate,
+        invocation_logs: false,
+      },
       traces: { enabled: false },
     },
   };
@@ -84,6 +89,15 @@ describe("production artifact verification", () => {
       collectProductionDistErrors(root, "https://different.example"),
     ).resolves.toContain(
       "Built Worker SITE_URL must match the validated SITE_URL.",
+    );
+  });
+
+  it("rejects reduced observability sampling", async () => {
+    const root = await createFixture({ headSamplingRate: 0.5 });
+    await expect(
+      collectProductionDistErrors(root, "https://richard.example"),
+    ).resolves.toContain(
+      "Built Worker observability settings do not match the release policy.",
     );
   });
 });

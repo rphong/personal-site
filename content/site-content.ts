@@ -9,6 +9,11 @@ export type RouteDefinition = {
   readonly title: string;
   readonly description: string;
   readonly heroSceneId: SceneId;
+  readonly theme: {
+    readonly accent: string;
+    readonly background: string;
+    readonly paleHeading: string;
+  };
 };
 
 export const routes = [
@@ -20,6 +25,11 @@ export const routes = [
     description:
       "Software developer Richard Phong shares his experience, projects, and interactive web experiments.",
     heroSceneId: "home-hero",
+    theme: {
+      accent: "#135946",
+      background: "#9eccc0",
+      paleHeading: "#ffffff",
+    },
   },
   {
     key: "experience",
@@ -29,6 +39,11 @@ export const routes = [
     description:
       "Software engineering experience at NASA, EOG Resources, and Paycom.",
     heroSceneId: "experience-hero",
+    theme: {
+      accent: "#722939",
+      background: "#dfa9b5",
+      paleHeading: "#fbe5ea",
+    },
   },
   {
     key: "projects",
@@ -38,6 +53,11 @@ export const routes = [
     description:
       "Selected projects by Richard Phong, including League Ban Site and Froggie Adventures.",
     heroSceneId: "projects-hero",
+    theme: {
+      accent: "#285d71",
+      background: "#afd4e1",
+      paleHeading: "#edf7fb",
+    },
   },
   {
     key: "contact",
@@ -47,6 +67,11 @@ export const routes = [
     description:
       "Contact Richard Phong by email, LinkedIn, GitHub, or phone, and download his résumé.",
     heroSceneId: "contact-hero",
+    theme: {
+      accent: "#4b2e7e",
+      background: "#c9bae4",
+      paleHeading: "#ede6fa",
+    },
   },
 ] as const satisfies readonly RouteDefinition[];
 

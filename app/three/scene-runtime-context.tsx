@@ -12,8 +12,6 @@ import type {
 export interface SceneRuntimeContextValue {
   readonly activeSceneId: SceneId;
   readonly activeScene: SceneDefinition;
-  readonly activeSectionElement: HTMLElement | null;
-  readonly sceneStageElement: HTMLElement | null;
   readonly activationVersion: number;
   readonly sceneActivationAllowed: boolean;
   readonly status: ThreeStatus;
@@ -26,7 +24,6 @@ export interface SceneRuntimeContextValue {
     sceneId: SceneId,
     element: HTMLElement,
   ) => () => void;
-  readonly registerSceneStage: (element: HTMLElement | null) => void;
   readonly setStatus: (status: ThreeStatus) => void;
   readonly rotateBy: (
     deltaX: number,

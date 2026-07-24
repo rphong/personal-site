@@ -99,6 +99,33 @@ declare global {
     __task14GotCapture?: boolean;
     __task14LostCapture?: boolean;
     __task14TouchCancels?: boolean[];
+    __heroLayerSamples?: Array<{
+      readonly canvasEffectiveVisibility: boolean;
+      readonly canvasLeft: number | null;
+      readonly canvasVisibility: string | null;
+      readonly canvasZIndex: string | null;
+      readonly copyZIndex: string | null;
+      readonly outerImageCenterDelta: number | null;
+      readonly outerPosterEffectiveVisibility: boolean;
+      readonly outerPosterVisibility: string | null;
+      readonly outerPosterZIndex: string | null;
+      readonly pathname: string;
+      readonly poolState: string | null;
+      readonly posterReady: string | null;
+      readonly renderedAdoptionVersion: string | null;
+      readonly runtimePosterEffectiveVisibility: boolean;
+      readonly runtimePosterImageCenterDelta: number | null;
+      readonly runtimePosterVisibility: string | null;
+      readonly runtimePosterZIndex: string | null;
+      readonly runtimeStatus: string | null;
+      readonly runtimeZIndex: string | null;
+      readonly sampleSource: "install" | "microtask" | "mutation" | "raf";
+      readonly sectionLeft: number;
+      readonly sectionWidth: number;
+      readonly stageLeft: number;
+      readonly stageWidth: number;
+      readonly stageZIndex: string | null;
+    }>;
     __residentIdentitySets?: Record<
       string,
       Record<
@@ -469,6 +496,168 @@ async function createRuntimeContext(
   return browser.newContext({ ...options, baseURL });
 }
 
+async function installHeroLayerSampler(
+  page: Page,
+  sceneId: string,
+): Promise<void> {
+  await page.evaluate((sampledSceneId) => {
+    window.__heroLayerSamples = [];
+    const visibility = (element: Element | null) =>
+      element instanceof HTMLElement
+        ? getComputedStyle(element).visibility
+        : null;
+    const effectiveVisibility = (element: Element | null) => {
+      if (!(element instanceof HTMLElement)) return false;
+      if (typeof element.checkVisibility === "function") {
+        return element.checkVisibility({
+          checkOpacity: true,
+          checkVisibilityCSS: true,
+        });
+      }
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number.parseFloat(style.opacity) > 0 &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    };
+    const zIndex = (element: Element | null) =>
+      element instanceof HTMLElement
+        ? getComputedStyle(element).zIndex
+        : null;
+    const centerDelta = (
+      image: HTMLImageElement | null,
+      stage: HTMLElement,
+    ) => {
+      if (!image) return null;
+      const imageRect = image.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      return (
+        imageRect.left +
+        imageRect.width / 2 -
+        (stageRect.left + stageRect.width / 2)
+      );
+    };
+    const capture = (
+      sampleSource: "install" | "microtask" | "mutation" | "raf",
+    ) => {
+      const section = document.querySelector<HTMLElement>(
+        `[data-scene-id="${sampledSceneId}"]`,
+      );
+      const stage = section?.querySelector<HTMLElement>(
+        ":scope > .scene-stage--resident",
+      );
+      if (!section || !stage) return;
+      const copy = section.querySelector<HTMLElement>(".page-hero__copy");
+      const runtimePoster = stage.querySelector<HTMLElement>(
+        ".scene-runtime__poster",
+      );
+      const canvas = stage.querySelector<HTMLCanvasElement>("canvas");
+      const runtime = stage.querySelector<HTMLElement>(
+        ".scene-runtime",
+      );
+      const sectionRect = section.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      const outerPoster = section.querySelector<HTMLElement>(
+        ":scope > .scene-section__poster",
+      );
+      const outerPosterImage =
+        outerPoster?.querySelector<HTMLImageElement>("img") ?? null;
+      const runtimePosterImage =
+        runtimePoster?.querySelector<HTMLImageElement>("img") ?? null;
+      window.__heroLayerSamples?.push({
+        canvasEffectiveVisibility: effectiveVisibility(canvas),
+        canvasLeft: canvas?.getBoundingClientRect().left ?? null,
+        canvasVisibility: visibility(canvas),
+        canvasZIndex: zIndex(canvas),
+        copyZIndex: zIndex(copy),
+        outerImageCenterDelta: centerDelta(outerPosterImage, stage),
+        outerPosterEffectiveVisibility:
+          effectiveVisibility(outerPoster),
+        outerPosterVisibility: visibility(outerPoster),
+        outerPosterZIndex: zIndex(outerPoster),
+        pathname: window.location.pathname,
+        poolState: stage.dataset.scenePoolState ?? null,
+        posterReady: runtime?.dataset.posterReady ?? null,
+        renderedAdoptionVersion:
+          stage.dataset.sceneRenderedAdoptionVersion ?? null,
+        runtimePosterEffectiveVisibility:
+          effectiveVisibility(runtimePoster),
+        runtimePosterImageCenterDelta: centerDelta(
+          runtimePosterImage,
+          stage,
+        ),
+        runtimePosterVisibility: visibility(runtimePoster),
+        runtimePosterZIndex: zIndex(runtimePoster),
+        runtimeStatus: runtime?.dataset.threeStatus ?? null,
+        runtimeZIndex: zIndex(runtime),
+        sampleSource,
+        sectionLeft: sectionRect.left,
+        sectionWidth: sectionRect.width,
+        stageLeft: stageRect.left,
+        stageWidth: stageRect.width,
+        stageZIndex: zIndex(stage),
+      });
+    };
+    let remainingAnimationFrames = 0;
+    let animationFrameId: number | null = null;
+    const captureAnimationFrame = () => {
+      animationFrameId = null;
+      capture("raf");
+      remainingAnimationFrames -= 1;
+      if (remainingAnimationFrames > 0) {
+        animationFrameId = requestAnimationFrame(captureAnimationFrame);
+      }
+    };
+    const scheduleAnimationFrames = () => {
+      remainingAnimationFrames = Math.max(remainingAnimationFrames, 12);
+      if (animationFrameId === null) {
+        animationFrameId = requestAnimationFrame(captureAnimationFrame);
+      }
+    };
+    new MutationObserver(() => {
+      capture("mutation");
+      queueMicrotask(() => capture("microtask"));
+      scheduleAnimationFrames();
+    }).observe(document.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    capture("install");
+    scheduleAnimationFrames();
+  }, sceneId);
+}
+
+function expectValidHeroSourceSample(
+  sample: NonNullable<Window["__heroLayerSamples"]>[number],
+) {
+  const canvasVisible = sample.canvasEffectiveVisibility;
+  const outerPosterVisible = sample.outerPosterEffectiveVisibility;
+  const runtimePosterVisible = sample.runtimePosterEffectiveVisibility;
+  if (canvasVisible) {
+    expect(sample.poolState).toBe("assigned");
+    expect(sample.runtimeStatus).toBe("ready");
+    expect(sample.renderedAdoptionVersion).not.toBeNull();
+    expect(outerPosterVisible).toBe(false);
+    expect(runtimePosterVisible).toBe(false);
+    return;
+  }
+
+  expect(outerPosterVisible || runtimePosterVisible).toBe(true);
+  if (outerPosterVisible && runtimePosterVisible) {
+    expect(sample.outerImageCenterDelta).not.toBeNull();
+    expect(sample.runtimePosterImageCenterDelta).not.toBeNull();
+    expect(sample.outerImageCenterDelta).toBeCloseTo(
+      sample.runtimePosterImageCenterDelta ?? Number.NaN,
+      3,
+    );
+  }
+}
+
 async function disposeFixture(
   fixture: ModelFixtureController | undefined,
 ): Promise<void> {
@@ -772,7 +961,6 @@ test("keeps a decoded poster visible until the first real Canvas frame", async (
     await models.waitForRequest(HOME_MODEL);
     await expect(host).toHaveAttribute("data-three-status", "loading");
     await expect(host).toHaveAttribute("data-poster-ready", "true");
-    await expect(host).toHaveAttribute("data-transition-frame", "none");
     await expect(host.locator("picture")).toBeVisible();
     await expect(host.locator(".scene-runtime__canvas")).toBeHidden();
     await expect(
@@ -780,7 +968,6 @@ test("keeps a decoded poster visible until the first real Canvas frame", async (
         '[data-scene-id="home-hero"] > .scene-section__poster',
       ),
     ).toBeHidden();
-    await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
     expect(
       await host.evaluate(
         (element) => getComputedStyle(element).backgroundColor,
@@ -860,7 +1047,6 @@ test("pools previous-route residents and re-adopts their exact live canvases acr
       connectedCallsBefore + RESIDENT_SCENES_BY_ROUTE["/experience"].length,
     );
     await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(4);
-    await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
     await expect(
       page.locator(
         '[data-scene-id="experience-hero"] > .scene-section__poster img',
@@ -903,7 +1089,6 @@ test("pools previous-route residents and re-adopts their exact live canvases acr
     expect(await connectedContextCallCount(page)).toBe(destinationCalls);
     expect(models.requestCount(HOME_MODEL)).toBe(1);
     await expect(page.locator(".scene-stage--resident canvas")).toHaveCount(4);
-    await expect(page.locator(".scene-runtime__transition-frame")).toHaveCount(0);
   } finally {
     await disposeFixture(models);
   }
@@ -1001,8 +1186,8 @@ test("synchronizes a pooled canvas before its first visible adoption frame", asy
         bufferHeight: 500,
         bufferWidth: 600,
         cameraAspect: 1.2,
-        cameraFov: 40,
-        cameraPosition: [5.2, 4.1, 9.6],
+        cameraFov: 36,
+        cameraPosition: [3.7, 2.3, 4.7],
         cssHeight: 500,
         cssWidth: 600,
       });
@@ -1141,6 +1326,127 @@ test("keeps a pooled canvas hidden until its destination adoption render commits
   }
 });
 
+test("keeps trace-disabled hero DOM aligned through every re-adoption animation frame", async ({
+  page,
+}) => {
+  await installRuntimeProbe(page);
+  await fulfillPosters(page);
+  const models = await fulfillModels(page);
+
+  try {
+    await page.goto("/experience");
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+    await page.getByRole("link", { name: "Home", exact: true }).click();
+    await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
+
+    await installHeroLayerSampler(page, "experience-hero");
+
+    await page.getByRole("link", { name: "Experience", exact: true }).click();
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window.__heroLayerSamples ?? []).filter(
+              ({ pathname, sampleSource }) =>
+                pathname === "/experience" && sampleSource === "raf",
+            ).length,
+        ),
+      )
+      .toBeGreaterThanOrEqual(2);
+
+    const { samples, traceDisabled } = await page.evaluate(() => ({
+      samples: window.__heroLayerSamples ?? [],
+      traceDisabled:
+        window.__enableSceneRuntimeTrace !== true &&
+        (window.__sceneRuntimeTrace?.length ?? 0) === 0,
+    }));
+    expect(traceDisabled).toBe(true);
+    const transitionSamples = samples.filter(
+      ({ pathname, poolState }) =>
+        pathname === "/experience" &&
+        (poolState === "adopting" || poolState === "assigned"),
+    );
+    const adoptingSamples = transitionSamples.filter(
+      ({ poolState }) => poolState === "adopting",
+    );
+    expect(adoptingSamples.length).toBeGreaterThan(0);
+    for (const sample of transitionSamples) {
+      expect(sample.copyZIndex).toBe("0");
+      expect(sample.outerPosterZIndex).toBe("1");
+      expect(sample.runtimeZIndex).toBe("1");
+      expect(sample.stageZIndex).toBe("1");
+      expect(sample.outerImageCenterDelta).toBeCloseTo(0, 3);
+      if (sample.runtimePosterImageCenterDelta !== null) {
+        expect(sample.runtimePosterImageCenterDelta).toBeCloseTo(0, 3);
+      }
+      if (sample.canvasLeft !== null) {
+        expect(sample.canvasLeft).toBeCloseTo(sample.stageLeft, 3);
+      }
+      expect(
+        sample.stageLeft +
+          sample.stageWidth / 2 -
+          (sample.sectionLeft + sample.sectionWidth / 2),
+      ).toBeCloseTo(0, 3);
+      expectValidHeroSourceSample(sample);
+    }
+  } finally {
+    await disposeFixture(models);
+  }
+});
+
+test("keeps the loading hero poster above the copy through its first live frame", async ({
+  page,
+}) => {
+  await installRuntimeProbe(page);
+  await fulfillPosters(page);
+  const models = await fulfillModels(page, [], {
+    plans: { [EXPERIENCE_MODEL]: { hold: true } },
+  });
+
+  try {
+    await page.goto("/experience");
+    await models.waitForRequest(EXPERIENCE_MODEL);
+    const host = residentHost(page, "experience-hero");
+    await expect(host).toHaveAttribute("data-three-status", "loading");
+    await expect(host.locator(".scene-runtime__poster")).toBeVisible();
+    await installHeroLayerSampler(page, "experience-hero");
+
+    expect(models.release(EXPERIENCE_MODEL)).toBe(1);
+    await expect(host).toHaveAttribute("data-three-status", "ready");
+
+    const samples = await page.evaluate(
+      () => window.__heroLayerSamples ?? [],
+    );
+    expect(samples.length).toBeGreaterThan(0);
+    expect(samples.some(({ poolState }) => poolState === "assigned")).toBe(
+      true,
+    );
+    for (const sample of samples) {
+      expect(sample.copyZIndex).toBe("0");
+      expect(sample.outerPosterZIndex).toBe("1");
+      expect(sample.runtimeZIndex).toBe("1");
+      expect(sample.stageZIndex).toBe("1");
+      expect(sample.outerImageCenterDelta).toBeCloseTo(0, 3);
+      if (sample.runtimePosterImageCenterDelta !== null) {
+        expect(sample.runtimePosterImageCenterDelta).toBeCloseTo(0, 3);
+      }
+      if (sample.canvasLeft !== null) {
+        expect(sample.canvasLeft).toBeCloseTo(sample.stageLeft, 3);
+      }
+      expectValidHeroSourceSample(sample);
+    }
+  } finally {
+    await disposeFixture(models);
+  }
+});
+
 test("uses fixed vertical scaling for mobile hero posters", async ({
   browser,
 }, testInfo) => {
@@ -1221,6 +1527,724 @@ test("uses fixed vertical scaling for mobile hero posters", async ({
   } finally {
     await disposeFixture(models);
     await context.close();
+  }
+});
+
+test("applies the responsive camera before any render at resized dimensions", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 720, width: 1280 });
+  await installRuntimeProbe(page);
+  await fulfillPosters(page);
+  const models = await fulfillModels(page);
+
+  try {
+    await page.goto("/experience?sceneTrace=1");
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            new Set(
+              (window.__sceneRuntimeTrace ?? [])
+                .filter(
+                  ({ details, phase }) =>
+                    phase === "canvas:render-audit" &&
+                    details.auditCoherentWithRenderedFrame === true &&
+                    ["experience-intro", "nasa-rocket"].includes(
+                      String(details.sceneId),
+                    ),
+                )
+                .map(({ details }) => details.sceneId),
+            ).size,
+        ),
+      )
+      .toBe(2);
+    const desktopChapterFrames = await page.evaluate(() =>
+      (window.__sceneRuntimeTrace ?? [])
+        .filter(
+          ({ details, phase }) =>
+            phase === "canvas:render-audit" &&
+            details.auditCoherentWithRenderedFrame === true &&
+            ["experience-intro", "nasa-rocket"].includes(
+              String(details.sceneId),
+            ),
+        )
+        .map(({ details }) => ({
+          cameraFrame: details.cameraFrame,
+          cameraModeMatchesViewport:
+            details.cameraModeMatchesViewport,
+          sceneId: details.sceneId,
+        })),
+    );
+    expect(
+      new Set(desktopChapterFrames.map(({ sceneId }) => sceneId)),
+    ).toEqual(new Set(["experience-intro", "nasa-rocket"]));
+    for (const frame of desktopChapterFrames) {
+      expect(frame.cameraFrame, String(frame.sceneId)).toBe("desktop");
+      expect(frame.cameraModeMatchesViewport).toBe(true);
+    }
+    await page.evaluate(() => {
+      if (window.__sceneRuntimeTrace) window.__sceneRuntimeTrace.length = 0;
+    });
+
+    await page.setViewportSize({ height: 720, width: 559 });
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.__sceneRuntimeTrace?.some(
+            ({ details, phase }) =>
+              phase === "canvas:render-audit" &&
+              details.auditCoherentWithRenderedFrame === true &&
+              details.sceneId === "experience-hero" &&
+              (
+                details.css as
+                  | { readonly width?: number }
+                  | undefined
+              )?.width === 559 &&
+              (
+                details.camera as
+                  | { readonly position?: readonly number[] }
+                  | undefined
+              )?.position?.[0] === 5.2,
+          ),
+        ),
+      )
+      .toBe(true);
+
+    const resizedFrames = await page.evaluate(
+      () =>
+        window.__sceneRuntimeTrace
+          ?.filter(
+            ({ details, phase }) =>
+              phase === "canvas:render-audit" &&
+              details.auditCoherentWithRenderedFrame === true &&
+              details.sceneId === "experience-hero" &&
+              (
+                details.css as
+                  | { readonly width?: number }
+                  | undefined
+              )?.width === 559,
+          )
+          .map(({ details }) => ({
+            camera: details.camera,
+            cameraBeforeSynchronization:
+              details.cameraBeforeSynchronization,
+            cameraModeMatchesViewport:
+              details.cameraModeMatchesViewport,
+            canvasDom: details.canvasDom,
+            expectedFrame: details.expectedFrame,
+            model: details.model,
+            modelScreenBounds: details.modelScreenBounds,
+            renderReason: details.renderReason,
+            r3fSize: details.r3fSize,
+          })) ?? [],
+    );
+    expect(resizedFrames.length).toBeGreaterThan(0);
+    for (const frame of resizedFrames) {
+      const camera = frame.camera as {
+        readonly aspect: number;
+        readonly fov: number;
+        readonly position: readonly number[];
+      };
+      expect(camera).toMatchObject({
+        fov: 40,
+        position: [5.2, 4.1, 9.6],
+      });
+      expect(camera.aspect).toBeCloseTo(559 / 720, 5);
+      expect(frame.cameraBeforeSynchronization).not.toBeNull();
+      expect(frame.cameraModeMatchesViewport).toBe(true);
+      expect(frame.expectedFrame).toMatchObject({
+        cameraPosition: [5.2, 4.1, 9.6],
+        fov: 40,
+      });
+      expect(frame.model).toMatchObject({
+        instance: {
+          name: "scene-instance:experience-hero",
+        },
+        root: {
+          name: "scene-root:experience-hero",
+        },
+      });
+      expect(["adoption-layout", "demand-frame"]).toContain(
+        frame.renderReason,
+      );
+      const r3fSize = frame.r3fSize as {
+        readonly height: number;
+        readonly width: number;
+      };
+      expect(Number.isFinite(r3fSize.height)).toBe(true);
+      expect(Number.isFinite(r3fSize.width)).toBe(true);
+      const canvasDom = frame.canvasDom as {
+        readonly canvas: {
+          readonly rect: { readonly x: number };
+        };
+        readonly copy: { readonly zIndex: string };
+        readonly stage: {
+          readonly rect: { readonly x: number };
+          readonly zIndex: string;
+        };
+        readonly state: {
+          readonly ownerSceneId: string;
+          readonly parentSceneId: string;
+        };
+      };
+      expect(canvasDom.canvas.rect.x).toBeCloseTo(
+        canvasDom.stage.rect.x,
+        4,
+      );
+      expect(canvasDom.copy.zIndex).toBe("0");
+      expect(canvasDom.stage.zIndex).toBe("1");
+      expect(canvasDom.state).toMatchObject({
+        ownerSceneId: "experience-hero",
+        parentSceneId: "experience-hero",
+      });
+
+      const bounds = frame.modelScreenBounds as {
+        readonly canvasRect: { readonly x: number; readonly y: number };
+        readonly local: {
+          readonly centerX: number;
+          readonly centerY: number;
+        };
+        readonly viewport: {
+          readonly centerX: number;
+          readonly centerY: number;
+        };
+      };
+      expect(bounds.viewport.centerX).toBeCloseTo(
+        bounds.canvasRect.x + bounds.local.centerX,
+        4,
+      );
+      expect(bounds.viewport.centerY).toBeCloseTo(
+        bounds.canvasRect.y + bounds.local.centerY,
+        4,
+      );
+    }
+    const horizontalCenters = resizedFrames.map(({ modelScreenBounds }) => {
+      const bounds = modelScreenBounds as {
+        readonly maxX: number;
+        readonly minX: number;
+      };
+      return (bounds.minX + bounds.maxX) / 2;
+    });
+    expect(Math.max(...horizontalCenters) - Math.min(...horizontalCenters)).toBeLessThan(
+      0.5,
+    );
+  } finally {
+    await disposeFixture(models);
+  }
+});
+
+test("records zero model-position or layer-order jitter across repeated desktop page switches", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 720, width: 1280 });
+  await installRuntimeProbe(page);
+  await fulfillPosters(page);
+  const models = await fulfillModels(page);
+
+  try {
+    await page.goto("/experience?sceneTrace=1");
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+    await page.evaluate(() => {
+      if (window.__sceneRuntimeTrace) window.__sceneRuntimeTrace.length = 0;
+    });
+
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      await page.getByRole("link", { name: "Home", exact: true }).click();
+      await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
+      await page
+        .getByRole("link", { name: "Experience", exact: true })
+        .click();
+      await expectReadyResidentSet(
+        page,
+        RESIDENT_SCENES_BY_ROUTE["/experience"],
+      );
+    }
+
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window.__sceneRuntimeTrace ?? []).filter(
+              ({ details, phase }) => {
+                const dom = details.canvasDom as
+                  | {
+                      readonly copy?: unknown;
+                      readonly state?: {
+                        readonly parentSceneId?: unknown;
+                        readonly sectionActive?: unknown;
+                      };
+                    }
+                  | undefined;
+                return (
+                  phase === "canvas:render-audit" &&
+                  details.auditCoherentWithRenderedFrame === true &&
+                  Boolean(dom?.copy) &&
+                  dom?.state?.sectionActive === "true" &&
+                  dom.state.parentSceneId === details.sceneId
+                );
+              },
+            ).length,
+        ),
+      )
+      .toBeGreaterThanOrEqual(6);
+
+    const audit = await page.evaluate(() => {
+      const trace = window.__sceneRuntimeTrace ?? [];
+      const runtimeErrors = trace.filter(({ phase }) =>
+        [
+          "canvas:render-error",
+          "window:error",
+          "window:unhandledrejection",
+        ].includes(phase),
+      );
+      const frames = trace.filter(({ details, phase }) => {
+        const dom = details.canvasDom as
+          | {
+              readonly copy?: unknown;
+              readonly state?: {
+                readonly parentSceneId?: unknown;
+                readonly sectionActive?: unknown;
+              };
+            }
+          | undefined;
+        return (
+          phase === "canvas:render-audit" &&
+          details.auditCoherentWithRenderedFrame === true &&
+          Boolean(dom?.copy) &&
+          dom?.state?.sectionActive === "true" &&
+          dom.state.parentSceneId === details.sceneId
+        );
+      });
+      const frameViolations: string[] = [];
+      const centers = new Map<string, Array<{ x: number; y: number }>>();
+      const finite = (...values: unknown[]) =>
+        values.every(
+          (value) => typeof value === "number" && Number.isFinite(value),
+        );
+
+      for (const { details, sequence } of frames) {
+        const auditCoherence = details.auditCoherence as
+          | {
+              readonly coherent?: boolean;
+              readonly identityFields?: Record<string, boolean>;
+              readonly identityMatches?: boolean;
+              readonly rendererFrameMatches?: boolean;
+            }
+          | undefined;
+        if (
+          details.auditCoherentWithRenderedFrame !== true ||
+          auditCoherence?.coherent !== true ||
+          auditCoherence?.identityMatches !== true ||
+          auditCoherence?.rendererFrameMatches !== true ||
+          Object.values(auditCoherence?.identityFields ?? {}).some(
+            (matches) => !matches,
+          )
+        ) {
+          frameViolations.push(`${sequence}:stale-audit`);
+        }
+        const camera = details.camera as
+          | {
+              readonly fov?: number;
+              readonly position?: readonly number[];
+            }
+          | undefined;
+        const expected = details.expectedFrame as
+          | {
+              readonly fov?: number;
+              readonly cameraPosition?: readonly number[];
+            }
+          | undefined;
+        const bounds = details.modelScreenBounds as
+          | {
+              readonly canvasRect?: {
+                readonly height: number;
+                readonly width: number;
+                readonly x: number;
+                readonly y: number;
+              };
+              readonly local?: {
+                readonly centerX: number;
+                readonly centerY: number;
+              };
+              readonly viewport?: {
+                readonly centerX: number;
+                readonly centerY: number;
+              };
+            }
+          | undefined;
+        const dom = details.canvasDom as {
+          readonly canvas?: {
+            readonly rect?: {
+              readonly height: number;
+              readonly width: number;
+              readonly x: number;
+              readonly y: number;
+            };
+          };
+          readonly copy?: { readonly zIndex?: string };
+          readonly outerPoster?: { readonly zIndex?: string };
+          readonly posterSilhouettes?: {
+            readonly outer?: {
+              readonly viewportBounds?: {
+                readonly centerX?: number;
+                readonly centerY?: number;
+              } | null;
+            } | null;
+            readonly runtime?: {
+              readonly viewportBounds?: {
+                readonly centerX?: number;
+                readonly centerY?: number;
+              } | null;
+            } | null;
+          };
+          readonly section?: {
+            readonly rect?: {
+              readonly height: number;
+              readonly width: number;
+              readonly x: number;
+              readonly y: number;
+            };
+          };
+          readonly stage?: {
+            readonly rect?: {
+              readonly height: number;
+              readonly width: number;
+              readonly x: number;
+              readonly y: number;
+            };
+            readonly zIndex?: string;
+          };
+        };
+        const model = details.model as
+          | { readonly instance?: unknown; readonly root?: unknown }
+          | undefined;
+        if (
+          details.cameraModeMatchesViewport !== true ||
+          camera?.fov !== expected?.fov ||
+          JSON.stringify(camera?.position) !==
+            JSON.stringify(expected?.cameraPosition)
+        ) {
+          frameViolations.push(`${sequence}:camera`);
+        }
+        if (
+          !model?.root ||
+          !model.instance ||
+          !details.cameraBeforeSynchronization ||
+          !["adoption-layout", "demand-frame"].includes(
+            String(details.renderReason),
+          )
+        ) {
+          frameViolations.push(`${sequence}:telemetry`);
+        }
+        if (
+          !bounds?.canvasRect ||
+          !bounds.local ||
+          !bounds.viewport ||
+          !finite(
+            bounds.canvasRect.x,
+            bounds.canvasRect.y,
+            bounds.local.centerX,
+            bounds.local.centerY,
+            bounds.viewport.centerX,
+            bounds.viewport.centerY,
+          ) ||
+          Math.abs(
+            bounds.viewport.centerX -
+              (bounds.canvasRect.x + bounds.local.centerX),
+          ) > 0.1 ||
+          Math.abs(
+            bounds.viewport.centerY -
+              (bounds.canvasRect.y + bounds.local.centerY),
+          ) > 0.1
+        ) {
+          frameViolations.push(`${sequence}:absolute-bounds`);
+        }
+        const canvasRect = dom.canvas?.rect;
+        const stageRect = dom.stage?.rect;
+        const sectionRect = dom.section?.rect;
+        if (
+          dom.copy?.zIndex !== "0" ||
+          dom.outerPoster?.zIndex !== "1" ||
+          dom.stage?.zIndex !== "1" ||
+          !canvasRect ||
+          !stageRect ||
+          !sectionRect ||
+          !finite(
+            canvasRect.x,
+            canvasRect.y,
+            canvasRect.width,
+            canvasRect.height,
+            stageRect.x,
+            stageRect.y,
+            stageRect.width,
+            stageRect.height,
+            sectionRect.x,
+            sectionRect.width,
+          ) ||
+          Math.abs(canvasRect.x - stageRect.x) > 0.1 ||
+          Math.abs(canvasRect.y - stageRect.y) > 0.1 ||
+          Math.abs(
+            stageRect.x +
+              stageRect.width / 2 -
+              (sectionRect.x + sectionRect.width / 2),
+          ) > 0.1
+        ) {
+          frameViolations.push(`${sequence}:layer-or-canvas`);
+        }
+        const outerSilhouette =
+          dom.posterSilhouettes?.outer?.viewportBounds;
+        const runtimeSilhouette =
+          dom.posterSilhouettes?.runtime?.viewportBounds;
+        if (
+          outerSilhouette &&
+          runtimeSilhouette &&
+          (!finite(
+            outerSilhouette.centerX,
+            outerSilhouette.centerY,
+            runtimeSilhouette.centerX,
+            runtimeSilhouette.centerY,
+          ) ||
+            Math.abs(
+              (outerSilhouette.centerX ?? 0) -
+                (runtimeSilhouette.centerX ?? 0),
+            ) > 0.1 ||
+            Math.abs(
+              (outerSilhouette.centerY ?? 0) -
+                (runtimeSilhouette.centerY ?? 0),
+            ) > 0.1)
+        ) {
+          frameViolations.push(`${sequence}:poster-silhouette`);
+        }
+        if (
+          bounds?.viewport &&
+          canvasRect &&
+          finite(
+            bounds.viewport.centerX,
+            bounds.viewport.centerY,
+            canvasRect.width,
+            canvasRect.height,
+          )
+        ) {
+          const key = `${String(details.sceneId)}:${canvasRect.width}:${canvasRect.height}`;
+          const values = centers.get(key) ?? [];
+          values.push({
+            x: bounds.viewport.centerX,
+            y: bounds.viewport.centerY,
+          });
+          centers.set(key, values);
+        }
+      }
+
+      const centerSpreads = [...centers.entries()].map(([key, values]) => ({
+        key,
+        count: values.length,
+        x:
+          Math.max(...values.map(({ x }) => x)) -
+          Math.min(...values.map(({ x }) => x)),
+        y:
+          Math.max(...values.map(({ y }) => y)) -
+          Math.min(...values.map(({ y }) => y)),
+      }));
+      const layerViolations: string[] = [];
+      for (const entry of trace) {
+        if (entry.phase !== "observer:animation-frame") continue;
+        const candidates = entry.details.heroCandidates as
+          | Array<{
+              readonly active?: string;
+              readonly lastRenderedTelemetrySequence?: string | null;
+              readonly layers?: {
+                readonly canvas?: {
+                  readonly rect?: {
+                    readonly height: number;
+                    readonly width: number;
+                    readonly x: number;
+                    readonly y: number;
+                  };
+                  readonly visible?: boolean;
+                } | null;
+                readonly copy?: { readonly zIndex?: string } | null;
+                readonly outerPoster?: { readonly zIndex?: string } | null;
+                readonly section?: {
+                  readonly rect?: {
+                    readonly width: number;
+                    readonly x: number;
+                  };
+                } | null;
+                readonly stage?: {
+                  readonly rect?: {
+                    readonly height: number;
+                    readonly width: number;
+                    readonly x: number;
+                    readonly y: number;
+                  };
+                  readonly zIndex?: string;
+                } | null;
+              };
+            }>
+          | undefined;
+        for (const hero of candidates ?? []) {
+          if (hero.active !== "true" || !hero.layers?.stage) continue;
+          const { canvas, copy, outerPoster, section, stage } = hero.layers;
+          if (
+            copy?.zIndex !== "0" ||
+            outerPoster?.zIndex !== "1" ||
+            stage.zIndex !== "1"
+          ) {
+            layerViolations.push(`${entry.sequence}:z-index`);
+          }
+          if (
+            canvas?.visible &&
+            (hero.lastRenderedTelemetrySequence === null ||
+              hero.lastRenderedTelemetrySequence === undefined)
+          ) {
+            layerViolations.push(`${entry.sequence}:unlinked-frame`);
+          }
+          if (
+            canvas?.visible &&
+            (!canvas.rect ||
+              !stage.rect ||
+              !section?.rect ||
+              !finite(
+                canvas.rect.x,
+                canvas.rect.y,
+                canvas.rect.width,
+                canvas.rect.height,
+                stage.rect.x,
+                stage.rect.y,
+                stage.rect.width,
+                stage.rect.height,
+                section.rect.x,
+                section.rect.width,
+              ) ||
+              Math.abs(canvas.rect.x - stage.rect.x) > 0.1 ||
+              Math.abs(canvas.rect.y - stage.rect.y) > 0.1 ||
+              Math.abs(
+                stage.rect.x +
+                  stage.rect.width / 2 -
+                  (section.rect.x + section.rect.width / 2),
+              ) > 0.1)
+          ) {
+            layerViolations.push(`${entry.sequence}:visible-canvas-offset`);
+          }
+        }
+      }
+
+      const posterCenterViolations: string[] = [];
+      let posterSilhouetteSamples = 0;
+      for (const entry of trace) {
+        const candidates = entry.details.heroCandidates as
+          | Array<{
+              readonly posterGeometry?: {
+                readonly outerImageToStage?: {
+                  readonly centerX?: number;
+                } | null;
+                readonly runtimeImageToStage?: {
+                  readonly centerX?: number;
+                } | null;
+              };
+              readonly posterSilhouettes?: {
+                readonly outer?: {
+                  readonly viewportBounds?: {
+                    readonly centerX?: number;
+                    readonly centerY?: number;
+                  } | null;
+                } | null;
+                readonly runtime?: {
+                  readonly viewportBounds?: {
+                    readonly centerX?: number;
+                    readonly centerY?: number;
+                  } | null;
+                } | null;
+              };
+            }>
+          | undefined;
+        for (const candidate of candidates ?? []) {
+          const boxCenters = [
+            candidate.posterGeometry?.outerImageToStage?.centerX,
+            candidate.posterGeometry?.runtimeImageToStage?.centerX,
+          ];
+          if (
+            boxCenters.some(
+              (value) =>
+                typeof value === "number" && Math.abs(value) > 0.1,
+            )
+          ) {
+            posterCenterViolations.push(`${entry.sequence}:image-box`);
+          }
+          const outer =
+            candidate.posterSilhouettes?.outer?.viewportBounds;
+          const runtime =
+            candidate.posterSilhouettes?.runtime?.viewportBounds;
+          if (outer) posterSilhouetteSamples += 1;
+          if (runtime) posterSilhouetteSamples += 1;
+          for (const silhouette of [outer, runtime]) {
+            if (
+              silhouette &&
+              !finite(silhouette.centerX, silhouette.centerY)
+            ) {
+              posterCenterViolations.push(
+                `${entry.sequence}:silhouette-geometry`,
+              );
+            }
+          }
+          if (
+            outer &&
+            runtime &&
+            (Math.abs(
+              (outer.centerX ?? Number.POSITIVE_INFINITY) -
+                (runtime.centerX ?? Number.NEGATIVE_INFINITY),
+            ) > 0.1 ||
+              Math.abs(
+                (outer.centerY ?? Number.POSITIVE_INFINITY) -
+                  (runtime.centerY ?? Number.NEGATIVE_INFINITY),
+              ) > 0.1)
+          ) {
+            posterCenterViolations.push(
+              `${entry.sequence}:silhouette-handoff`,
+            );
+          }
+        }
+      }
+
+      return {
+        centerSpreads,
+        frameCount: frames.length,
+        frameViolations,
+        layerViolations,
+        posterCenterViolations,
+        posterSilhouetteSamples,
+        runtimeErrors: runtimeErrors.map(({ phase }) => phase),
+        traceCount: trace.length,
+      };
+    });
+
+    expect(audit.traceCount).toBeGreaterThan(100);
+    // The loop performs exactly six route handoffs. Require one coherent
+    // render audit for every handoff; the rAF observer burst below covers
+    // every intervening painted frame and the per-scene spread check requires
+    // repeated samples across cycles.
+    expect(audit.frameCount).toBeGreaterThanOrEqual(6);
+    expect(audit.frameViolations).toEqual([]);
+    expect(audit.layerViolations).toEqual([]);
+    expect(audit.posterCenterViolations).toEqual([]);
+    expect(audit.posterSilhouetteSamples).toBeGreaterThan(0);
+    expect(audit.runtimeErrors).toEqual([]);
+    expect(audit.centerSpreads.length).toBeGreaterThan(0);
+    for (const spread of audit.centerSpreads) {
+      expect(spread.count, spread.key).toBeGreaterThan(1);
+      expect(spread.x, spread.key).toBeLessThan(0.5);
+      expect(spread.y, spread.key).toBeLessThan(0.5);
+    }
+  } finally {
+    await disposeFixture(models);
   }
 });
 

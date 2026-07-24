@@ -11,6 +11,11 @@ import { clearSceneModel } from "./scene-loader";
 import { getSceneDefinition } from "./scene-registry";
 import type { SceneCanvasPortProps } from "./scene-canvas";
 import { SceneRuntimeHostView } from "./scene-runtime-host";
+import { sceneRuntimeTraceEnabled } from "./scene-runtime-trace-core";
+import {
+  traceScenePosterAlphaBounds,
+  traceSceneStageSnapshot,
+} from "./scene-runtime-trace";
 import type { SceneId, ThreeStatus } from "./types";
 
 vi.mock("./runtime-events", () => ({
@@ -24,6 +29,25 @@ vi.mock("./scene-loader", () => ({
   preloadSceneModel: vi.fn(),
   releaseSceneModelHostLease: vi.fn(),
 }));
+
+vi.mock("./scene-runtime-trace", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("./scene-runtime-trace")>();
+  return {
+    ...original,
+    traceScenePosterAlphaBounds: vi.fn(),
+    traceSceneStageSnapshot: vi.fn(),
+  };
+});
+
+vi.mock("./scene-runtime-trace-core", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("./scene-runtime-trace-core")>();
+  return {
+    ...original,
+    sceneRuntimeTraceEnabled: vi.fn(() => false),
+  };
+});
 
 let latestCanvasProps: SceneCanvasPortProps | null = null;
 
@@ -43,12 +67,6 @@ const FakeCanvas: ComponentType<SceneCanvasPortProps> = (props) => {
       <button
         data-testid="first-frame"
         onClick={() => props.onFirstFrame()}
-      />
-      <button
-        data-testid="transition-frame"
-        onClick={() =>
-          props.onFirstFrame("data:image/webp;base64,transition-frame")
-        }
       />
       <button
         data-testid="fetch-failure"
@@ -174,10 +192,15 @@ describe("SceneRuntimeHostView", () => {
   beforeEach(() => {
     latestCanvasProps = null;
     vi.mocked(clearSceneModel).mockClear();
+    vi.mocked(sceneRuntimeTraceEnabled).mockReset().mockReturnValue(false);
+    vi.mocked(traceScenePosterAlphaBounds).mockReset();
+    vi.mocked(traceSceneStageSnapshot).mockReset();
     vi.useFakeTimers();
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -197,7 +220,6 @@ describe("SceneRuntimeHostView", () => {
     });
     expect(host).toHaveAttribute("data-three-status", "loading");
     expect(host).toHaveAttribute("data-poster-ready", "false");
-    expect(host).toHaveAttribute("data-transition-poster", "retired");
     expect(host.querySelector("img")).toHaveAttribute(
       "src",
       "/posters/home-hero-desktop.webp",
@@ -238,6 +260,136 @@ describe("SceneRuntimeHostView", () => {
 
     fireEvent.click(screen.getByTestId("first-frame"));
     expect(emitSceneRuntimeEvent).toHaveBeenCalledOnce();
+  });
+
+  it("commits poster readiness before tracing its alpha mask after paint and idle", async () => {
+    const animationFrameCallbacks: FrameRequestCallback[] = [];
+    const idleCallbacks: IdleRequestCallback[] = [];
+    vi.mocked(sceneRuntimeTraceEnabled).mockReturnValue(true);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrameCallbacks.push(callback);
+      return animationFrameCallbacks.length;
+    });
+    vi.stubGlobal(
+      "requestIdleCallback",
+      vi.fn((callback: IdleRequestCallback) => {
+        idleCallbacks.push(callback);
+        return idleCallbacks.length;
+      }),
+    );
+
+    render(
+      <div
+        className="scene-stage--resident"
+        data-scene-adoption-version="0"
+        data-scene-owner-id="home-hero"
+        data-scene-pool-key="resident-stage-test"
+      >
+        <HostHarness />
+      </div>,
+    );
+    const host = screen.getByTestId("scene-runtime-host");
+    const image = host.querySelector("img")!;
+    Object.defineProperty(image, "decode", {
+      configurable: true,
+      value: vi.fn().mockResolvedValue(undefined),
+    });
+
+    fireEvent.load(image);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(host).toHaveAttribute("data-poster-ready", "true");
+    expect(traceScenePosterAlphaBounds).not.toHaveBeenCalled();
+    expect(traceSceneStageSnapshot).not.toHaveBeenCalled();
+    expect(animationFrameCallbacks).toHaveLength(1);
+
+    act(() => {
+      animationFrameCallbacks.shift()?.(16);
+    });
+    expect(traceScenePosterAlphaBounds).not.toHaveBeenCalled();
+    expect(idleCallbacks).toHaveLength(1);
+
+    act(() => {
+      idleCallbacks.shift()?.({
+        didTimeout: false,
+        timeRemaining: () => 50,
+      });
+    });
+    expect(traceSceneStageSnapshot).toHaveBeenCalledWith(
+      "poster:decoded",
+      expect.any(HTMLElement),
+      expect.objectContaining({
+        activationVersion: 0,
+        sceneId: "home-hero",
+      }),
+    );
+    expect(traceScenePosterAlphaBounds).toHaveBeenCalledWith(
+      image,
+      expect.any(HTMLElement),
+      {
+        activationVersion: 0,
+        adoptionVersion: 0,
+        poolKey: "resident-stage-test",
+        sceneId: "home-hero",
+      },
+    );
+  });
+
+  it("drops a deferred poster trace after the resident adoption changes", async () => {
+    const animationFrameCallbacks: FrameRequestCallback[] = [];
+    const idleCallbacks: IdleRequestCallback[] = [];
+    vi.mocked(sceneRuntimeTraceEnabled).mockReturnValue(true);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      animationFrameCallbacks.push(callback);
+      return animationFrameCallbacks.length;
+    });
+    vi.stubGlobal(
+      "requestIdleCallback",
+      vi.fn((callback: IdleRequestCallback) => {
+        idleCallbacks.push(callback);
+        return idleCallbacks.length;
+      }),
+    );
+
+    const view = render(
+      <div
+        className="scene-stage--resident"
+        data-scene-adoption-version="0"
+        data-scene-owner-id="home-hero"
+        data-scene-pool-key="resident-stage-test"
+      >
+        <HostHarness />
+      </div>,
+    );
+    const host = screen.getByTestId("scene-runtime-host");
+    const image = host.querySelector("img")!;
+    Object.defineProperty(image, "decode", {
+      configurable: true,
+      value: vi.fn().mockResolvedValue(undefined),
+    });
+
+    fireEvent.load(image);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(host).toHaveAttribute("data-poster-ready", "true");
+
+    const stage = view.container.querySelector<HTMLElement>(
+      ".scene-stage--resident",
+    )!;
+    stage.dataset.sceneAdoptionVersion = "1";
+    act(() => {
+      animationFrameCallbacks.shift()?.(16);
+      idleCallbacks.shift()?.({
+        didTimeout: false,
+        timeRemaining: () => 50,
+      });
+    });
+
+    expect(traceSceneStageSnapshot).not.toHaveBeenCalled();
+    expect(traceScenePosterAlphaBounds).not.toHaveBeenCalled();
   });
 
   it("keys fixed-poster readiness to the current activation and decoded image", async () => {
@@ -384,58 +536,43 @@ describe("SceneRuntimeHostView", () => {
     expect(canvas).toHaveAttribute("data-scene-id", "projects-hero");
   });
 
-  it("commits readiness without retaining a transition snapshot", () => {
+  it("commits readiness directly from the first live frame", () => {
     render(<HostHarness />);
     const host = screen.getByTestId("scene-runtime-host");
 
-    fireEvent.click(screen.getByTestId("transition-frame"));
+    fireEvent.click(screen.getByTestId("first-frame"));
 
     expect(host).toHaveAttribute("data-three-status", "ready");
-    expect(host).toHaveAttribute("data-transition-frame", "none");
-    expect(host).toHaveAttribute("data-transition-poster", "retired");
-    expect(
-      document.querySelector(".scene-runtime__transition-frame"),
-    ).not.toBeInTheDocument();
     expect(emitSceneRuntimeEvent).toHaveBeenCalledOnce();
   });
 
-  it("never presents a proven frame while switching scenes within one route", () => {
+  it("returns to loading while switching scenes within one route", () => {
     render(<SameRouteHarness />);
     const host = screen.getByTestId("scene-runtime-host");
-    fireEvent.click(screen.getByTestId("transition-frame"));
+    fireEvent.click(screen.getByTestId("first-frame"));
     expect(host).toHaveAttribute("data-three-status", "ready");
 
     fireEvent.click(screen.getByRole("button", { name: "show intro" }));
 
     expect(host).toHaveAttribute("data-active-scene-id", "experience-intro");
     expect(host).toHaveAttribute("data-three-status", "loading");
-    expect(host).toHaveAttribute("data-transition-poster", "retired");
-    expect(
-      document.querySelector(".scene-runtime__transition-frame"),
-    ).not.toBeInTheDocument();
   });
 
-  it("never renders a stale transition frame across routes", () => {
+  it("does not retain readiness across route and poster activations", () => {
     render(<PersistenceHarness />);
     const host = screen.getByTestId("scene-runtime-host");
 
-    fireEvent.click(screen.getByTestId("transition-frame"));
+    fireEvent.click(screen.getByTestId("first-frame"));
     expect(host).toHaveAttribute("data-three-status", "ready");
-    expect(host).toHaveAttribute("data-transition-frame", "none");
 
     fireEvent.click(screen.getByRole("button", { name: "show projects" }));
     expect(host).toHaveAttribute("data-three-status", "loading");
-    expect(host).toHaveAttribute("data-transition-poster", "retired");
-    expect(
-      document.querySelector(".scene-runtime__transition-frame"),
-    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("first-frame"));
     expect(host).toHaveAttribute("data-three-status", "ready");
 
     fireEvent.click(screen.getByRole("button", { name: "show EOG" }));
     expect(host).toHaveAttribute("data-three-status", "poster");
-    expect(host).toHaveAttribute("data-transition-poster", "retired");
   });
 
   it("reveals the poster during context loss and requests a fresh live frame", () => {

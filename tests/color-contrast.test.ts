@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { routes } from "../content/site-content";
 
 const css = readFileSync("app/globals.css", "utf8");
 
@@ -43,19 +44,12 @@ function contrast(left: string, right: string) {
 describe("route color contrast", () => {
   const root = cssRule(":root");
   const textStrong = variable(root, "text-strong");
-  const routes = [
-    ["home", ".site-shell"],
-    ["experience", '.site-shell[data-route="experience"]'],
-    ["projects", '.site-shell[data-route="projects"]'],
-    ["contact", '.site-shell[data-route="contact"]'],
-  ] as const;
 
-  it.each(routes)("%s navigation text remains readable", (_, selector) => {
-    const route = cssRule(selector);
-    const background = variable(route, "route-background");
-    const accent = variable(route, "route-accent");
-
-    expect(contrast(textStrong, background)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(accent, background)).toBeGreaterThanOrEqual(4.5);
-  });
+  it.each(routes)(
+    "$key navigation text remains readable",
+    ({ theme: { accent, background } }) => {
+      expect(contrast(textStrong, background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(accent, background)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
 });

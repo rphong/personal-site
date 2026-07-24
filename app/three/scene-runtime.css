@@ -51,10 +51,12 @@
 .page-hero.scene-section[data-required-live="true"]
   > .scene-section__poster
   img {
+  position: absolute;
   inset: auto;
   top: 0;
   left: 50%;
   width: auto;
+  max-width: none;
   transform: translateX(-50%);
   object-fit: fill;
 }
@@ -240,8 +242,8 @@ body:has(.chapter[data-scene-active="true"]) .scene-runtime,
   background: transparent;
 }
 
-.site-shell[data-route="experience"] .content-surface,
-.site-shell[data-route="projects"] .content-surface {
+.experience-chapters,
+.projects-surface {
   z-index: auto;
 }
 

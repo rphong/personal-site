@@ -48,6 +48,9 @@ describe("persistent runtime shell", () => {
     expect(host).not.toMatch(
       /INITIAL_DOCUMENT_WARMUP|warmAllScenes|LIVE_SCENE_IDS/,
     );
+    expect(host).not.toMatch(
+      /data-transition-frame|data-transition-poster|transitionFrame/,
+    );
     expect(host).not.toContain('currentPathname === "/"');
     expect(host).toContain("const becameActive = active && !wasActive.current");
     expect(host).toMatch(
@@ -58,11 +61,14 @@ describe("persistent runtime shell", () => {
   });
 
   it("mounts one provider and one runtime boundary in the root shell", async () => {
-    const [layout, provider, shell] = await Promise.all([
-      source("app/layout.tsx"),
-      source("app/three/scene-provider.tsx"),
-      source("components/site-shell.tsx"),
-    ]);
+    const [layout, provider, boundary, shell, traceLoader] =
+      await Promise.all([
+        source("app/layout.tsx"),
+        source("app/three/scene-provider.tsx"),
+        source("app/three/scene-runtime-boundary.tsx"),
+        source("components/site-shell.tsx"),
+        source("app/three/scene-runtime-trace-loader.ts"),
+      ]);
     expect(layout.match(/<SceneProvider>/g)).toHaveLength(1);
     expect(layout).not.toContain("InitialDocumentLoadingScreen");
     expect(layout.match(/<SiteShell>/g)).toHaveLength(1);
@@ -71,10 +77,46 @@ describe("persistent runtime shell", () => {
     expect(provider.indexOf("{children}")).toBeLessThan(
       provider.indexOf("<ThreePreferenceToggle />"),
     );
+    expect(provider).not.toMatch(
+      /activeSectionElement|registerSceneStage|sceneStageElement/,
+    );
+    expect(provider).toContain('from "./scene-runtime-trace-core"');
+    expect(provider).not.toContain(
+      'from "./scene-runtime-trace-loader"',
+    );
+    expect(boundary).toContain('from "./scene-runtime-trace-core"');
+    expect(boundary).toContain('from "./scene-runtime-trace-loader"');
+    expect(boundary).toContain("await prepareSceneRuntimeTrace()");
+    expect(provider).not.toMatch(
+      /import\s*\{[\s\S]*?installSceneRuntimeTraceObservers[\s\S]*?\}\s*from\s*["']\.\/scene-runtime-trace["']/,
+    );
+    expect(traceLoader).toContain('import("./scene-runtime-trace")');
+    expect(traceLoader).toContain('import("./scene-alpha-capture")');
+    expect(traceLoader).toContain("if (!sceneRuntimeTraceEnabled())");
     expect(shell).not.toMatch(/SceneProvider|SceneRuntimeBoundary|Canvas/);
+    expect(shell).not.toContain("data-scene-stage");
     expect(layout.indexOf('import "./globals.css"')).toBeLessThan(
       layout.indexOf('import "./three/scene-runtime.css"'),
     );
+  });
+
+  it("keeps heavy trace and alpha modules out of static host and Canvas imports", async () => {
+    const [host, canvas, loader] = await Promise.all([
+      source("app/three/scene-runtime-host.tsx"),
+      source("app/three/scene-canvas.tsx"),
+      source("app/three/scene-runtime-trace-loader.ts"),
+    ]);
+    const staticHeavyImport =
+      /from\s*["']\.\/scene-runtime-trace["']|from\s*["']\.\/scene-alpha-capture["']/;
+
+    expect(host).not.toMatch(staticHeavyImport);
+    expect(canvas).not.toMatch(staticHeavyImport);
+    expect(host).toContain('from "./scene-runtime-trace-core"');
+    expect(canvas).toContain('from "./scene-runtime-trace-core"');
+    expect(host).toContain('from "./scene-runtime-trace-loader"');
+    expect(canvas).toContain('from "./scene-runtime-trace-loader"');
+    expect(loader).toMatch(/import\(["']\.\/scene-runtime-trace["']\)/);
+    expect(loader).toMatch(/import\(["']\.\/scene-alpha-capture["']\)/);
   });
 
   it("uses immediate poster/canvas visibility and a section-anchored host", async () => {

@@ -9,6 +9,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getSceneDefinition } from "./scene-registry";
 import {
+  createDisabledSceneEventManager,
   createWebGL2Renderer,
   createWebGL2RendererFactory,
   INACTIVE_SCENE_DPR,
@@ -58,6 +59,26 @@ describe("SceneCanvas shell", () => {
       },
     });
     expect(canvasCalls.mock.calls[0][0].gl).toBeTypeOf("function");
+    expect(canvasCalls.mock.calls[0][0].events).toBe(
+      createDisabledSceneEventManager,
+    );
+  });
+
+  it("does not reconnect unused R3F events after an async unmount", () => {
+    const manager = createDisabledSceneEventManager() as ReturnType<
+      typeof createDisabledSceneEventManager
+    > & {
+      readonly connect?: (target: HTMLElement | null) => void;
+      readonly handlers?: unknown;
+    };
+
+    expect(manager).toEqual({
+      enabled: false,
+      priority: 0,
+    });
+    expect(manager).not.toHaveProperty("connect");
+    expect(manager).not.toHaveProperty("handlers");
+    expect(() => manager.connect?.(null)).not.toThrow();
   });
 
   it("uses a reduced backing-buffer ratio for inactive warmup residents", () => {

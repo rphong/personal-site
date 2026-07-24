@@ -6,6 +6,7 @@ type WranglerConfig = {
     readonly enabled?: boolean;
     readonly logs?: {
       readonly enabled?: boolean;
+      readonly head_sampling_rate?: number;
       readonly invocation_logs?: boolean;
     };
     readonly traces?: {
@@ -57,6 +58,7 @@ export async function collectProductionDistErrors(
     if (
       wrangler.observability?.enabled !== true ||
       wrangler.observability.logs?.enabled !== true ||
+      wrangler.observability.logs.head_sampling_rate !== 1 ||
       wrangler.observability.logs.invocation_logs !== false ||
       wrangler.observability.traces?.enabled !== false
     ) {

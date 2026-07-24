@@ -36,8 +36,9 @@ npm run typecheck
 npm run test:unit
 npm run lint
 npm run test:html
-npm run test:browser:ui
+npm run test:browser
 npm run test:performance
+npm run posters:check
 ```
 
 `npm run test:html` creates the Cloudflare-compatible Vinext build and checks
@@ -51,13 +52,14 @@ lab budget.
 ```powershell
 $env:SITE_ENV = "production"
 $env:SITE_URL = "https://richard-phong-personal.richard-phong424.chatgpt.site"
-npm run build:production
+npm run verify:release
 ```
 
-The production build validates the origin and assets, rebuilds from source, and
-then verifies that the generated Worker is a production artifact with scene
-capture disabled and matching Sites metadata. The canonical résumé is
-published unchanged at `/Richard-Phong-Resume.pdf`.
+The release gate regenerates every poster candidate and requires output within
+the committed pixel-diff tolerance before validating the origin and assets,
+rebuilding from source, and verifying that the generated Worker is a production
+artifact with scene capture disabled and matching Sites metadata. The canonical
+résumé is published unchanged at `/Richard-Phong-Resume.pdf`.
 
 ## Sites
 
