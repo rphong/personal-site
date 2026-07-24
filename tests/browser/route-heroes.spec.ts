@@ -1,10 +1,30 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 const routes = [
-  { path: "/", sceneId: "home-hero", title: "Richard Phong" },
-  { path: "/experience", sceneId: "experience-hero", title: "Experience" },
-  { path: "/projects", sceneId: "projects-hero", title: "Projects" },
-  { path: "/contact", sceneId: "contact-hero", title: "Contact" },
+  {
+    path: "/",
+    sceneId: "home-hero",
+    title: "Richard Phong",
+    headingColor: "rgb(255, 255, 255)",
+  },
+  {
+    path: "/experience",
+    sceneId: "experience-hero",
+    title: "Experience",
+    headingColor: "rgb(251, 229, 234)",
+  },
+  {
+    path: "/projects",
+    sceneId: "projects-hero",
+    title: "Projects",
+    headingColor: "rgb(237, 247, 251)",
+  },
+  {
+    path: "/contact",
+    sceneId: "contact-hero",
+    title: "Contact",
+    headingColor: "rgb(237, 230, 250)",
+  },
 ] as const;
 
 async function verifyRouteHero(
@@ -22,6 +42,7 @@ async function verifyRouteHero(
 
   await expect(hero).toHaveClass(/page-hero--layered/);
   await expect(title).toBeVisible();
+  await expect(title).toHaveCSS("color", route.headingColor);
   await expect
     .poll(() =>
       title.evaluate(

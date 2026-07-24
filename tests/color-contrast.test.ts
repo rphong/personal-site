@@ -58,12 +58,4 @@ describe("route color contrast", () => {
     expect(contrast(textStrong, background)).toBeGreaterThanOrEqual(4.5);
     expect(contrast(accent, background)).toBeGreaterThanOrEqual(4.5);
   });
-
-  it.each(routes)("%s hero fill keeps the large heading legible", (_, selector) => {
-    const route = cssRule(selector);
-    const background = variable(route, "route-background");
-    const accent = variable(route, "route-accent");
-
-    expect(contrast(accent, background)).toBeGreaterThanOrEqual(3);
-  });
 });

@@ -192,9 +192,12 @@ describe("site shell", () => {
       /\.page-hero h1\s*\{[^}]*color:\s*var\(--route-pale-heading\)/,
     );
     expect(css).toMatch(
-      /\.page-hero--layered h1\s*\{[^}]*color:\s*var\(--route-accent\)/,
+      /\.page-hero--layered h1\s*\{[^}]*color:\s*var\(--route-pale-heading\)/,
     );
-    expect(css).not.toMatch(/--route-pale-heading/);
+    expect(css).toMatch(/--route-pale-heading:\s*#ffffff/);
+    expect(css).toMatch(/--route-pale-heading:\s*#fbe5ea/);
+    expect(css).toMatch(/--route-pale-heading:\s*#edf7fb/);
+    expect(css).toMatch(/--route-pale-heading:\s*#ede6fa/);
     expect(css).not.toMatch(
       /\.page-hero--layered h1\s*\{[^}]*-webkit-text-stroke/,
     );

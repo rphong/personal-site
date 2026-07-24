@@ -31,6 +31,7 @@
   --content-max: 76rem;
   --route-background: #9eccc0;
   --route-accent: #135946;
+  --route-pale-heading: #ffffff;
   --surface: #eeeeee;
   --text: #505050;
   --text-strong: #282828;
@@ -78,6 +79,7 @@ img {
 .site-shell {
   --route-background: #9eccc0;
   --route-accent: #135946;
+  --route-pale-heading: #ffffff;
   min-height: 100vh;
   background: var(--route-background);
 }
@@ -85,16 +87,19 @@ img {
 .site-shell[data-route="experience"] {
   --route-background: #dfa9b5;
   --route-accent: #722939;
+  --route-pale-heading: #fbe5ea;
 }
 
 .site-shell[data-route="projects"] {
   --route-background: #afd4e1;
   --route-accent: #285d71;
+  --route-pale-heading: #edf7fb;
 }
 
 .site-shell[data-route="contact"] {
   --route-background: #c9bae4;
   --route-accent: #4b2e7e;
+  --route-pale-heading: #ede6fa;
 }
 
 .scene-stage {
@@ -335,7 +340,7 @@ img {
   width: max-content;
   max-width: none;
   margin-inline: auto;
-  color: var(--route-accent);
+  color: var(--route-pale-heading);
   line-height: 0.8;
   text-align: center;
   text-wrap: nowrap;
