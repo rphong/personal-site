@@ -226,7 +226,7 @@ const PROJECTS_HERO_LIGHTING = sourceLighting(
   3750,
   CRANE_LIGHT_SIZE,
   [1.141019, 6.502828, 1.778768],
-  [-1.7, 0, -0.15],
+  [0.9, 0, 0.7],
 );
 const LEAGUE_BAN_LIGHTING = sourceLighting(
   4000,
@@ -440,20 +440,20 @@ export const SCENE_DEFINITIONS = {
     mobile: frame([5.5, 4.4, 10.8], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
     lighting: PROJECTS_HERO_LIGHTING,
     groundShadow: groundShadow(
-      contactLobe([0.15, -0.01, 0.45], [2, 0.9], 0.45),
+      contactLobe([1.51, -0.01, 0.24], [2.6, 1.7], 0.45),
       castLobe(
         PROJECTS_HERO_LIGHTING.key.position,
-        [0.15, -0.008, 0.45],
-        2.25,
-        1,
+        [1.51, -0.008, 0.24],
+        2.6,
+        1.2,
         0.27,
       ),
-      contactLobe([0.1, -0.009, 1.75], [1.45, 0.7], 0.42),
+      contactLobe([0.27, -0.009, 1.15], [2.5, 0.95], 0.42),
       castLobe(
         PROJECTS_HERO_LIGHTING.key.position,
-        [0.1, -0.007, 1.75],
-        1.8,
-        0.75,
+        [0.27, -0.007, 1.15],
+        2.0,
+        0.85,
         0.25,
       ),
     ),
