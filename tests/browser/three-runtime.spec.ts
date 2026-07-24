@@ -1012,6 +1012,218 @@ test("synchronizes a pooled canvas before its first visible adoption frame", asy
   }
 });
 
+test("keeps a pooled canvas hidden until its destination adoption render commits", async ({
+  page,
+}) => {
+  await installRuntimeProbe(page);
+  await fulfillPosters(page);
+  const models = await fulfillModels(page);
+
+  try {
+    await page.goto("/experience?sceneTrace=1");
+    await page.addStyleTag({
+      content: `
+        [data-scene-id="experience-hero"] > .scene-stage {
+          width: 600px !important;
+          height: 500px !important;
+        }
+      `,
+    });
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+
+    await page.getByRole("link", { name: "Home", exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expectReadyResidentSet(page, RESIDENT_SCENES_BY_ROUTE["/"]);
+    await page.evaluate(() => {
+      if (window.__sceneRuntimeTrace) window.__sceneRuntimeTrace.length = 0;
+    });
+
+    await page.getByRole("link", { name: "Experience", exact: true }).click();
+    await expect(page).toHaveURL(/\/experience$/);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          window.__sceneRuntimeTrace?.some(
+            ({ details, phase }) =>
+              phase === "canvas:adoption-presented" &&
+              details.sceneId === "experience-hero",
+          ),
+        ),
+      )
+      .toBe(true);
+    await expectReadyResidentSet(
+      page,
+      RESIDENT_SCENES_BY_ROUTE["/experience"],
+    );
+
+    const trace = await page.evaluate(
+      () =>
+        window.__sceneRuntimeTrace?.filter(
+          ({ details }) =>
+            details.ownerSceneId === "experience-hero" ||
+            details.sceneId === "experience-hero",
+        ) ?? [],
+    );
+    const presentedIndex = trace.findIndex(
+      ({ phase }) => phase === "canvas:adoption-presented",
+    );
+    expect(presentedIndex).toBeGreaterThan(-1);
+
+    const prePresentation = trace
+      .slice(0, presentedIndex)
+      .filter(({ phase }) => phase.startsWith("pool:adopt-after-insert"));
+    expect(prePresentation.length).toBeGreaterThan(0);
+    for (const { details } of prePresentation) {
+      expect(details.poolState).toBe("adopting");
+      expect(
+        (
+          details.canvas as
+            | { readonly style?: { readonly visibility?: string } }
+            | null
+        )?.style?.visibility,
+      ).toBe("hidden");
+    }
+
+    const presented = trace[presentedIndex];
+    expect(presented?.details.poolState).toBe("assigned");
+    expect(presented?.details.currentAdoptionVersion).toBe(
+      presented?.details.renderedAdoptionVersion,
+    );
+
+    const chapterAdoptionSamples = await page.evaluate(() => {
+      const trace = window.__sceneRuntimeTrace ?? [];
+      return ["experience-intro", "nasa-rocket"].flatMap((sceneId) => {
+        const presentedIndex = trace.findIndex(
+          ({ details, phase }) =>
+            phase === "canvas:adoption-presented" &&
+            details.sceneId === sceneId,
+        );
+        if (presentedIndex < 0) return [];
+        return trace
+          .slice(0, presentedIndex)
+          .filter(
+            ({ details, phase }) =>
+              phase.startsWith("pool:adopt-after-insert") &&
+              details.ownerSceneId === sceneId,
+          )
+          .map(({ details, phase }) => ({
+            canvasVisibility: (
+              details.canvas as
+                | { readonly style?: { readonly visibility?: string } }
+                | null
+            )?.style?.visibility,
+            phase,
+            runtimePosterVisibility: (
+              details.runtimePoster as {
+                readonly style?: { readonly visibility?: string };
+              }
+            )?.style?.visibility,
+            sceneId,
+            sectionPosterVisibility: (
+              details.sectionPoster as {
+                readonly style?: { readonly visibility?: string };
+              }
+            )?.style?.visibility,
+          }));
+      });
+    });
+    expect(chapterAdoptionSamples.length).toBeGreaterThan(0);
+    for (const sample of chapterAdoptionSamples) {
+      expect(sample.canvasVisibility, sample.phase).toBe("hidden");
+      expect(sample.runtimePosterVisibility, sample.phase).toBe("hidden");
+      expect(sample.sectionPosterVisibility, sample.phase).toBe("hidden");
+    }
+  } finally {
+    await disposeFixture(models);
+  }
+});
+
+test("uses fixed vertical scaling for mobile hero posters", async ({
+  browser,
+}, testInfo) => {
+  const context = await createRuntimeContext(browser, testInfo, {
+    deviceScaleFactor: 1.5,
+    hasTouch: true,
+    isMobile: true,
+    viewport: { height: 720, width: 390 },
+  });
+  const page = await context.newPage();
+  await installRuntimeProbe(page);
+  const models = await fulfillModels(page, [], {
+    plans: { [EXPERIENCE_MODEL]: { hold: true } },
+  });
+
+  try {
+    await page.goto("/experience?sceneTrace=1");
+    await models.waitForRequest(EXPERIENCE_MODEL);
+    const host = residentHost(page, "experience-hero");
+    await expect(host).toHaveAttribute("data-three-status", "loading");
+
+    const poster = host.locator("picture.scene-runtime__poster img");
+    await expect(poster).toBeVisible();
+    await expect
+      .poll(() =>
+        poster.evaluate(
+          (image: HTMLImageElement) =>
+            image.complete && image.naturalHeight > 0,
+        ),
+      )
+      .toBe(true);
+
+    const geometry = await poster.evaluate((image: HTMLImageElement) => {
+      const stage = image.closest<HTMLElement>(".scene-stage--resident");
+      if (!stage) throw new Error("Resident stage is unavailable");
+      const imageRect = image.getBoundingClientRect();
+      const stageRect = stage.getBoundingClientRect();
+      return {
+        centerDelta:
+          imageRect.left +
+          imageRect.width / 2 -
+          (stageRect.left + stageRect.width / 2),
+        heightRatio: imageRect.height / stageRect.height,
+        objectFit: getComputedStyle(image).objectFit,
+        scaleRatio:
+          imageRect.width /
+          image.naturalWidth /
+          (imageRect.height / image.naturalHeight),
+      };
+    });
+
+    expect(geometry.objectFit).toBe("fill");
+    expect(geometry.heightRatio).toBeCloseTo(1, 5);
+    expect(geometry.scaleRatio).toBeCloseTo(1, 3);
+    expect(geometry.centerDelta).toBeCloseTo(0, 3);
+
+    const tracedScale = await page.evaluate(() => {
+      for (const entry of window.__sceneRuntimeTrace ?? []) {
+        const details = entry.details as {
+          readonly ownerSceneId?: unknown;
+          readonly runtimePoster?: {
+            readonly image?: {
+              readonly coverToVerticalScale?: unknown;
+            } | null;
+          };
+        };
+        if (
+          entry.phase === "poster:decoded" &&
+          details.ownerSceneId === "experience-hero" &&
+          typeof details.runtimePoster?.image?.coverToVerticalScale === "number"
+        ) {
+          return details.runtimePoster.image.coverToVerticalScale;
+        }
+      }
+      return null;
+    });
+    expect(tracedScale).toBeCloseTo(1, 5);
+  } finally {
+    await disposeFixture(models);
+    await context.close();
+  }
+});
+
 for (const route of [
   "/",
   "/experience",

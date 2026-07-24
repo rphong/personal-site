@@ -17,6 +17,7 @@ import {
 } from "react";
 import {
   ACESFilmicToneMapping,
+  Box3,
   Color,
   LinearSRGBColorSpace,
   PerspectiveCamera,
@@ -25,6 +26,7 @@ import {
   WebGLRenderer,
   type Camera,
   type Scene,
+  Vector3,
   type WebGLRendererParameters,
 } from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
@@ -37,6 +39,12 @@ import {
   disconnectSceneRuntimeDebug,
   recordSceneRuntimeDebugFrame,
 } from "./scene-runtime-debug";
+import {
+  sceneRuntimeTraceEnabled,
+  sceneTraceIdentity,
+  traceSceneRuntime,
+  traceSceneStageSnapshot,
+} from "./scene-runtime-trace";
 import type {
   SceneDefinition,
   SceneFailureReason,
@@ -374,6 +382,84 @@ export function sceneModelIsAttached(
   return Boolean(instance?.children.length);
 }
 
+function traceCamera(camera: Camera) {
+  return {
+    aspect:
+      "aspect" in camera && typeof camera.aspect === "number"
+        ? camera.aspect
+        : null,
+    far:
+      "far" in camera && typeof camera.far === "number" ? camera.far : null,
+    fov:
+      "fov" in camera && typeof camera.fov === "number" ? camera.fov : null,
+    near:
+      "near" in camera && typeof camera.near === "number"
+        ? camera.near
+        : null,
+    position: [camera.position.x, camera.position.y, camera.position.z],
+  };
+}
+
+function traceModelScreenBounds(
+  scene: Scene,
+  sceneId: SceneDefinition["id"],
+  camera: Camera,
+  canvas: HTMLCanvasElement,
+) {
+  const instance = scene.getObjectByName(`scene-instance:${sceneId}`);
+  if (!instance) return null;
+  const bounds = new Box3().setFromObject(instance);
+  if (bounds.isEmpty()) return null;
+
+  const corners = [
+    new Vector3(bounds.min.x, bounds.min.y, bounds.min.z),
+    new Vector3(bounds.min.x, bounds.min.y, bounds.max.z),
+    new Vector3(bounds.min.x, bounds.max.y, bounds.min.z),
+    new Vector3(bounds.min.x, bounds.max.y, bounds.max.z),
+    new Vector3(bounds.max.x, bounds.min.y, bounds.min.z),
+    new Vector3(bounds.max.x, bounds.min.y, bounds.max.z),
+    new Vector3(bounds.max.x, bounds.max.y, bounds.min.z),
+    new Vector3(bounds.max.x, bounds.max.y, bounds.max.z),
+  ].map((corner) => corner.project(camera));
+  const minX = Math.min(...corners.map(({ x }) => x));
+  const maxX = Math.max(...corners.map(({ x }) => x));
+  const minY = Math.min(...corners.map(({ y }) => y));
+  const maxY = Math.max(...corners.map(({ y }) => y));
+
+  return {
+    height: ((maxY - minY) / 2) * canvas.clientHeight,
+    maxX: ((maxX + 1) / 2) * canvas.clientWidth,
+    maxY: ((1 - minY) / 2) * canvas.clientHeight,
+    minX: ((minX + 1) / 2) * canvas.clientWidth,
+    minY: ((1 - maxY) / 2) * canvas.clientHeight,
+    width: ((maxX - minX) / 2) * canvas.clientWidth,
+  };
+}
+
+function presentRenderedAdoption(
+  canvas: HTMLCanvasElement,
+  sceneId: SceneDefinition["id"],
+  adoptionVersion: number,
+) {
+  const stage = canvas.closest<HTMLElement>("[data-scene-resident-stage]");
+  if (
+    !stage ||
+    stage.dataset.scenePoolState !== "adopting" ||
+    stage.dataset.sceneAdoptionVersion !== String(adoptionVersion)
+  ) {
+    return false;
+  }
+
+  stage.dataset.sceneRenderedAdoptionVersion = String(adoptionVersion);
+  stage.dataset.scenePoolState = "assigned";
+  traceSceneStageSnapshot(
+    "canvas:adoption-presented",
+    stage,
+    sceneTraceIdentity(sceneId, adoptionVersion),
+  );
+  return true;
+}
+
 function DemandRenderer({
   adoptionVersion = 0,
   debugActive = true,
@@ -393,9 +479,11 @@ function DemandRenderer({
   const reported = useRef(false);
   const failed = useRef(false);
   const frameTimes = useRef<number[]>([]);
+  const presentedAdoptionVersion = useRef<number | null>(null);
   const renderer = useThree((state) => state.gl) as WebGLRenderer;
   const renderedScene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
+  const getRootState = useThree((state) => state.get);
   const invalidate = useThree((state) => state.invalidate);
   const setSize = useThree((state) => state.setSize);
 
@@ -424,6 +512,22 @@ function DemandRenderer({
 
       const generation = health.getGeneration();
       const frameBefore = gl.info.render.frame;
+      const tracing = sceneRuntimeTraceEnabled();
+      if (tracing) {
+        traceSceneRuntime("canvas:render-before", {
+          ...sceneTraceIdentity(sceneId, adoptionVersion),
+          buffer: {
+            height: gl.domElement.height,
+            width: gl.domElement.width,
+          },
+          camera: traceCamera(activeCamera),
+          css: {
+            height: gl.domElement.clientHeight,
+            width: gl.domElement.clientWidth,
+          },
+          rendererFrame: frameBefore,
+        });
+      }
       try {
         gl.render(scene, activeCamera);
         if (
@@ -436,6 +540,33 @@ function DemandRenderer({
         }
 
         recordSceneRuntimeDebugFrame(gl, scene, sceneId);
+        if (tracing) {
+          traceSceneRuntime("canvas:render-after", {
+            ...sceneTraceIdentity(sceneId, adoptionVersion),
+            buffer: {
+              height: gl.domElement.height,
+              width: gl.domElement.width,
+            },
+            camera: traceCamera(activeCamera),
+            css: {
+              height: gl.domElement.clientHeight,
+              width: gl.domElement.clientWidth,
+            },
+            modelScreenBounds: traceModelScreenBounds(
+              scene,
+              sceneId,
+              activeCamera,
+              gl.domElement,
+            ),
+            rendererFrame: gl.info.render.frame,
+          });
+        }
+        if (
+          presentedAdoptionVersion.current !== adoptionVersion &&
+          presentRenderedAdoption(gl.domElement, sceneId, adoptionVersion)
+        ) {
+          presentedAdoptionVersion.current = adoptionVersion;
+        }
 
         const now = performance.now();
         const previous = frameTimes.current.at(-1);
@@ -462,7 +593,7 @@ function DemandRenderer({
         onFailure("unknown");
       }
     },
-    [health, onFailure, onFirstFrame, sceneId],
+    [adoptionVersion, health, onFailure, onFirstFrame, sceneId],
   );
 
   useLayoutEffect(() => {
@@ -471,6 +602,32 @@ function DemandRenderer({
     // R3F's ResizeObserver runs, so reconcile its assigned wrapper and camera
     // synchronously before the first visible adoption frame.
     const container = renderer.domElement.parentElement;
+    const tracing = sceneRuntimeTraceEnabled();
+    const stage = tracing
+      ? renderer.domElement.closest<HTMLElement>(
+          "[data-scene-resident-stage]",
+        )
+      : null;
+    if (stage) {
+      traceSceneStageSnapshot(
+        "canvas:adoption-layout-before",
+        stage,
+        {
+          ...sceneTraceIdentity(sceneId, adoptionVersion),
+          camera: traceCamera(camera),
+          cameraFrame:
+            cameraFrameForWidth(
+              sceneDefinition,
+              container?.getBoundingClientRect().width ?? 0,
+            ) === sceneDefinition.mobile
+              ? "mobile"
+              : "desktop",
+          debugActive,
+          pixelRatio: renderer.getPixelRatio(),
+          r3fSize: getRootState().size,
+        },
+      );
+    }
     const bounds = container?.getBoundingClientRect();
     if (bounds && bounds.width > 0 && bounds.height > 0) {
       setSize(bounds.width, bounds.height, bounds.top, bounds.left);
@@ -479,14 +636,56 @@ function DemandRenderer({
         cameraFrameForWidth(sceneDefinition, bounds.width),
       );
     }
+    if (stage) {
+      traceSceneStageSnapshot(
+        "canvas:adoption-layout-sized",
+        stage,
+        {
+          ...sceneTraceIdentity(sceneId, adoptionVersion),
+          camera: traceCamera(camera),
+          cameraFrame:
+            cameraFrameForWidth(sceneDefinition, bounds?.width ?? 0) ===
+            sceneDefinition.mobile
+              ? "mobile"
+              : "desktop",
+          debugActive,
+          measuredContainer: bounds
+            ? {
+                height: bounds.height,
+                left: bounds.left,
+                top: bounds.top,
+                width: bounds.width,
+              }
+            : null,
+          pixelRatio: renderer.getPixelRatio(),
+          r3fSize: getRootState().size,
+        },
+      );
+    }
     renderFrame(renderer, renderedScene, camera);
+    if (stage) {
+      traceSceneStageSnapshot(
+        "canvas:adoption-layout-rendered",
+        stage,
+        {
+          ...sceneTraceIdentity(sceneId, adoptionVersion),
+          camera: traceCamera(camera),
+          debugActive,
+          pixelRatio: renderer.getPixelRatio(),
+          r3fSize: getRootState().size,
+        },
+      );
+    }
   }, [
     adoptionVersion,
     camera,
+    debugActive,
+    getRootState,
     renderFrame,
     renderedScene,
     renderer,
     sceneDefinition,
+    sceneId,
     setSize,
   ]);
 

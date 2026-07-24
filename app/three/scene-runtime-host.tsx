@@ -24,6 +24,12 @@ import { clearPreparedSceneModel } from "./scene-model";
 import { ScenePoster } from "./scene-poster";
 import { SceneRotationArea } from "./scene-rotation-area";
 import { useSceneRuntime } from "./scene-runtime-context";
+import {
+  sceneTraceIdentity,
+  traceSceneRuntime,
+  traceSceneStageSnapshot,
+  traceSceneStageTimeline,
+} from "./scene-runtime-trace";
 import type {
   LiveSceneDefinition,
   LiveSceneId,
@@ -122,11 +128,20 @@ export function SceneRuntimeHostView({
   const posterLoaded = useCallback(
     (image: HTMLImageElement) => {
       const candidateToken = activationToken;
+      const tracePoster = (phase: string) => {
+        const stage = image.closest<HTMLElement>(".scene-stage--resident");
+        if (!stage) return;
+        traceSceneStageSnapshot(phase, stage, {
+          activationVersion,
+          sceneId: scene.id,
+        });
+      };
       const markReady = () => {
         if (
           activePosterToken.current === candidateToken &&
           image.isConnected
         ) {
+          tracePoster("poster:decoded");
           setPosterReadyToken(candidateToken);
         }
       };
@@ -137,10 +152,11 @@ export function SceneRuntimeHostView({
       }
 
       void image.decode().then(markReady, () => {
+        tracePoster("poster:decode-error");
         // Keep the section-owned poster visible when decoding fails.
       });
     },
-    [activationToken],
+    [activationToken, activationVersion, scene.id],
   );
 
   useLayoutEffect(() => {
@@ -433,6 +449,27 @@ function residentStageListsMatch(
   );
 }
 
+function presentPosterAdoption(
+  stage: HTMLElement,
+  sceneId: LiveSceneId,
+  adoptionVersion: number,
+  activationVersion: number,
+) {
+  if (
+    stage.dataset.scenePoolState !== "adopting" ||
+    stage.dataset.sceneAdoptionVersion !== String(adoptionVersion)
+  ) {
+    return;
+  }
+  stage.dataset.sceneRenderedAdoptionVersion = String(adoptionVersion);
+  stage.dataset.scenePoolState = "assigned";
+  traceSceneStageSnapshot(
+    "host:poster-adoption-presented",
+    stage,
+    sceneTraceIdentity(sceneId, adoptionVersion, activationVersion),
+  );
+}
+
 function useResidentStages(
   pathname: string,
   activeSceneId: SceneId,
@@ -452,9 +489,27 @@ function useResidentStages(
     if (!poolElement) return;
 
     const park = (resident: ResidentStage) => {
+      traceSceneStageSnapshot(
+        "pool:park-before",
+        resident.stage,
+        sceneTraceIdentity(
+          resident.scene.id,
+          resident.adoptionVersion,
+          resident.activationVersion,
+        ),
+      );
       resident.section = null;
       resident.stage.dataset.scenePoolState = "pooled";
       poolElement.append(resident.stage);
+      traceSceneStageTimeline(
+        "pool:park-after",
+        resident.stage,
+        sceneTraceIdentity(
+          resident.scene.id,
+          resident.adoptionVersion,
+          resident.activationVersion,
+        ),
+      );
     };
 
     const touch = (resident: ResidentStage) => {
@@ -486,6 +541,7 @@ function useResidentStages(
       stage.dataset.sceneFor = scene.id;
       stage.dataset.scenePoolKey = `resident-stage-${activationVersion}`;
       stage.dataset.scenePoolState = "pooled";
+      stage.dataset.sceneAdoptionVersion = "0";
       const resident: ResidentStage = {
         activationVersion,
         adoptionVersion: 0,
@@ -497,6 +553,11 @@ function useResidentStages(
       };
       residents.current.push(resident);
       poolElement.append(stage);
+      traceSceneStageSnapshot(
+        "pool:create-resident",
+        stage,
+        sceneTraceIdentity(scene.id, 0, activationVersion),
+      );
       return resident;
     };
 
@@ -554,12 +615,31 @@ function useResidentStages(
         resident ??= createResident(scene) ?? undefined;
         if (!resident) continue;
 
-        if (resident.section !== section) {
+        const moved = resident.section !== section;
+        if (moved) {
+          traceSceneStageSnapshot(
+            "pool:adopt-before",
+            resident.stage,
+            sceneTraceIdentity(
+              resident.scene.id,
+              resident.adoptionVersion,
+              resident.activationVersion,
+            ),
+          );
           resident.section = section;
           resident.adoptionVersion += 1;
+          resident.stage.dataset.sceneAdoptionVersion = String(
+            resident.adoptionVersion,
+          );
+          resident.stage.dataset.scenePoolState = "adopting";
           touch(resident);
         }
-        resident.stage.dataset.scenePoolState = "assigned";
+        if (
+          !moved &&
+          resident.stage.dataset.scenePoolState !== "adopting"
+        ) {
+          resident.stage.dataset.scenePoolState = "assigned";
+        }
         resident.stage.dataset.scenePoolLastSeen = String(resident.lastSeen);
         const content = section.querySelector(":scope > .scene-section__content");
         if (
@@ -567,6 +647,17 @@ function useResidentStages(
           resident.stage.nextSibling !== content
         ) {
           section.insertBefore(resident.stage, content);
+        }
+        if (moved) {
+          traceSceneStageTimeline(
+            "pool:adopt-after-insert",
+            resident.stage,
+            sceneTraceIdentity(
+              resident.scene.id,
+              resident.adoptionVersion,
+              resident.activationVersion,
+            ),
+          );
         }
         assigned.add(resident);
       }
@@ -584,6 +675,16 @@ function useResidentStages(
       }
 
       const next = residents.current.map((resident) => ({ ...resident }));
+      traceSceneRuntime("pool:state-enqueue", {
+        activeSceneId: activeSceneIdRef.current,
+        pathname: pathnameRef.current,
+        residents: next.map((resident) => ({
+          adoptionVersion: resident.adoptionVersion,
+          ownerSceneId: resident.scene.id,
+          parentSceneId: resident.section?.dataset.sceneId ?? null,
+          poolState: resident.stage.dataset.scenePoolState ?? null,
+        })),
+      });
       setStages((current) =>
         residentStageListsMatch(current, next) ? current : next,
       );
@@ -638,6 +739,10 @@ function useResidentStages(
   useLayoutEffect(() => {
     pathnameRef.current = pathname;
     activeSceneIdRef.current = activeSceneId;
+    traceSceneRuntime("pool:route-layout", {
+      activeSceneId,
+      pathname,
+    });
     syncStagesRef.current?.();
   }, [activeSceneId, pathname, poolElement]);
 
@@ -661,6 +766,7 @@ function statusForRuntime({
 
 function SceneResidentSlot({
   scene,
+  stage,
   active,
   adoptionVersion,
   canvasEnabled,
@@ -671,6 +777,7 @@ function SceneResidentSlot({
   onRotate,
 }: {
   readonly scene: LiveSceneDefinition;
+  readonly stage: HTMLElement;
   readonly active: boolean;
   readonly adoptionVersion: number;
   readonly canvasEnabled: boolean;
@@ -718,6 +825,42 @@ function SceneResidentSlot({
   useLayoutEffect(() => {
     if (active) onActiveStatus(scene.id, status);
   }, [active, onActiveStatus, scene.id, status]);
+
+  useLayoutEffect(() => {
+    traceSceneRuntime("host:slot-layout", {
+      active,
+      activationVersion,
+      adoptionVersion,
+      canvasEnabled,
+      preferredStatus,
+      sceneId: scene.id,
+      status,
+    });
+  }, [
+    active,
+    activationVersion,
+    adoptionVersion,
+    canvasEnabled,
+    preferredStatus,
+    scene.id,
+    status,
+  ]);
+
+  useLayoutEffect(() => {
+    if (preferredStatus === "loading") return;
+    presentPosterAdoption(
+      stage,
+      scene.id,
+      adoptionVersion,
+      activationVersion,
+    );
+  }, [
+    activationVersion,
+    adoptionVersion,
+    preferredStatus,
+    scene.id,
+    stage,
+  ]);
 
   return (
     <SceneRuntimeHostView
@@ -787,6 +930,7 @@ export function SceneRuntimeHost() {
             <SceneResidentSlot
               key={key}
               scene={scene}
+              stage={stage}
               active={runtime.activeSceneId === scene.id}
               adoptionVersion={adoptionVersion}
               canvasEnabled={canvasEnabled}

@@ -11,7 +11,6 @@
 }
 
 .scene-runtime__poster,
-.scene-runtime__poster img,
 .scene-runtime__canvas,
 .scene-runtime__resident-canvas {
   position: absolute;
@@ -22,6 +21,7 @@
 
 .scene-runtime__poster {
   display: block;
+  overflow: hidden;
   visibility: visible;
 }
 
@@ -35,8 +35,28 @@
 }
 
 .scene-runtime__poster img {
+  position: absolute;
+  inset: 0;
   display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
   object-fit: cover;
+  object-position: center;
+}
+
+.page-hero.scene-section[data-required-live="true"]
+  .scene-runtime__poster
+  img,
+.page-hero.scene-section[data-required-live="true"]
+  > .scene-section__poster
+  img {
+  inset: auto;
+  top: 0;
+  left: 50%;
+  width: auto;
+  transform: translateX(-50%);
+  object-fit: fill;
 }
 
 .scene-runtime__canvas,
@@ -54,6 +74,24 @@
 
 .scene-runtime[data-three-status="ready"] .scene-runtime__canvas,
 .scene-runtime[data-three-status="ready"] .scene-runtime__resident-canvas {
+  visibility: visible;
+}
+
+.scene-stage--resident[data-scene-pool-state="adopting"]
+  :is(.scene-runtime__canvas, .scene-runtime__resident-canvas) {
+  visibility: hidden;
+}
+
+.page-hero
+  > .scene-stage--resident[data-scene-pool-state="adopting"]
+  .scene-runtime__poster {
+  visibility: visible;
+}
+
+.page-hero.scene-section[data-required-live="true"]:has(
+    > .scene-stage--resident[data-scene-pool-state="adopting"]
+  )
+  > .scene-section__poster {
   visibility: visible;
 }
 
@@ -143,6 +181,7 @@
   display: block;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   pointer-events: none;
 }
 

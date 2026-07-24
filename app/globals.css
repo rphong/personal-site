@@ -388,7 +388,8 @@ img {
 
 /* Live models sit in front of the giant word (per mock); every non-ready
    fallback keeps the word above the poster layers. */
-.page-hero--layered > .scene-stage--resident:has(
+.page-hero--layered
+  > .scene-stage--resident[data-scene-pool-state="assigned"]:has(
     .scene-runtime[data-three-status="ready"]
   ) {
   z-index: 2;

@@ -23,6 +23,7 @@ import {
 import { useThreePreference } from "./three-preference";
 import { ThreePreferenceToggle } from "./three-preference-toggle";
 import { SceneDebugPanel } from "./scene-debug-panel";
+import { traceSceneRuntime } from "./scene-runtime-trace";
 import { applySceneTuning } from "./scene-tuning";
 import type {
   SceneId,
@@ -130,7 +131,20 @@ export function SceneProvider({ children }: { readonly children: ReactNode }) {
   const pathnameRef = useRef(pathname);
   useLayoutEffect(() => {
     pathnameRef.current = pathname;
-  }, [pathname]);
+    traceSceneRuntime("provider:pathname-layout", {
+      activeSceneId: state.activeSceneId,
+      activationAllowed: state.activationAllowed,
+      activationVersion: state.activationVersion,
+      pathname,
+      status: state.status,
+    });
+  }, [
+    pathname,
+    state.activeSceneId,
+    state.activationAllowed,
+    state.activationVersion,
+    state.status,
+  ]);
 
   const registrations = useRef(new Map<Element, Registration>());
   const observer = useRef<IntersectionObserver | null>(null);

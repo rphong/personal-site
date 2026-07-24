@@ -1,5 +1,5 @@
 import { act, render, waitFor } from "@testing-library/react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneCanvasPortProps } from "./scene-canvas";
 import { clearPreparedSceneModel } from "./scene-model";
@@ -34,9 +34,33 @@ vi.mock("./scene-model", () => ({
 
 vi.mock("./scene-canvas-boundary", () => ({
   SceneCanvasBoundary: (props: SceneCanvasPortProps) => {
-    const { activationVersion, onFailure, onFirstFrame, renderVersion, scene } =
-      props;
+    const {
+      activationVersion,
+      adoptionVersion = 0,
+      onFailure,
+      onFirstFrame,
+      renderVersion,
+      scene,
+    } = props;
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     canvasPorts.set(scene.id, props);
+    useLayoutEffect(() => {
+      if (!completeCanvases || scene.id === failedCanvasSceneId) return;
+      const stage = canvasRef.current?.closest<HTMLElement>(
+        "[data-scene-resident-stage]",
+      );
+      if (
+        !stage ||
+        stage.dataset.scenePoolState !== "adopting" ||
+        stage.dataset.sceneAdoptionVersion !== String(adoptionVersion)
+      ) {
+        return;
+      }
+      // Mirror the production Canvas contract: a resident becomes presentable
+      // only after a frame for the current adoption has committed.
+      stage.dataset.sceneRenderedAdoptionVersion = String(adoptionVersion);
+      stage.dataset.scenePoolState = "assigned";
+    }, [adoptionVersion, scene.id]);
     useEffect(() => {
       if (scene.id === failedCanvasSceneId) {
         onFailure("webgl2-unavailable");
@@ -47,6 +71,7 @@ vi.mock("./scene-canvas-boundary", () => ({
     }, [activationVersion, onFailure, onFirstFrame, renderVersion, scene.id]);
     return (
       <canvas
+        ref={canvasRef}
         data-fake-scene-canvas={scene.id}
         onClick={() => onFailure("decode")}
       />
