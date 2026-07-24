@@ -448,13 +448,16 @@ export const SCENE_DEFINITIONS = {
         1.2,
         0.27,
       ),
-      contactLobe([0.27, -0.009, 1.15], [2.5, 0.95], 0.42),
+      // Anchored on the plank's centre, not the object origin, and lighter than
+      // the crane's: the bench now stands on full-length legs, so its shadow
+      // reads as a soft pool under a raised top rather than a contact patch.
+      contactLobe([-0.52, -0.009, 1.26], [2.7, 1.15], 0.34),
       castLobe(
         PROJECTS_HERO_LIGHTING.key.position,
-        [0.27, -0.007, 1.15],
-        2.0,
-        0.85,
-        0.25,
+        [-0.52, -0.007, 1.26],
+        2.4,
+        1.0,
+        0.22,
       ),
     ),
     rotation: DEFAULT_ROTATION,

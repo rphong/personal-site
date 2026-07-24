@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractSha256": "4c67e30914d1ef0aad513f764daeabdb6f2270d99f4957dd0c30659965645e7e",
-  "renderInputsSha256": "37c6bdd8e54bfce8fca6fd7fd3f4f210b591f823521320b3c9bf47adde403bde",
+  "renderInputsSha256": "2e326620073203dba89fcd573dbe6d9921f37c8feab0bf32c09fd0731e5e29a2",
   "renderer": {
     "browser": "chromium",
     "browserVersion": "149.0.7827.55",
@@ -180,8 +180,8 @@
       "path": "public/posters/projects-hero-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 37344,
-      "sha256": "a3971eccde91f0e82e3bd4d55d2647c634b8ff4f5dadeb762f0302c271b9da13"
+      "bytes": 39656,
+      "sha256": "61c5cde3a3b4fd098e74554628f8c2c121535a7815a249f4a8156935a70d9ce3"
     },
     {
       "sceneId": "projects-hero",
@@ -189,8 +189,8 @@
       "path": "public/posters/projects-hero-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 17030,
-      "sha256": "98818e7196e7374328ddc894c1155e764c11def5e1fbf4dca87bfdb027c1c306"
+      "bytes": 17938,
+      "sha256": "d3cc56d7da583161d8bd9ae77495e137e19360d6516c8bc72b6032fecf955d10"
     }
   ]
 }
