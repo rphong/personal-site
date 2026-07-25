@@ -439,25 +439,37 @@ export const SCENE_DEFINITIONS = {
     ),
     mobile: frame([5.5, 4.4, 10.8], [0.2, 0.8, 0.3], 40, MOBILE_AREA),
     lighting: PROJECTS_HERO_LIGHTING,
+    // Matched against the mock at equal table scale: its pools are denser than
+    // ours were (median darkness 0.155 against 0.100) and read as one mass
+    // gathered under each object, not a pale ring around it.
     groundShadow: groundShadow(
-      contactLobe([1.51, -0.01, 0.24], [2.6, 1.7], 0.45),
+      contactLobe([1.51, -0.01, 0.24], [2.5, 1.8], 0.38),
       castLobe(
         PROJECTS_HERO_LIGHTING.key.position,
         [1.51, -0.008, 0.24],
-        2.6,
-        1.2,
-        0.27,
+        2.7,
+        1.6,
+        0.22,
       ),
-      // Anchored on the plank's centre, not the object origin, and lighter than
-      // the crane's: the bench now stands on full-length legs, so its shadow
-      // reads as a soft pool under a raised top rather than a contact patch.
-      contactLobe([-0.52, -0.009, 1.26], [2.7, 1.15], 0.34),
+      // The bench pool, turned onto the table's own 30-degree axis rather than
+      // left square to the world, so it runs the length of the top the way the
+      // mock's does instead of ballooning out as a circle either side of it.
+      // One lobe falls off as (1-r^2)^2 and peaks to a point, so a broad faint
+      // one carries the outer falloff while a tighter one builds the flat dark
+      // centre the mock has - the same pairing the home hero uses.
+      contactLobe([-0.7, -0.009, 1.0], [4.3, 2.5], 0.28, Math.PI / 6),
+      contactLobe([-0.52, -0.01, 1.1], [3.5, 1.9], 0.4, Math.PI / 6),
+      // Only two of the six legs reach the floor. Darkening the ground exactly
+      // where those two land is what stops the bench reading as hovering; the
+      // positions come from the blend's foot vertices, not from eye.
+      contactLobe([-0.877, -0.011, 1.83], [1.4, 1.0], 0.3),
+      contactLobe([0.547, -0.011, 0.92], [1.3, 0.95], 0.26),
       castLobe(
         PROJECTS_HERO_LIGHTING.key.position,
-        [-0.52, -0.007, 1.26],
-        2.4,
-        1.0,
-        0.22,
+        [-0.55, -0.007, 1.15],
+        2.8,
+        1.9,
+        0.18,
       ),
     ),
     rotation: DEFAULT_ROTATION,

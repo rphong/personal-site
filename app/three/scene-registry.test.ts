@@ -205,7 +205,15 @@ describe("scene registry", () => {
       "experience-hero": ["contact", "contact", "cast"],
       "experience-intro": ["contact", "contact", "cast"],
       "nasa-rocket": ["contact", "cast"],
-      "projects-hero": ["contact", "cast", "contact", "cast"],
+      "projects-hero": [
+        "contact",
+        "cast",
+        "contact",
+        "contact",
+        "contact",
+        "contact",
+        "cast",
+      ],
       "league-ban": [
         "contact",
         "cast",

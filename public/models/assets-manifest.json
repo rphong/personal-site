@@ -26,7 +26,7 @@
     },
     "crane-making-table": {
       "animations": [],
-      "bytes": 31024,
+      "bytes": 31236,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "KHR_mesh_quantization"
@@ -38,8 +38,8 @@
       "materials": 7,
       "nodes": 13,
       "primitives": 13,
-      "sha256": "2dbaf785f4c4088e6a081b20e5943e2e1853b1d25bcd49500270db9a5fb11537",
-      "sourceSha256": "ecdcf31709ce61c5ce5266d47ecdd6d24f9c0111967e7a5eb1c0e3bc44b408a1",
+      "sha256": "60969c213f256b20c4857a731a6d615bea09791b83d8e315f70dd496ee491ca7",
+      "sourceSha256": "94c3c8f4447647c77f0386f9a51797f4cad9d9039379a8907d9be5887a86157c",
       "textures": [],
       "triangles": 1491,
       "url": "/models/crane-making-table.glb",
