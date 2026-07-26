@@ -48,7 +48,7 @@
     },
     "crane-on-league": {
       "animations": [],
-      "bytes": 90920,
+      "bytes": 91088,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "EXT_texture_webp",
@@ -62,8 +62,8 @@
       "materials": 8,
       "nodes": 75,
       "primitives": 76,
-      "sha256": "f7d4f5be85099034fd2195b0f6c509cf37219502150434708ceca239b6dac7ed",
-      "sourceSha256": "e3a7efd3377ff3e6df5e9ad02d970f850771913c043bd8259f24b95944ccae63",
+      "sha256": "90699f7d540ac207941c855293411e2cd40e24b3f71fe074d4b33c87aa85a5da",
+      "sourceSha256": "1ce1d4adcbf294f38aa69778ce9c989528ced375b4d17bf6ae92d99ab78874a4",
       "textures": [
         {
           "bytes": 13818,
