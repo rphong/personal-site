@@ -1,39 +1,146 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="576" viewBox="0 0 1024 576">
-  <rect width="1024" height="576" fill="#edf7fb"/>
-  <rect x="0" y="0" width="226" height="576" fill="#285d71"/>
-  <circle cx="72" cy="76" r="28" fill="#afd4e1"/>
-  <rect x="116" y="58" width="78" height="16" rx="8" fill="#ffffff"/>
-  <rect x="116" y="86" width="54" height="12" rx="6" fill="#afd4e1"/>
-  <g fill="#afd4e1">
-    <rect x="38" y="158" width="150" height="24" rx="12"/>
-    <rect x="38" y="212" width="122" height="24" rx="12"/>
-    <rect x="38" y="266" width="136" height="24" rx="12"/>
-    <rect x="38" y="320" width="108" height="24" rx="12"/>
+  <rect width="1024" height="576" fill="#f2f3f1"/>
+  <rect width="1024" height="126" fill="#f7f8f6"/>
+  <rect y="124" width="1024" height="2" fill="#d9dedc"/>
+
+  <rect x="44" y="28" width="74" height="74" rx="18" fill="#e1b642"/>
+  <path d="M66 77 L81 49 L96 77 L81 91 Z" fill="none" stroke="#765e2c" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="81" cy="70" r="7" fill="#765e2c"/>
+  <text x="138" y="57" fill="#4f5557" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" letter-spacing="0.5">CORNLOVER23</text>
+  <text x="138" y="80" fill="#8a9191" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="1.2">PROFILE / ACTIVITY</text>
+  <rect x="138" y="91" width="86" height="12" rx="3" fill="#3f82c2"/>
+  <rect x="232" y="91" width="34" height="12" rx="3" fill="#cfd5d3"/>
+
+  <rect x="320" y="27" width="654" height="76" rx="10" fill="#e8ecea"/>
+  <rect x="346" y="47" width="260" height="11" rx="4" fill="#d1d7d5"/>
+  <rect x="346" y="72" width="398" height="9" rx="4" fill="#dde1df"/>
+  <rect x="814" y="45" width="66" height="35" rx="8" fill="#ffffff"/>
+  <rect x="895" y="45" width="53" height="35" rx="8" fill="#dbe5e4"/>
+
+  <rect x="43" y="145" width="237" height="388" rx="8" fill="#e7e9e7"/>
+  <rect x="43" y="145" width="237" height="54" rx="8" fill="#eceeec"/>
+  <path d="M64 173 L75 162 L86 173 L75 184 Z" fill="#e88b2c"/>
+  <text x="96" y="180" fill="#5b6061" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="0.7">RECENT RUNS</text>
+  <rect x="62" y="212" width="198" height="1" fill="#d0d5d3"/>
+
+  <g transform="translate(61 230)">
+    <circle cx="22" cy="22" r="22" fill="#cbd0ce"/>
+    <path d="M8 29 L22 13 L36 29" fill="none" stroke="#f5f6f4" stroke-width="6" stroke-linecap="round"/>
+    <rect x="57" y="10" width="111" height="10" rx="3" fill="#8c9292"/>
+    <rect x="57" y="29" width="78" height="8" rx="3" fill="#c1c7c5"/>
   </g>
-  <g transform="translate(270 42)">
-    <rect width="710" height="84" rx="24" fill="#ffffff"/>
-    <rect x="30" y="26" width="228" height="24" rx="12" fill="#285d71"/>
-    <rect x="546" y="26" width="132" height="32" rx="16" fill="#9eccc0"/>
+  <g transform="translate(61 294)">
+    <circle cx="22" cy="22" r="22" fill="#d2d6d4"/>
+    <rect x="10" y="11" width="24" height="24" rx="5" fill="#f5f6f4"/>
+    <rect x="57" y="10" width="96" height="10" rx="3" fill="#8c9292"/>
+    <rect x="57" y="29" width="121" height="8" rx="3" fill="#c1c7c5"/>
   </g>
-  <g transform="translate(270 154)">
-    <rect width="710" height="104" rx="24" fill="#ffffff"/>
-    <circle cx="52" cy="52" r="28" fill="#dfa9b5"/>
-    <rect x="100" y="28" width="206" height="18" rx="9" fill="#722939"/>
-    <rect x="100" y="60" width="154" height="14" rx="7" fill="#dfa9b5"/>
-    <rect x="548" y="34" width="118" height="36" rx="18" fill="#fbe5ea"/>
+  <g transform="translate(61 358)">
+    <circle cx="22" cy="22" r="22" fill="#cbd0ce"/>
+    <path d="M9 22 L22 9 L35 22 L22 35 Z" fill="#f5f6f4"/>
+    <rect x="57" y="10" width="122" height="10" rx="3" fill="#8c9292"/>
+    <rect x="57" y="29" width="86" height="8" rx="3" fill="#c1c7c5"/>
   </g>
-  <g transform="translate(270 282)">
-    <rect width="710" height="104" rx="24" fill="#ffffff"/>
-    <circle cx="52" cy="52" r="28" fill="#c9bae4"/>
-    <rect x="100" y="28" width="234" height="18" rx="9" fill="#4b2e7e"/>
-    <rect x="100" y="60" width="170" height="14" rx="7" fill="#c9bae4"/>
-    <rect x="548" y="34" width="118" height="36" rx="18" fill="#ede6fa"/>
+  <g transform="translate(61 422)">
+    <circle cx="22" cy="22" r="22" fill="#d2d6d4"/>
+    <circle cx="22" cy="22" r="11" fill="#f5f6f4"/>
+    <rect x="57" y="10" width="104" height="10" rx="3" fill="#8c9292"/>
+    <rect x="57" y="29" width="66" height="8" rx="3" fill="#c1c7c5"/>
   </g>
-  <g transform="translate(270 410)">
-    <rect width="710" height="104" rx="24" fill="#ffffff"/>
-    <circle cx="52" cy="52" r="28" fill="#9eccc0"/>
-    <rect x="100" y="28" width="192" height="18" rx="9" fill="#135946"/>
-    <rect x="100" y="60" width="146" height="14" rx="7" fill="#9eccc0"/>
-    <rect x="548" y="34" width="118" height="36" rx="18" fill="#edf7fb"/>
+  <rect x="62" y="492" width="198" height="22" rx="5" fill="#d9dddb"/>
+
+  <rect x="305" y="145" width="677" height="388" rx="8" fill="#fafbf9"/>
+  <rect x="305" y="145" width="677" height="48" rx="8" fill="#ecefec"/>
+  <text x="329" y="177" fill="#575d5e" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="0.9">MATCH HISTORY</text>
+  <text x="797" y="176" fill="#8b9292" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="1.1">SCORE</text>
+  <text x="903" y="176" fill="#8b9292" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="1.1">PACE</text>
+  <rect x="777" y="158" width="1" height="362" fill="#e0e4e2"/>
+  <rect x="883" y="158" width="1" height="362" fill="#e0e4e2"/>
+
+  <g transform="translate(305 194)">
+    <rect width="677" height="65" fill="#f8f9f7"/>
+    <rect width="7" height="65" fill="#b84455"/>
+    <circle cx="40" cy="32" r="20" fill="#d5d9d7"/>
+    <path d="M27 39 L40 22 L53 39" fill="none" stroke="#f8f9f7" stroke-width="6" stroke-linecap="round"/>
+    <text x="73" y="28" fill="#555b5c" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700">WIN 24:18</text>
+    <rect x="73" y="39" width="76" height="7" rx="3" fill="#b84455"/>
+    <rect x="158" y="39" width="38" height="7" rx="3" fill="#3f82c2"/>
+    <rect x="205" y="39" width="29" height="7" rx="3" fill="#a94a8d"/>
+    <rect x="251" y="18" width="92" height="9" rx="3" fill="#aab1b0"/>
+    <rect x="251" y="37" width="145" height="7" rx="3" fill="#d5d9d7"/>
+    <rect x="420" y="19" width="88" height="8" rx="3" fill="#b3b9b8"/>
+    <rect x="420" y="38" width="61" height="7" rx="3" fill="#d5d9d7"/>
+    <text x="510" y="39" fill="#5d6364" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700">12 / 4 / 8</text>
+    <text x="608" y="39" fill="#7b8282" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700">18:42</text>
   </g>
+
+  <g transform="translate(305 262)">
+    <rect width="677" height="65" fill="#eef1ee"/>
+    <rect width="7" height="65" fill="#b84455"/>
+    <circle cx="40" cy="32" r="20" fill="#cfd4d2"/>
+    <rect x="27" y="19" width="26" height="26" rx="6" fill="#f7f8f6"/>
+    <text x="73" y="28" fill="#555b5c" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700">LOSS 31:06</text>
+    <rect x="73" y="39" width="49" height="7" rx="3" fill="#b84455"/>
+    <rect x="131" y="39" width="62" height="7" rx="3" fill="#e88b2c"/>
+    <rect x="202" y="39" width="34" height="7" rx="3" fill="#3f82c2"/>
+    <rect x="251" y="18" width="118" height="9" rx="3" fill="#aab1b0"/>
+    <rect x="251" y="37" width="92" height="7" rx="3" fill="#d5d9d7"/>
+    <rect x="420" y="19" width="64" height="8" rx="3" fill="#b3b9b8"/>
+    <rect x="420" y="38" width="91" height="7" rx="3" fill="#d5d9d7"/>
+    <text x="510" y="39" fill="#5d6364" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700">7 / 9 / 3</text>
+    <text x="608" y="39" fill="#7b8282" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700">21:07</text>
+  </g>
+
+  <g transform="translate(305 330)">
+    <rect width="677" height="65" fill="#f8f9f7"/>
+    <rect width="7" height="65" fill="#b84455"/>
+    <circle cx="40" cy="32" r="20" fill="#d5d9d7"/>
+    <path d="M26 32 L40 18 L54 32 L40 46 Z" fill="#f8f9f7"/>
+    <text x="73" y="28" fill="#555b5c" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700">WIN 19:54</text>
+    <rect x="73" y="39" width="66" height="7" rx="3" fill="#b84455"/>
+    <rect x="148" y="39" width="32" height="7" rx="3" fill="#a94a8d"/>
+    <rect x="189" y="39" width="47" height="7" rx="3" fill="#3f82c2"/>
+    <rect x="251" y="18" width="101" height="9" rx="3" fill="#aab1b0"/>
+    <rect x="251" y="37" width="132" height="7" rx="3" fill="#d5d9d7"/>
+    <rect x="420" y="19" width="103" height="8" rx="3" fill="#b3b9b8"/>
+    <rect x="420" y="38" width="54" height="7" rx="3" fill="#d5d9d7"/>
+    <text x="510" y="39" fill="#5d6364" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700">9 / 2 / 11</text>
+    <text x="608" y="39" fill="#7b8282" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700">16:38</text>
+  </g>
+
+  <g transform="translate(305 398)">
+    <rect width="677" height="65" fill="#eef1ee"/>
+    <rect width="7" height="65" fill="#b84455"/>
+    <circle cx="40" cy="32" r="20" fill="#cfd4d2"/>
+    <circle cx="40" cy="32" r="10" fill="#f7f8f6"/>
+    <text x="73" y="28" fill="#555b5c" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700">WIN 27:41</text>
+    <rect x="73" y="39" width="55" height="7" rx="3" fill="#b84455"/>
+    <rect x="137" y="39" width="54" height="7" rx="3" fill="#e88b2c"/>
+    <rect x="200" y="39" width="36" height="7" rx="3" fill="#a94a8d"/>
+    <rect x="251" y="18" width="83" height="9" rx="3" fill="#aab1b0"/>
+    <rect x="251" y="37" width="151" height="7" rx="3" fill="#d5d9d7"/>
+    <rect x="420" y="19" width="76" height="8" rx="3" fill="#b3b9b8"/>
+    <rect x="420" y="38" width="88" height="7" rx="3" fill="#d5d9d7"/>
+    <text x="510" y="39" fill="#5d6364" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700">14 / 5 / 6</text>
+    <text x="608" y="39" fill="#7b8282" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700">20:13</text>
+  </g>
+
+  <g transform="translate(305 466)">
+    <rect width="677" height="66" fill="#f8f9f7"/>
+    <rect width="7" height="66" fill="#b84455"/>
+    <circle cx="40" cy="32" r="20" fill="#d5d9d7"/>
+    <path d="M27 21 H53 V45 H27 Z" fill="#f8f9f7"/>
+    <text x="73" y="28" fill="#555b5c" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700">LOSS 22:35</text>
+    <rect x="73" y="39" width="82" height="7" rx="3" fill="#b84455"/>
+    <rect x="164" y="39" width="27" height="7" rx="3" fill="#3f82c2"/>
+    <rect x="200" y="39" width="36" height="7" rx="3" fill="#a94a8d"/>
+    <rect x="251" y="18" width="129" height="9" rx="3" fill="#aab1b0"/>
+    <rect x="251" y="37" width="104" height="7" rx="3" fill="#d5d9d7"/>
+    <rect x="420" y="19" width="97" height="8" rx="3" fill="#b3b9b8"/>
+    <rect x="420" y="38" width="67" height="7" rx="3" fill="#d5d9d7"/>
+    <text x="510" y="39" fill="#5d6364" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700">6 / 8 / 5</text>
+    <text x="608" y="39" fill="#7b8282" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700">17:29</text>
+  </g>
+
+  <rect x="43" y="549" width="939" height="3" fill="#d2d7d5"/>
 </svg>

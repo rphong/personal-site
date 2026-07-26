@@ -34,18 +34,18 @@
       "source": "assets/blender/CraneMakingTable.blend"
     },
     "crane-on-league": {
-      "canonicalSha256": "302044506d49d097ff386fb0fcabdcb1932b86a47f59457679f5ea14cae1e021",
+      "canonicalSha256": "e3a7efd3377ff3e6df5e9ad02d970f850771913c043bd8259f24b95944ccae63",
       "generatorInputs": {
         "ownedTextures": {
           "LeagueBanDashboard": {
-            "bytes": 20162,
+            "bytes": 20506,
             "path": "assets/blender/textures/league-ban-dashboard.png",
-            "sha256": "72db13faa6dd9c4457979297b623734fa147b868d386716c3089465ab97c909d"
+            "sha256": "6fe8e9029e6fee18b93ebd81772b45bcc804afafc67494ff7b838c337a93f410"
           },
           "LeagueMatchHistory": {
-            "bytes": 17113,
+            "bytes": 45074,
             "path": "assets/blender/textures/league-match-history.png",
-            "sha256": "7b55cc55c2fda59131f1e372e923738c801ee048ec674797753fc4f81723acdf"
+            "sha256": "b157b30f49b9064c41f7251f0a15e408d69ee36f0260d147964e31a1e3cdae41"
           }
         },
         "staticCranePose": {

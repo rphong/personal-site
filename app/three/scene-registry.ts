@@ -229,10 +229,14 @@ const PROJECTS_HERO_LIGHTING = sourceLighting(
   [0.9, 0, 0.7],
 );
 const LEAGUE_BAN_LIGHTING = sourceLighting(
-  4000,
-  30,
-  [-0.84895, 3.693709, 0.832018],
-  [-0.86, 0, 0.88],
+  2700,
+  15,
+  [-2, 9, 7.2],
+  [0, 0.5, 0.5],
+  {
+    worldLinearColor: [0.05, 0.05, 0.05],
+    worldStrength: 0.6,
+  },
 );
 const FROGGIE_LIGHTING = sourceLighting(
   720,
@@ -531,13 +535,58 @@ export const SCENE_DEFINITIONS = {
         0.8,
         0.21,
       ),
-      contactLobe([1.6, -0.008, 0.15], [2.3, 1.1], 0.44),
+      // The crane touches down along two parallel edges running 33.7 degrees
+      // through x=1.46-2.46 and z=0.24 to -0.57. One contact profile can only
+      // peak to a point, so six overlapping lobes make the mock's dark shelf
+      // along that axis while the broad lobe underneath carries its falloff.
+      contactLobe(
+        [1.98, -0.008, -0.16],
+        [4.8, 3.2],
+        0.24,
+        Math.PI * (3 / 16),
+      ),
+      contactLobe(
+        [1.62, -0.01, 0.08],
+        [2.2, 1.25],
+        0.48,
+        Math.PI * (3 / 16),
+      ),
+      contactLobe(
+        [1.8, -0.01, -0.04],
+        [2.2, 1.25],
+        0.48,
+        Math.PI * (3 / 16),
+      ),
+      contactLobe(
+        [1.98, -0.01, -0.16],
+        [2.2, 1.25],
+        0.48,
+        Math.PI * (3 / 16),
+      ),
+      contactLobe(
+        [2.16, -0.01, -0.28],
+        [2.2, 1.25],
+        0.48,
+        Math.PI * (3 / 16),
+      ),
+      contactLobe(
+        [2.34, -0.01, -0.4],
+        [2.2, 1.25],
+        0.48,
+        Math.PI * (3 / 16),
+      ),
+      contactLobe(
+        [2.52, -0.01, -0.52],
+        [2.2, 1.25],
+        0.48,
+        Math.PI * (3 / 16),
+      ),
       castLobe(
         LEAGUE_BAN_LIGHTING.key.position,
-        [1.6, -0.006, 0.15],
-        2.35,
-        1.15,
-        0.27,
+        [1.98, -0.006, -0.16],
+        2.7,
+        1.5,
+        0.22,
       ),
     ),
     rotation: DEFAULT_ROTATION,

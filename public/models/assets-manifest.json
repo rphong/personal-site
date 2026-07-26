@@ -48,7 +48,7 @@
     },
     "crane-on-league": {
       "animations": [],
-      "bytes": 72332,
+      "bytes": 90920,
       "extensionsRequired": [
         "EXT_meshopt_compression",
         "EXT_texture_webp",
@@ -62,23 +62,23 @@
       "materials": 8,
       "nodes": 75,
       "primitives": 76,
-      "sha256": "27778b6522044321ad76cbc423c9362dfd989eb56e73606a472262039764969d",
-      "sourceSha256": "302044506d49d097ff386fb0fcabdcb1932b86a47f59457679f5ea14cae1e021",
+      "sha256": "f7d4f5be85099034fd2195b0f6c509cf37219502150434708ceca239b6dac7ed",
+      "sourceSha256": "e3a7efd3377ff3e6df5e9ad02d970f850771913c043bd8259f24b95944ccae63",
       "textures": [
         {
-          "bytes": 6736,
+          "bytes": 13818,
           "height": 576,
           "mimeType": "image/webp",
           "name": "LeagueBanDashboard",
-          "sha256": "8db329fcbd60ed2467edd27ae467e735c7a2cb97ff1648f8742ff52161f46009",
+          "sha256": "0e074f510acafe629a1a984158e1aa98600ae00d99459f92917ff7eb0af32d17",
           "width": 1024
         },
         {
-          "bytes": 5754,
+          "bytes": 19708,
           "height": 576,
           "mimeType": "image/webp",
           "name": "LeagueMatchHistory",
-          "sha256": "60819e8f3a4e7b7934e930a39bc11f7a108746cc66ef70bbee1d25da515bdcff",
+          "sha256": "ac76baa732587554fe4cc0aa1c750829b503437338f605ada76982be853ce733",
           "width": 1024
         }
       ],

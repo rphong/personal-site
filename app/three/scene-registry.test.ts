@@ -159,13 +159,8 @@ describe("scene registry", () => {
       },
       "league-ban": {
         exposure: 1,
-        world: { linearColor: [0.05, 0.05, 0.05], strength: 1 },
-        key: area(
-          4000,
-          30,
-          [-0.84895, 3.693709, 0.832018],
-          [-0.86, 0, 0.88],
-        ),
+        world: { linearColor: [0.05, 0.05, 0.05], strength: 0.6 },
+        key: area(2700, 15, [-2, 9, 7.2], [0, 0.5, 0.5]),
       },
       "froggie-adventures": {
         exposure: 1,
@@ -224,6 +219,12 @@ describe("scene registry", () => {
         "cast",
         "contact",
         "cast",
+        "contact",
+        "contact",
+        "contact",
+        "contact",
+        "contact",
+        "contact",
         "contact",
         "cast",
       ],
