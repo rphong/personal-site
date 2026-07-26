@@ -672,8 +672,13 @@ body:has(.scene-runtime[data-three-status="error"])
   border-radius: 0;
 }
 
+/* The model crosses the arch apex in the mock, so this stage starts at the
+   chapter top rather than 3rem below the arch as it used to. Height is bounded
+   by the copy, not by taste: the kicker starts at y=594 within the chapter and
+   the model fills its canvas, so a taller stage puts the crane on the heading. */
 .project-chapter--league-ban > .scene-stage {
-  top: calc(var(--project-arch-top) + 3rem);
+  top: 0;
+  height: min(53.9svh, 36.4rem);
 }
 
 .project-chapter--froggie-adventures > .scene-stage {

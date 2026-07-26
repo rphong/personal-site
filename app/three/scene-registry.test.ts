@@ -364,15 +364,15 @@ describe("scene registry", () => {
       },
       "league-ban": {
         desktop: {
-          cameraPosition: [4.5, 2.9, 6.5],
-          cameraTarget: [0, 0, 0],
-          fov: 34,
+          cameraPosition: [13.3391, 5.9409, 4.0922],
+          cameraTarget: [0.7595, 0.781, 1.02],
+          fov: 16.68,
           rotationArea: { top: 10, right: 14, bottom: 46, left: 14 },
         },
         mobile: {
-          cameraPosition: [7.5, 5.2, 13.5],
-          cameraTarget: [0, -0.1, 0],
-          fov: 38,
+          cameraPosition: [14.59246, 5.6729, 4.41842],
+          cameraTarget: [0.7549, 1.042, 1.039],
+          fov: 24.1,
           rotationArea: { top: 6, right: 6, bottom: 50, left: 6 },
         },
       },

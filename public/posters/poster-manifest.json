@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractSha256": "4c67e30914d1ef0aad513f764daeabdb6f2270d99f4957dd0c30659965645e7e",
-  "renderInputsSha256": "adf753e3d25bf3f12733960c18ca8519e8e1c79798f66520389c3a4eead4f768",
+  "renderInputsSha256": "35c13f78d13ac7e7877d057a444916f140ebb337293fd3af7921e33526f40794",
   "renderer": {
     "browser": "chromium",
     "browserVersion": "149.0.7827.55",
@@ -126,8 +126,8 @@
       "path": "public/posters/league-ban-desktop.webp",
       "width": 1920,
       "height": 1080,
-      "bytes": 61636,
-      "sha256": "31ee6de2dfc5a18f14766f0bf5c9b1aedfe0702a868cb41617388bb0ee04fb7e"
+      "bytes": 73656,
+      "sha256": "11a1d922fe00d8f972dc475bfbd3866efe664377414a37c81fb5a4cdfc3556a9"
     },
     {
       "sceneId": "league-ban",
@@ -135,8 +135,8 @@
       "path": "public/posters/league-ban-mobile.webp",
       "width": 585,
       "height": 1266,
-      "bytes": 18356,
-      "sha256": "90849fb02816a7d8ca08e5b9cf6fb1df6b241c59e677e5a14a200c88c1695ac9"
+      "bytes": 31894,
+      "sha256": "90fca89e4de5c47a084ce7813a4cb0a7db1bd99e88a32d13dbc4fda6926ecb87"
     },
     {
       "sceneId": "nasa-rocket",
