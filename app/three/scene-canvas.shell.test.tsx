@@ -12,7 +12,7 @@ import {
   createDisabledSceneEventManager,
   createWebGL2Renderer,
   createWebGL2RendererFactory,
-  INACTIVE_SCENE_DPR,
+  SCENE_DPR,
   SceneCanvas,
 } from "./scene-canvas";
 
@@ -81,7 +81,7 @@ describe("SceneCanvas shell", () => {
     expect(() => manager.connect?.(null)).not.toThrow();
   });
 
-  it("uses a reduced backing-buffer ratio for inactive warmup residents", () => {
+  it("keeps one backing-buffer ratio whether or not the scene is active", () => {
     const view = render(
       <SceneCanvas
         scene={getSceneDefinition("contact-hero")}
@@ -98,9 +98,12 @@ describe("SceneCanvas shell", () => {
       />,
     );
 
+    // An inactive chapter can still cover most of the viewport with its poster
+    // CSS-hidden, so dropping resolution here would degrade a surface the
+    // visitor is already looking at, then snap it back on activation.
     expect(canvasCalls).toHaveBeenCalledOnce();
     expect(canvasCalls.mock.calls[0][0]).toMatchObject({
-      dpr: INACTIVE_SCENE_DPR,
+      dpr: SCENE_DPR,
     });
 
     view.rerender(

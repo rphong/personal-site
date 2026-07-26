@@ -123,16 +123,21 @@ const WEBGL2_ATTRIBUTES = {
   stencil: false,
 } as const satisfies WebGLContextAttributes;
 
-export const ACTIVE_SCENE_DPR: [number, number] = [1, 1.5];
-// Warmup residents render below the active range to keep pool warmup cheap, but
-// never below 1: "inactive" is not the same as "off screen". A project chapter
-// only becomes active once its top edge reaches 8% from the top of the viewport
-// (scene-provider's `rootMargin: "-8% 0px -91% 0px"`), so on the way up it can
-// cover 80%+ of the screen while still counting as inactive -- and its poster is
-// CSS-hidden, so that under-rendered canvas is exactly what the visitor sees. At
-// 0.75 the league-ban model drew into a 1499x388 buffer inside a 1999x517 box
-// and read visibly soft against sharp page text.
-export const INACTIVE_SCENE_DPR = 1;
+// One resolution for every scene canvas, active or not.
+//
+// Activation is not visibility. A project chapter only becomes the active scene
+// once its top edge reaches 8% from the top of the viewport (scene-provider's
+// `rootMargin: "-8% 0px -91% 0px"`), so on the way up it can cover ~90% of the
+// screen while still counting as inactive -- and project chapters CSS-hide their
+// poster, so that canvas is exactly what the visitor is looking at. Tying dpr to
+// activation therefore changed resolution mid-scroll on a surface the visitor
+// was already reading: 0.75 against 1 on a 1x display, then 1 against 1.5 on
+// anything above that, which read as the model randomly sharpening.
+//
+// The warmup saving this gives up is one on-demand frame at 2.25x the pixels --
+// `frameloop="demand"` means parked residents do not redraw -- and it buys away
+// a mid-scroll drawing-buffer reallocation as well.
+export const SCENE_DPR: [number, number] = [1, 1.5];
 
 export function createDisabledSceneEventManager() {
   // Scene interaction is owned by SceneRotationArea outside the R3F tree.
@@ -1589,11 +1594,7 @@ export function SceneCanvas(props: SceneCanvasPortProps) {
     <Canvas
       aria-hidden="true"
       frameloop="demand"
-      dpr={
-        props.debugActive === false
-          ? INACTIVE_SCENE_DPR
-          : ACTIVE_SCENE_DPR
-      }
+      dpr={SCENE_DPR}
       resize={{ scroll: false }}
       shadows={false}
       camera={{

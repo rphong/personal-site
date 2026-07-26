@@ -7,11 +7,11 @@ describe("persistent Canvas source contract", () => {
 
     expect(source.match(/<Canvas\b/g)).toHaveLength(1);
     expect(source).toContain('frameloop="demand"');
-    expect(source).toContain(
-      "props.debugActive === false",
-    );
-    expect(source).toContain("INACTIVE_SCENE_DPR");
-    expect(source).toContain("ACTIVE_SCENE_DPR");
+    // Resolution must not depend on activation: an inactive chapter can still
+    // cover most of the viewport, so a dpr that keys off `debugActive` changes
+    // resolution under the visitor mid-scroll.
+    expect(source).toContain("dpr={SCENE_DPR}");
+    expect(source).not.toMatch(/dpr=\{[^}]*debugActive/);
     expect(source).toContain("resize={{ scroll: false }}");
     expect(source).toContain('aria-hidden="true"');
     expect(source).toContain("events={createDisabledSceneEventManager}");
