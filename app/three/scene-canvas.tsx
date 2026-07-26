@@ -124,7 +124,15 @@ const WEBGL2_ATTRIBUTES = {
 } as const satisfies WebGLContextAttributes;
 
 export const ACTIVE_SCENE_DPR: [number, number] = [1, 1.5];
-export const INACTIVE_SCENE_DPR = 0.75;
+// Warmup residents render below the active range to keep pool warmup cheap, but
+// never below 1: "inactive" is not the same as "off screen". A project chapter
+// only becomes active once its top edge reaches 8% from the top of the viewport
+// (scene-provider's `rootMargin: "-8% 0px -91% 0px"`), so on the way up it can
+// cover 80%+ of the screen while still counting as inactive -- and its poster is
+// CSS-hidden, so that under-rendered canvas is exactly what the visitor sees. At
+// 0.75 the league-ban model drew into a 1499x388 buffer inside a 1999x517 box
+// and read visibly soft against sharp page text.
+export const INACTIVE_SCENE_DPR = 1;
 
 export function createDisabledSceneEventManager() {
   // Scene interaction is owned by SceneRotationArea outside the R3F tree.
