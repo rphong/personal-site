@@ -212,6 +212,11 @@ describe("scene registry", () => {
         "contact",
         "contact",
         "contact",
+        "contact",
+        "contact",
+        "contact",
+        "contact",
+        "contact",
         "cast",
       ],
       "league-ban": [

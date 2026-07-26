@@ -451,25 +451,38 @@ export const SCENE_DEFINITIONS = {
         1.6,
         0.22,
       ),
-      // The bench pool, turned onto the table's own 30-degree axis rather than
-      // left square to the world, so it runs the length of the top the way the
-      // mock's does instead of ballooning out as a circle either side of it.
-      // One lobe falls off as (1-r^2)^2 and peaks to a point, so a broad faint
-      // one carries the outer falloff while a tighter one builds the flat dark
-      // centre the mock has - the same pairing the home hero uses.
-      contactLobe([-0.7, -0.009, 1.0], [4.3, 2.5], 0.28, Math.PI / 6),
-      contactLobe([-0.52, -0.01, 1.1], [3.5, 1.9], 0.4, Math.PI / 6),
-      // Only two of the six legs reach the floor. Darkening the ground exactly
-      // where those two land is what stops the bench reading as hovering; the
-      // positions come from the blend's foot vertices, not from eye.
-      contactLobe([-0.877, -0.011, 1.83], [1.4, 1.0], 0.3),
-      contactLobe([0.547, -0.011, 0.92], [1.3, 0.95], 0.26),
+      // The bench pool. Measured against the mock at matched table scale, the
+      // peaks already agreed (0.89 against 0.91) but the body did not: our
+      // darkest band read 0.39 where the mock's reads 0.69, and ours died two
+      // bands early. That is a shape problem, not an opacity one - contactAlpha
+      // falls off as (1-r^2)^2, so a lobe peaks to a point and no single one
+      // can hold a broad dark core, and the registry test caps any one lobe at
+      // 0.5. So the core is built as a row of four overlapping lobes strung
+      // along the table's own 30-degree axis: their union is a plateau rather
+      // than a peak. A broad faint lobe underneath carries the outer falloff.
+      // The whole pool also sits nearer camera than the slab centre, which is
+      // where the mock's is (pool centroid 0.406 of a table span down the crop
+      // against our 0.338).
+      contactLobe([-0.524, -0.009, 1.45], [3.8, 3.0], 0.19, Math.PI / 6),
+      contactLobe([-1.121, -0.01, 1.845], [1.85, 1.6], 0.43, Math.PI / 6),
+      contactLobe([-0.723, -0.01, 1.615], [1.85, 1.6], 0.43, Math.PI / 6),
+      contactLobe([-0.325, -0.01, 1.385], [1.85, 1.6], 0.43, Math.PI / 6),
+      contactLobe([0.073, -0.01, 1.155], [1.85, 1.6], 0.43, Math.PI / 6),
+      // A patch under each of the four feet, at the positions the blend's foot
+      // vertices actually land on. This is what plants the bench: the two back
+      // feet meet the floor further from camera, so they finish higher up the
+      // frame than the front pair and read as hanging until something darkens
+      // the ground exactly where they touch it.
+      contactLobe([-1.498, -0.011, 1.48], [1.25, 0.9], 0.24),
+      contactLobe([-1.197, -0.011, 2.044], [1.3, 0.95], 0.26),
+      contactLobe([0.213, -0.011, 0.483], [1.25, 0.9], 0.24),
+      contactLobe([0.48, -0.011, 1.052], [1.3, 0.95], 0.26),
       castLobe(
         PROJECTS_HERO_LIGHTING.key.position,
-        [-0.55, -0.007, 1.15],
+        [-0.55, -0.007, 1.35],
         2.8,
         1.9,
-        0.18,
+        0.2,
       ),
     ),
     rotation: DEFAULT_ROTATION,

@@ -15,7 +15,7 @@
       "source": "assets/blender/Crane.blend"
     },
     "crane-making-table": {
-      "canonicalSha256": "94c3c8f4447647c77f0386f9a51797f4cad9d9039379a8907d9be5887a86157c",
+      "canonicalSha256": "00fb223a7bdc9dc62119a13dfc319e7b39f08511cbee1204f622c63e3e6bf43b",
       "generatorInputs": {
         "staticCranePose": {
           "frame": 2,
